@@ -21,7 +21,7 @@ vk::Fence FencePool::next() {
 	if (m_free.empty()) { m_free.push_back(makeFence()); }
 	auto ret = std::move(m_free.back());
 	m_free.pop_back();
-	m_device->resetFence(ret);
+	m_device->resetFence(ret, false);
 	m_busy.push_back(std::move(ret));
 	return m_busy.back();
 }
@@ -55,14 +55,19 @@ CommandBuffer CommandPool::acquire() {
 	return ret;
 }
 
-void CommandPool::release(CommandBuffer&& cb, bool block) {
+vk::Result CommandPool::release(CommandBuffer&& cb, bool block) {
 	EXPECT(!std::any_of(m_cbs.begin(), m_cbs.end(), [c = cb.m_cb](Cmd const& cmd) { return cmd.cb == c; }));
 	cb.end();
 	Cmd cmd{cb.m_cb, m_fencePool.next()};
 	vk::SubmitInfo si(0U, nullptr, {}, 1U, &cb.m_cb);
 	auto const& queue = m_qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
-	queue.submit(si, cmd.fence);
+	auto const ret = queue.submit(si, cmd.fence);
 	m_cbs.push_back(std::move(cmd));
-	if (block) { m_device->waitFor(cmd.fence); }
+	if (ret == vk::Result::eSuccess) {
+		if (block) { m_device->waitFor(cmd.fence); }
+	} else {
+		m_device->resetFence(cmd.fence, false);
+	}
+	return ret;
 }
 } // namespace le::graphics

@@ -22,6 +22,19 @@ class VRAM final : public Memory {
 	using Memory::copy;
 	using Images = ktl::fixed_vector<utils::STBImg, 6>;
 
+	struct Scratch {
+		std::optional<Buffer> buffer;
+		std::optional<Image> image;
+	};
+
+	template <typename T = bool>
+	struct Op {
+		Scratch scratch;
+		T outcome;
+
+		Op(T outcome = T{}) noexcept : outcome(outcome) {}
+	};
+
 	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
 
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});

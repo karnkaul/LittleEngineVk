@@ -133,7 +133,7 @@ std::optional<Surface::Acquire> Surface::acquireNextImage(Extent2D fbSize, vk::S
 	return Acquire{m_storage.images[i], idx};
 }
 
-void Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const {
+vk::Result Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const {
 	static constexpr vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eTopOfPipe;
 	vk::SubmitInfo submitInfo;
 	submitInfo.pWaitDstStageMask = &waitStages;
@@ -143,7 +143,7 @@ void Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const 
 	submitInfo.pWaitSemaphores = &sync.wait;
 	submitInfo.signalSemaphoreCount = 1U;
 	submitInfo.pSignalSemaphores = &sync.ssignal;
-	m_vram->m_device->queues().graphics().submit(submitInfo, sync.fsignal);
+	return m_vram->m_device->queues().graphics().submit(submitInfo, sync.fsignal);
 }
 
 bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {

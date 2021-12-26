@@ -5,6 +5,7 @@
 #include <graphics/bitmap.hpp>
 #include <graphics/image_ref.hpp>
 #include <graphics/qtype.hpp>
+#include <graphics/utils/defer.hpp>
 #include <ktl/either.hpp>
 #include <atomic>
 #include <optional>
@@ -25,6 +26,8 @@ class Memory : public Pinned {
 	struct AllocInfo;
 	struct Resource;
 	struct Deleter;
+
+	using Deferred = Defer<Resource, Memory, Deleter>;
 
 	struct ImgMeta {
 		LayerMip layerMip;

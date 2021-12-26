@@ -5,6 +5,7 @@
 #include <graphics/render/framebuffer.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <optional>
 
 namespace le::graphics {
 class VRAM;
@@ -53,7 +54,7 @@ class Surface {
 	bool makeSwapchain(Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 
 	std::optional<Acquire> acquireNextImage(Extent2D fbSize, vk::Semaphore signal);
-	void submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const;
+	vk::Result submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const;
 	bool present(Extent2D fbSize, Acquire image, vk::Semaphore wait);
 
   private:

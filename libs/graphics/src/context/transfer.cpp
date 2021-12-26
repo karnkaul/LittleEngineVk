@@ -144,7 +144,7 @@ void Transfer::scavenge(Stage&& stage, vk::Fence fence) {
 	m_data.commands.push_back(std::move(stage.command));
 	if (stage.buffer) { m_data.buffers.push_back(std::move(*stage.buffer)); }
 	if (std::find(m_data.fences.begin(), m_data.fences.end(), fence) == m_data.fences.end()) {
-		m_memory->m_device->resetFence(fence);
+		m_memory->m_device->resetFence(fence, false);
 		m_data.fences.push_back(fence);
 	}
 }

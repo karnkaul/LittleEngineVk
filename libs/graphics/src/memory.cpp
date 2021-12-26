@@ -178,6 +178,7 @@ std::optional<Memory::Resource> Memory::makeImage(AllocInfo const& ai, vk::Image
 	ret.mode = ici.sharingMode;
 	ret.qcaps = ai.qcaps;
 	m_allocations[Type::eImage].fetch_add(ret.size);
+	m_device->m_layouts.force(image, ici.initialLayout);
 	return ret;
 }
 

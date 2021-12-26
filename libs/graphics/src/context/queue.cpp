@@ -25,10 +25,7 @@ vk::CommandPool Queue::makeCommandPool(vk::Device device, vk::CommandPoolCreateF
 vk::Result Queue::present(vk::PresentInfoKHR const& info) const { return valid() ? ktl::tlock(m_queue)->presentKHR(&info) : vk::Result::eErrorDeviceLost; }
 
 vk::Result Queue::submit(vAP<vk::SubmitInfo> infos, vk::Fence signal) const {
-	if (valid()) {
-		ktl::tlock(m_queue)->submit(infos, signal);
-		return vk::Result::eSuccess;
-	}
+	if (valid()) { return ktl::tlock(m_queue)->submit(infos.size(), infos.data(), signal); }
 	return vk::Result::eErrorDeviceLost;
 }
 

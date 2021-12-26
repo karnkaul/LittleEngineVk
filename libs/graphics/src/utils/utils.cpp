@@ -402,11 +402,11 @@ auto xferImage(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Imag
 	EXPECT(layouts.first != vIL::eUndefined);
 	utils::Transition tsrc{vram->m_device, &cb, src.image};
 	utils::Transition tdst{vram->m_device, &cb, out_dst.image()};
-	tsrc(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
-	tdst(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
+	tsrc(vIL::eTransferSrcOptimal);
+	tdst(vIL::eTransferDstOptimal);
 	auto const ret = func();
-	tsrc(layouts.first, {}, {});
-	if (layouts.second != vIL::eUndefined) { tdst(layouts.second, {}, {}); }
+	tsrc(layouts.first);
+	if (layouts.second != vIL::eUndefined) { tdst(layouts.second); }
 	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, {layouts.second, layouts.second}); }
 	return ret;
 }
@@ -430,7 +430,7 @@ bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& s
 	return canBlit(vram->m_device, imgs, filter) ? blit(vram, cb, src, out_dst, filter) : copy(vram, cb, src, out_dst);
 }
 
-bool utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 ioffset) {
+Buffer utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 ioffset) {
 	auto const extent = vk::Extent3D(bitmap.extent.x, bitmap.extent.y, 1U);
 	auto copyRegion = VRAM::bufferImageCopy(extent, vk::ImageAspectFlagBits::eColor, 0U, ioffset, 0U);
 	auto const layout = vram->m_device->m_layouts.get(out_dst.image());
@@ -443,7 +443,7 @@ bool utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap
 	meta.access = {vAFB::eMemoryRead | vAFB::eMemoryWrite, vAFB::eMemoryRead | vAFB::eMemoryWrite};
 	VRAM::copy(cb.m_cb, buffer.buffer(), out_dst.image(), copyRegion, meta);
 	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, meta.layouts); }
-	return true;
+	return buffer;
 }
 
 std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, ImageRef const& src) {

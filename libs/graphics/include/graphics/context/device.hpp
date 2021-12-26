@@ -36,13 +36,13 @@ class Device final : public Pinned {
 
 	vk::UniqueSurfaceKHR makeSurface() const;
 	vk::Semaphore makeSemaphore() const;
-	vk::Fence makeFence(bool bSignalled) const;
-	void resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const;
-	bool isBusy(vk::Fence optional) const;
-	void waitFor(vk::Fence optional) const;
-	void waitAll(vAP<vk::Fence> validFences) const;
-	void resetFence(vk::Fence optional) const;
-	void resetAll(vAP<vk::Fence> validFences) const;
+	vk::Fence makeFence(bool signalled) const;
+	void resetOrMakeFence(vk::Fence& out_fence, bool signalled) const;
+	bool isBusy(vk::Fence fence) const;
+	void waitFor(vk::Fence fence) const;
+	void waitAll(vAP<vk::Fence> fences) const;
+	void resetFence(vk::Fence fence, bool wait) const;
+	void resetAll(vAP<vk::Fence> fences) const;
 	void resetCommandPool(vk::CommandPool pool) const;
 
 	bool signalled(Span<vk::Fence const> fences) const;

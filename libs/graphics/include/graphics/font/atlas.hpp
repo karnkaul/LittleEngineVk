@@ -7,12 +7,16 @@ class FontAtlas {
   public:
 	using Height = FontFace::Height;
 	using CreateInfo = TextureAtlas::CreateInfo;
+	using Outcome = TextureAtlas::Outcome;
+	using Result = TextureAtlas::Result;
 
 	FontAtlas(not_null<VRAM*> vram, CreateInfo const& info);
 
-	bool load(CommandBuffer const& cb, Span<std::byte const> ttf, Height height = {}) noexcept;
+	bool load(Span<std::byte const> ttf, Height height = {}) noexcept;
 
-	Glyph const& build(CommandBuffer const& cb, Codepoint cp, bool rebuild = false);
+	Result build(CommandBuffer const& cb, Codepoint cp, bool rebuild = false);
+	Glyph glyph(Codepoint cp) const noexcept;
+	bool contains(Codepoint cp) const noexcept { return m_atlas.contains(cp); }
 
 	FontFace const& face() const noexcept { return m_face; }
 	TextureAtlas const& atlas() const noexcept { return m_atlas; }

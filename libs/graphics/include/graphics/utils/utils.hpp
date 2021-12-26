@@ -101,7 +101,7 @@ bool canBlit(not_null<Device*> device, TPair<ImageRef> const& images, BlitFilter
 bool blit(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
 bool copy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst);
 bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
-bool copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 offset);
+Buffer copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 offset);
 std::optional<Image> makeStorage(not_null<VRAM*> vram, ImageRef const& src);
 std::size_t writePPM(not_null<Device*> device, Image const& img, std::ostream& out_str);
 

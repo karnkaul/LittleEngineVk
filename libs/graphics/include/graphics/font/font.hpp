@@ -65,7 +65,7 @@ class Font::Pen {
 	glm::vec2 lineExtent(std::string_view line) const;
 	glm::vec2 textExtent(std::string_view text) const;
 
-	Glyph const& glyph(Codepoint cp) const;
+	Glyph glyph(Codepoint cp) const;
 	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_info.scale; }
 	std::string_view truncate(std::string_view line, f32 maxWidth) const;
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});

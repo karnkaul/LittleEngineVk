@@ -41,10 +41,9 @@ vk::ImageLayout doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D 
 	pre.aspects = post.aspects = as;
 	pre.layerMip.layer.first = post.layerMip.layer.first = 0U;
 	pre.layerMip.layer.count = post.layerMip.layer.count = lc;
-	pre.access = {vAFB::eMemoryRead, vAFB::eTransferRead};
-	post.access = {vAFB::eTransferRead, vAFB::eTransferWrite};
+	pre.access = post.access = {vAFB::eMemoryRead | vAFB::eMemoryWrite, vAFB::eMemoryRead | vAFB::eMemoryWrite};
 	// transition mip[0] from fromTo.first to dst, mip[1]-mip[N] from undefined to dst
-	pre.stages = {vPSFB::eTopOfPipe, vPSFB::eTransfer};
+	pre.stages = {vPSFB::eAllCommands, vPSFB::eTransfer};
 	post.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
 	pre.layerMip.mip.count = post.layerMip.mip.first = 1U;
 	post.layerMip.mip.count = mc - 1U;
@@ -53,8 +52,8 @@ vk::ImageLayout doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D 
 	VRAM::imageBarrier(cb, img, pre);
 	VRAM::imageBarrier(cb, img, post);
 	// prepare to blit mip[N-1] to mip[N]...
-	pre.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
-	post.access = {vAFB::eTransferRead, vAFB::eShaderRead};
+	pre.access = post.access;
+	post.access.second |= vAFB::eShaderRead;
 	pre.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
 	post.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
 	pre.layerMip.mip.count = post.layerMip.mip.count = 1U;

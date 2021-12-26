@@ -1,11 +1,13 @@
 #pragma once
 #include <graphics/geometry.hpp>
 #include <graphics/texture.hpp>
+#include <ktl/expected.hpp>
 
 namespace le::graphics {
 class TextureAtlas {
   public:
-	enum class Result { eOk, eOverflowX, eSizeLocked, eResizeFail, eInvalidSize };
+	enum class Outcome { eOk, eOverflowX, eSizeLocked, eResizeFail, eInvalidSize };
+	using Result = VRAM::Op<Outcome>;
 
 	struct CreateInfo;
 	using ID = u32;
@@ -42,7 +44,7 @@ class TextureAtlas {
 	not_null<VRAM*> m_vram;
 
 	QuadUV getUV(Entry const& entry) const noexcept;
-	Result prepAtlas(Extent2D extent, CommandBuffer const& cb);
+	Outcome prepAtlas(Extent2D extent, CommandBuffer const& cb, Result& out);
 	void nextRow() noexcept;
 };
 

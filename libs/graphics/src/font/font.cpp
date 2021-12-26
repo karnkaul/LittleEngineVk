@@ -95,12 +95,13 @@ bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 
 }
 
 bool Font::load(FontAtlas& out, Height height) {
-	auto inst = InstantCommand(&m_vram->commandPool());
-	if (!out.load(inst.cb(), m_info.ttf, height)) {
+	if (!out.load(m_info.ttf, height)) {
 		logE(LC_EndUser, "[Graphics] Failed to load Font [{}]!", m_info.name);
 		return false;
 	}
-	for (Codepoint cp = m_info.preload.first; cp.value < m_info.preload.second.value; ++cp.value) { out.build(inst.cb(), cp); }
+	auto inst = InstantCommand(&m_vram->commandPool());
+	std::vector<TextureAtlas::Result> staging;
+	for (Codepoint cp = m_info.preload.first; cp.value < m_info.preload.second.value; ++cp.value) { staging.push_back(out.build(inst.cb(), cp)); }
 	return true;
 }
 
@@ -110,11 +111,10 @@ Font::Pen::Pen(not_null<Font*> font, PenInfo const& info)
 	EXPECT(!m_info.customSize || m_font->contains(*m_info.customSize));
 }
 
-Glyph const& Font::Pen::glyph(Codepoint cp) const {
+Glyph Font::Pen::glyph(Codepoint cp) const {
 	auto& at = atlas();
-	auto ret = &at.build(m_cmd.cb(), cp);
-	if (ret->codepoint != cp) { ret = &at.build(m_cmd.cb(), {}); }
-	return *ret;
+	if (!at.contains(cp) && at.build(m_cmd.cb(), cp).outcome != TextureAtlas::Outcome::eOk) { cp = {}; }
+	return at.glyph(cp);
 }
 
 glm::vec2 Font::Pen::lineExtent(std::string_view const line) const { return iterate(*this, m_info.scale, line); }
@@ -169,7 +169,6 @@ glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> reali
 		if (m_info.out_geometry) { m_font->write(*m_info.out_geometry, gl, m_head, m_info.scale); }
 		advance(gl);
 	};
-	auto& at = atlas();
 	glm::vec3 idxPos = m_head;
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (retIdx && *retIdx == idx) { idxPos = m_head; }
@@ -178,8 +177,8 @@ glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> reali
 		EXPECT(!newLine);
 		if (newLine) { return retIdx ? idxPos : m_head; }
 		if (ch == '\t') {
-			Glyph const& glyph = at.build(m_cmd.cb(), Codepoint(static_cast<u32>(' ')));
-			for (int i = 0; i < 4; ++i) { m_head += glm::vec3(glyph.advance, 0.0f); }
+			Glyph const gl = glyph(Codepoint(static_cast<u32>(' ')));
+			for (int i = 0; i < 4; ++i) { m_head += glm::vec3(gl.advance, 0.0f); }
 		} else {
 			write(cp);
 		}

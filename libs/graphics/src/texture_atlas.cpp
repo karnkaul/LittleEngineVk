@@ -26,13 +26,15 @@ QuadTex TextureAtlas::get(ID id) const noexcept {
 }
 
 TextureAtlas::Result TextureAtlas::add(ID id, Bitmap const& bitmap, CommandBuffer const& cb) {
-	if (auto res = prepAtlas(bitmap.extent, cb); res != Result::eOk) { return res; }
-	utils::copySub(m_vram, cb, bitmap, m_texture.image(), m_data.head);
+	Result ret;
+	auto res = prepAtlas(bitmap.extent, cb, ret);
+	if (res != Outcome::eOk) { return ret; }
+	ret.scratch.buffer = utils::copySub(m_vram, cb, bitmap, m_texture.image(), m_data.head);
 	Entry entry{bitmap.extent, m_data.head};
 	m_data.head.x += bitmap.extent.x + m_pad.x;
 	m_data.rowHeight = std::max(m_data.rowHeight, bitmap.extent.y);
 	m_data.entries.insert_or_assign(id, entry);
-	return Result::eOk;
+	return ret;
 }
 
 bool TextureAtlas::setUV(ID id, Span<Vertex> quad) const noexcept {
@@ -67,10 +69,10 @@ QuadUV TextureAtlas::getUV(Entry const& entry) const noexcept {
 	return ret;
 }
 
-TextureAtlas::Result TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
-	if (extent.x == 0 || extent.y == 0) { return Result::eInvalidSize; }
+TextureAtlas::Outcome TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb, Result& out) {
+	if (extent.x == 0 || extent.y == 0) { return Outcome::eInvalidSize; }
 	auto const& itex = m_texture.image().extent2D();
-	if (extent.x > itex.x) { return Result::eOverflowX; }
+	if (extent.x > itex.x) { return Outcome::eOverflowX; }
 	auto const remain = itex - m_data.head;
 	bool resize = false;
 	if (extent.y + m_pad.y > remain.y) { // y overflow
@@ -83,14 +85,16 @@ TextureAtlas::Result TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer cons
 		}
 	}
 	if (resize) {
-		if (m_locked) { return Result::eSizeLocked; }
-		if (!m_texture.resizeCopy(cb, {itex.x, itex.y * 2U})) { return Result::eResizeFail; }
+		if (m_locked) { return Outcome::eSizeLocked; }
+		auto res = m_texture.resizeCopy(cb, {itex.x, itex.y * 2U});
+		if (!res.outcome) { return Outcome::eResizeFail; }
+		out.scratch = std::move(res.scratch);
 		nextRow();
 	}
 	m_texture.wait();
 	EXPECT(m_data.head.x + extent.x + m_pad.x <= m_texture.image().extent2D().x);
 	EXPECT(m_data.head.y + extent.y + m_pad.y <= m_texture.image().extent2D().y);
-	return Result::eOk;
+	return Outcome::eOk;
 }
 
 void TextureAtlas::nextRow() noexcept {

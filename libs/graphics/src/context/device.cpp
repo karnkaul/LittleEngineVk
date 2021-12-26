@@ -249,53 +249,53 @@ vk::UniqueSurfaceKHR Device::makeSurface() const {
 
 vk::Semaphore Device::makeSemaphore() const { return m_device->createSemaphore({}); }
 
-vk::Fence Device::makeFence(bool bSignalled) const {
-	vk::FenceCreateFlags flags = bSignalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
+vk::Fence Device::makeFence(bool signalled) const {
+	vk::FenceCreateFlags flags = signalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
 	return m_device->createFence(flags);
 }
 
-void Device::resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const {
+void Device::resetOrMakeFence(vk::Fence& out_fence, bool signalled) const {
 	if (default_v(out_fence)) {
-		out_fence = makeFence(bSignalled);
+		out_fence = makeFence(signalled);
 	} else {
-		resetFence(out_fence);
+		resetFence(out_fence, true);
 	}
 }
 
-bool Device::isBusy(vk::Fence optional) const {
-	if (optional) { return m_device->getFenceStatus(optional) == vk::Result::eNotReady; }
+bool Device::isBusy(vk::Fence fence) const {
+	if (fence) { return m_device->getFenceStatus(fence) == vk::Result::eNotReady; }
 	return false;
 }
 
-void Device::waitFor(vk::Fence optional) const {
-	if (!default_v(optional)) {
+void Device::waitFor(vk::Fence fence) const {
+	if (fence) {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
-			auto const result = m_device->waitForFences(optional, true, s_wait);
+			auto const result = m_device->waitForFences(fence, true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
 		} else {
-			m_device->waitForFences(optional, true, maths::max<u64>());
+			m_device->waitForFences(fence, true, maths::max<u64>());
 		}
 	}
 }
 
-void Device::waitAll(vAP<vk::Fence> validFences) const {
-	if (!validFences.empty()) {
+void Device::waitAll(vAP<vk::Fence> fences) const {
+	if (!fences.empty()) {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
-			auto const result = m_device->waitForFences(std::move(validFences), true, s_wait);
+			auto const result = m_device->waitForFences(std::move(fences), true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
 		} else {
-			m_device->waitForFences(std::move(validFences), true, maths::max<u64>());
+			m_device->waitForFences(std::move(fences), true, maths::max<u64>());
 		}
 	}
 }
 
-void Device::resetFence(vk::Fence optional) const {
-	if (!default_v(optional)) {
-		if (m_device->getFenceStatus(optional) == vk::Result::eNotReady) { waitFor(optional); }
+void Device::resetFence(vk::Fence optional, bool wait) const {
+	if (optional) {
+		if (wait && m_device->getFenceStatus(optional) == vk::Result::eNotReady) { waitFor(optional); }
 		m_device->resetFences(optional);
 	}
 }
@@ -304,8 +304,8 @@ void Device::resetCommandPool(vk::CommandPool pool) const {
 	if (!default_v(pool)) { m_device->resetCommandPool(pool, {}); }
 }
 
-void Device::resetAll(vAP<vk::Fence> validFences) const {
-	if (!validFences.empty()) { m_device->resetFences(std::move(validFences)); }
+void Device::resetAll(vAP<vk::Fence> fences) const {
+	if (!fences.empty()) { m_device->resetFences(std::move(fences)); }
 }
 
 bool Device::signalled(Span<vk::Fence const> fences) const {

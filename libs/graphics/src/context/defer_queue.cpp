@@ -7,7 +7,7 @@
 namespace le::graphics {
 void DeferQueue::defer(Callback&& callback, Buffering defer) {
 	ktl::tlock lock(m_entries);
-	lock->push_back({.callback = std::move(callback), .defer = defer == Buffering() ? 1_B : defer, .done = false});
+	lock->push_back({.callback = std::move(callback), .defer = {u8(defer.value + 1)}, .done = false});
 }
 
 std::size_t DeferQueue::decrement() {

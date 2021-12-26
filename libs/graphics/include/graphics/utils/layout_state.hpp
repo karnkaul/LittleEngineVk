@@ -13,7 +13,7 @@ struct LayoutStages {
 
 	static constexpr StageAccess sa_top_v = {vPSFB::eTopOfPipe, {}};
 	static constexpr StageAccess sa_bottom_v = {vPSFB::eBottomOfPipe, {}};
-	static constexpr StageAccess sa_all_commands_v = {vPSFB::eAllCommands, {}};
+	static constexpr StageAccess sa_all_commands_v = {vPSFB::eAllCommands, vAFB::eMemoryRead | vAFB::eMemoryWrite};
 	static constexpr StageAccess sa_depth_v = {vPSFB::eEarlyFragmentTests | vPSFB::eLateFragmentTests, vAFB::eDepthStencilAttachmentWrite};
 	static constexpr StageAccess sa_colour_v = {vPSFB::eColorAttachmentOutput, vAFB::eColorAttachmentWrite};
 	static constexpr StageAccess sa_transfer_v = {vPSFB::eTransfer, vAFB::eTransferWrite | vAFB::eTransferRead};
@@ -38,7 +38,7 @@ class LayoutState {
 
 	void presented(vk::Image image) { force(image, vk::ImageLayout::ePresentSrcKHR); }
 	void drawn(vk::Image depth) { force(depth, vk::ImageLayout::eUndefined); }
-	void force(vk::Image image, vk::ImageLayout layout) { (*ktl::tlock(m_map))[image] = layout; }
+	void force(vk::Image image, vk::ImageLayout layout);
 
   private:
 	ktl::strict_tmutex<std::unordered_map<vk::Image, vk::ImageLayout>> m_map;

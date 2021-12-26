@@ -29,7 +29,7 @@ MeshPrimitive::Storage MeshPrimitive::construct(vk::BufferUsageFlags usage, void
 }
 
 bool MeshPrimitive::draw(CommandBuffer cb, u32 instances, u32 first) const {
-	if (valid()) {
+	if (ready()) {
 		cb.bindVBO(*m_vbo.buffer, m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr);
 		if (hasIndices()) {
 			cb.drawIndexed(m_ibo.count, instances, first);
@@ -49,7 +49,7 @@ bool MeshPrimitive::busy() const {
 	return m_vbo.transfer.busy() || m_ibo.transfer.busy();
 }
 
-bool MeshPrimitive::ready() const { return valid() && m_vbo.transfer.ready() && m_ibo.transfer.ready(); }
+bool MeshPrimitive::ready() const { return valid() && (m_type == Type::eDynamic || (m_vbo.transfer.ready() && m_ibo.transfer.ready())); }
 
 void MeshPrimitive::wait() const {
 	if (m_type == Type::eDynamic) {

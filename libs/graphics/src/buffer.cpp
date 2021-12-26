@@ -3,8 +3,6 @@
 #include <graphics/context/device.hpp>
 
 namespace le::graphics {
-// Buffer::Buffer(not_null<Memory*> memory) noexcept : m_memory(memory) { m_buffer.resource = vk::Buffer(); }
-
 Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& device = *memory->m_device;
 	vk::BufferCreateInfo bufferInfo;
@@ -23,10 +21,6 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memo
 		EXPECT(false);
 	}
 }
-
-// Buffer::~Buffer() {
-// 	if (!Device::default_v(buffer())) { m_memory->defer(m_buffer); }
-// }
 
 void const* Buffer::map() {
 	if (m_data.type != Buffer::Type::eCpuToGpu) {

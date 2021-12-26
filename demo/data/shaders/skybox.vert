@@ -6,7 +6,7 @@ layout(std140, set = 0, binding = 0) uniform VP {
 };
 
 layout(location = 0) in vec3 vertPos;
-layout(location = 1) in vec3 vertColour;
+layout(location = 1) in vec4 vertColour;
 layout(location = 2) in vec3 normal;
 layout(location = 3) in vec2 texCoord;
 

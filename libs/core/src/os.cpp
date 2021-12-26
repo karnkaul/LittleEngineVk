@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/os.hpp>
@@ -9,7 +10,6 @@
 #if defined(LEVK_OS_WINDOWS)
 #include <Windows.h>
 #elif defined(LEVK_OS_LINUX)
-#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fstream>

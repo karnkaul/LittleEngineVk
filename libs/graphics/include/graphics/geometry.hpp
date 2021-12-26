@@ -21,18 +21,18 @@ using Geometry = Geom<VertType::ePosColNormUV>;
 template <>
 struct Vert<VertType::ePosCol> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 };
 template <>
 struct Vert<VertType::ePosColUV> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 	glm::vec2 texCoord = {};
 };
 template <>
 struct Vert<VertType::ePosColNormUV> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 	glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec2 texCoord = {};
 };
@@ -67,7 +67,7 @@ struct Albedo final {
 
 struct GeomInfo {
 	glm::vec3 origin{};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 };
 
 Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, GeomInfo const& info = {}, QuadUV const& uv = {}, Topology topo = Topology::eTriangleList);

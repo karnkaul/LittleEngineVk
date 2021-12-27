@@ -1,7 +1,6 @@
 #pragma once
 #include <graphics/geometry.hpp>
 #include <graphics/texture.hpp>
-#include <ktl/expected.hpp>
 
 namespace le::graphics {
 class TextureAtlas {

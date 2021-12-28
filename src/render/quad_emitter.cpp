@@ -1,6 +1,7 @@
 #include <core/maths.hpp>
 #include <core/utils/expect.hpp>
 #include <engine/render/quad_emitter.hpp>
+#include <glm/mat2x2.hpp>
 
 namespace le {
 namespace {
@@ -24,15 +25,24 @@ f32 rfloat(EmitterInfo::Range<f32> const in) noexcept { return maths::randomRang
 
 void QuadEmitter::Pos::operator()(Time_s const dt) noexcept {
 	elapsed += dt;
-	position += velocity * dt.count();
+	linear.tick(dt);
+	radial.tick(dt);
 	ratio = elapsed.count() / ttl.count();
 }
 
-void QuadEmitter::Geom::operator()(glm::vec3 const& position, glm::vec2 const size, glm::vec3 const colour, f32 const ratio) {
+void QuadEmitter::Geom::operator()(glm::vec3 const& pos, f32 const radz, glm::vec2 const size, glm::vec3 const colour, f32 const ratio) {
 	graphics::GeomInfo gi;
 	gi.colour = {colour, maths::lerp(alpha.first, alpha.second, ratio)};
-	gi.origin = position;
 	geometry = graphics::makeQuad(size * maths::lerp(scale.first, scale.second, ratio), gi);
+	glm::vec2 const cs = {glm::cos(radz), glm::sin(radz)};
+	auto const mat = glm::mat2x2{
+		{cs.x, cs.y},
+		{-cs.y, cs.x},
+	};
+	for (auto& vert : geometry.vertices) {
+		auto const vert_xy = mat * glm::vec2(vert.position);
+		vert.position = glm::vec3(vert_xy, vert.position.z) + pos;
+	}
 }
 
 void QuadEmitter::create(EmitterInfo const& info) {
@@ -51,8 +61,9 @@ void QuadEmitter::tick(Time_s dt, Opt<dts::task_queue> tasks) {
 	auto const colour = m_info.colour.toVec4();
 	auto range = [dt, colour, this](std::size_t begin, std::size_t end) {
 		for (std::size_t i = begin; i < end; ++i) {
-			m_data.pos[i](dt);
-			m_data.gen[i](m_data.pos[i].position, m_info.size, colour, m_data.pos[i].ratio);
+			auto& pos = m_data.pos[i];
+			pos(dt);
+			m_data.gen[i](pos.linear.position, pos.radial.position, m_info.size, colour, pos.ratio);
 		}
 	};
 	bool b = true;
@@ -96,8 +107,10 @@ graphics::Geometry QuadEmitter::geometry() const {
 
 void QuadEmitter::addQuad() {
 	Pos qp;
-	qp.position = rvec3(m_info.init.position);
-	qp.velocity = rvec3(m_info.init.motion.direction, true) * rvec3(m_info.init.motion.speed);
+	qp.linear.position = rvec3(m_info.init.position);
+	qp.linear.velocity = rvec3(m_info.init.linear.direction, true) * rvec3(m_info.init.linear.speed);
+	qp.radial.position = 0.0f;
+	qp.radial.velocity = glm::radians(rfloat(m_info.init.angular.speed));
 	qp.ttl = Time_s(rfloat({m_info.init.ttl.first.count(), m_info.init.ttl.second.count()}));
 	m_data.pos.push_back(qp);
 	Geom qg;

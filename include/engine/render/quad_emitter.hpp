@@ -24,7 +24,10 @@ struct EmitterInfo {
 		struct {
 			Range<glm::vec3> direction = {-xy, xy};
 			Range<glm::vec3> speed = {100.0f * xy, 200.0f * xy};
-		} motion;
+		} linear;
+		struct {
+			Range<f32> speed = {-180.0f, 180.0f};
+		} angular;
 		Range<Time_s> ttl = {2s, 5s};
 	} init;
 	struct {
@@ -47,6 +50,14 @@ class QuadEmitter {
   private:
 	void addQuad();
 
+	template <typename T>
+	struct VelPos {
+		T position{};
+		T velocity{};
+
+		void tick(Time_s dt) noexcept { position += velocity * dt.count(); }
+	};
+
 	struct Pos;
 	struct Geom;
 
@@ -59,8 +70,8 @@ class QuadEmitter {
 };
 
 struct QuadEmitter::Pos {
-	glm::vec3 position;
-	glm::vec3 velocity;
+	VelPos<glm::vec3> linear;
+	VelPos<f32> radial;
 	Time_s ttl;
 
 	Time_s elapsed{};
@@ -74,6 +85,6 @@ struct QuadEmitter::Geom {
 	EmitterInfo::Range<f32> scale;
 	EmitterInfo::Range<f32> alpha;
 
-	void operator()(glm::vec3 const& position, glm::vec2 const size, glm::vec3 const colour, f32 const ratio);
+	void operator()(glm::vec3 const& pos, f32 rot, glm::vec2 const size, glm::vec3 const colour, f32 const ratio);
 };
 } // namespace le

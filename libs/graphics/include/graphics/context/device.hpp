@@ -4,14 +4,14 @@
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue.hpp>
 #include <graphics/utils/layout_state.hpp>
-#include <ktl/move_only_function.hpp>
+#include <ktl/async/kfunction.hpp>
 
 namespace le::graphics {
 enum class Validation { eOn, eOff };
 
 class Device final : public Pinned {
   public:
-	using MakeSurface = ktl::move_only_function<vk::SurfaceKHR(vk::Instance)>;
+	using MakeSurface = ktl::kfunction<vk::SurfaceKHR(vk::Instance)>;
 
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;

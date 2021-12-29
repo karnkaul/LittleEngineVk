@@ -40,7 +40,7 @@
 #include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
-#include <ktl/async.hpp>
+#include <ktl/async/kasync.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
 #include <engine/ecs/components/trigger.hpp>
@@ -797,8 +797,8 @@ bool run(io::Media const& media) {
 		engine.boot(bootInfo);
 		App app(&engine);
 		DeltaTime dt;
-		ktl::future<bool> bf;
-		ktl::async async;
+		ktl::kfuture<bool> bf;
+		ktl::kasync async;
 		while (!engine.closing()) {
 			if (!engine.nextFrame()) { continue; }
 			poll(flags, engine.poll(true).residue);

@@ -66,7 +66,7 @@ io::Media const& Resources::media() const {
 io::FSMedia& Resources::fsMedia() { return m_fsMedia; }
 
 Resource const* Resources::find(Hash uri) const noexcept {
-	ktl::tlock lock(m_loaded);
+	ktl::klock lock(m_loaded);
 	if (auto it = lock.get().find(uri); it != lock.get().end()) { return &it->second; }
 	return nullptr;
 }
@@ -89,26 +89,26 @@ Resource const* Resources::loadFirst(Span<io::Path> uris, Resource::Type type, F
 }
 
 bool Resources::loaded(Hash uri) const noexcept {
-	ktl::tlock lock(m_loaded);
+	ktl::klock lock(m_loaded);
 	return utils::contains(lock.get(), uri);
 }
 
 void Resources::update() {
-	ktl::tlock lock(m_loaded);
+	ktl::klock lock(m_loaded);
 	for (auto& [_, resource] : lock.get()) {
 		if (resource.m_monitor) { resource.m_monitor->update(); }
 	}
 }
 
 void Resources::clear() {
-	ktl::unique_tlock<ResourceMap> lock(m_loaded);
+	ktl::unique_klock<ResourceMap> lock(m_loaded);
 	lock.get().clear();
 }
 
 Resource const* Resources::loadImpl(io::Path uri, Resource::Type type, Flags flags) {
 	Resource resource;
 	if (resource.load(media(), uri, type, flags.test(Flag::eMonitor) && levk_resourceMonitor, flags.test(Flag::eSilent))) {
-		ktl::unique_tlock<ResourceMap> lock(m_loaded);
+		ktl::unique_klock<ResourceMap> lock(m_loaded);
 		lock->erase(uri);
 		auto [it, _] = lock.get().emplace(std::move(uri), std::move(resource));
 		return &it->second;

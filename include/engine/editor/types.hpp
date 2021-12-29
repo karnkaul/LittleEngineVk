@@ -8,8 +8,8 @@
 #include <engine/editor/scene_ref.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/render/rgba.hpp>
+#include <ktl/async/kfunction.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
-#include <ktl/move_only_function.hpp>
 #include <ktl/n_tree.hpp>
 #include <ktl/stack_string.hpp>
 #include <optional>
@@ -45,7 +45,7 @@ f32 getWindowWidth();
 struct MenuList {
 	struct Menu {
 		CStr<64> id;
-		ktl::move_only_function<void()> callback;
+		ktl::kfunction<void()> callback;
 		bool separator = false;
 	};
 

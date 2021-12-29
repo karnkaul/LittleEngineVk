@@ -4,14 +4,14 @@
 #include <graphics/render/pipeline.hpp>
 #include <graphics/render/pipeline_spec.hpp>
 #include <graphics/utils/defer.hpp>
-#include <ktl/move_only_function.hpp>
+#include <ktl/async/kfunction.hpp>
 #include <unordered_map>
 
 namespace le::graphics {
 class PipelineFactory {
   public:
 	using Spec = PipelineSpec;
-	using GetSpirV = ktl::move_only_function<SpirV(Hash)>;
+	using GetSpirV = ktl::kfunction<SpirV(Hash)>;
 	struct Hasher;
 
 	static Spec spec(ShaderSpec shader, PFlags flags = pflags_all, VertexInputInfo vertexInput = {});

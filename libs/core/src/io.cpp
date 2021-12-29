@@ -1,8 +1,8 @@
 #include <core/io.hpp>
 #include <core/log.hpp>
 #include <dumb_log/file_logger.hpp>
-#include <ktl/async_queue.hpp>
-#include <ktl/kthread.hpp>
+#include <ktl/async/async_queue.hpp>
+#include <ktl/async/kthread.hpp>
 #include <filesystem>
 #include <fstream>
 

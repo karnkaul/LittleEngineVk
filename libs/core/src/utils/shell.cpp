@@ -3,7 +3,7 @@
 #include <core/maths.hpp>
 #include <core/utils/shell.hpp>
 #include <core/utils/string.hpp>
-#include <ktl/kthread.hpp>
+#include <ktl/async/kthread.hpp>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>

@@ -10,7 +10,7 @@ layout(std140, set = 1, binding = 0) uniform M {
 };
 
 layout(location = 0) in vec3 vertPos;
-layout(location = 1) in vec3 vertColour;
+layout(location = 1) in vec4 vertColour;
 layout(location = 2) in vec3 normal;
 layout(location = 3) in vec2 texCoord;
 
@@ -22,7 +22,7 @@ out gl_PerVertex {
 };
 
 void main() {
-	fragColour = vec4(vertColour, 1.0);
+	fragColour = vertColour;
 	uv = texCoord;
 	gl_Position = mat_p * mat_v * mat_m * vec4(vertPos, 1.0);
 }

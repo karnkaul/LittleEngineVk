@@ -36,6 +36,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
+#include <engine/render/quad_emitter.hpp>
 #include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
@@ -386,13 +387,29 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 } // namespace le::gui
 
 namespace le::demo {
+struct EmitMesh {
+	MeshPrimitive primitive;
+	Material material;
+	QuadEmitter emitter;
+
+	EmitMesh(not_null<graphics::VRAM*> vram, EmitterInfo info = {}) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic) { emitter.create(info); }
+
+	void tick(Time_s dt, Opt<dts::task_queue> tasks = {}) {
+		emitter.tick(dt, tasks);
+		primitive.construct(emitter.geometry());
+	}
+
+	MeshView mesh() const { return MeshObj{&primitive, &material}; }
+};
+
 class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(not_null<Engine*> eng)
 		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}) {
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
+		  m_emitter(&eng->gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -488,6 +505,11 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<Transform>(node).position(pos);
 		}
 		{
+			auto ent = spawnNode("emitter");
+			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&m_emitter));
+			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+		}
+		{
 			DirLight l0, l1;
 			l0.direction = {-graphics::up, 0.0f};
 			l1.direction = {-graphics::front, 0.0f};
@@ -574,6 +596,8 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
+
+		if (auto tex = m_eng->store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -641,6 +665,8 @@ class App : public input::Receiver, public SceneRegistry {
 				pos.x = tweener.tick(dt);
 				tr->position(pos);
 			}
+
+			m_emitter.tick(dt, &m_tasks);
 		}
 
 		m_tasks.rethrow();
@@ -688,6 +714,7 @@ class App : public input::Receiver, public SceneRegistry {
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
+	EmitMesh m_emitter;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

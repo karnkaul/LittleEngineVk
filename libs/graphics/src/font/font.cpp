@@ -75,13 +75,13 @@ std::vector<Font::Height> Font::sizes() const {
 	return ret;
 }
 
-FontAtlas const& Font::atlas(Opt<Height const> height) const noexcept {
-	auto it = m_atlases.find(height ? *height : m_info.height);
+FontAtlas const& Font::atlas(Height const height) const noexcept {
+	auto it = m_atlases.find(height == Height{} ? m_info.height : height);
 	EXPECT(it != m_atlases.end());
 	return it->second;
 }
 
-f32 Font::scale(u32 height, Opt<Height const> h) const noexcept { return f32(height) / f32(atlas(h).face().height()); }
+f32 Font::scale(u32 height, Height const h) const noexcept { return f32(height) / f32(atlas(h).face().height()); }
 
 bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 const scale) const {
 	if (glyph.textured && scale > 0.0f) {

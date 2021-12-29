@@ -154,7 +154,7 @@ struct Renderer::CreateInfo {
 	Surface::Format surfaceFormat;
 	BlitFlags surfaceBlitFlags;
 	Target target = Target::eOffScreen;
-	Buffering buffering = 2_B;
+	Buffering buffering = Buffering::eDouble;
 	u8 secondaryCmds = 1;
 
 	CreateInfo(not_null<VRAM*> vram, Surface::Format const& surfaceFormat) : vram(vram), surfaceFormat(surfaceFormat) {}

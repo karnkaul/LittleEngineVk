@@ -29,7 +29,7 @@ class RenderContext : public NoCopy {
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 
-	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
+	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = Buffering::eDouble);
 
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;

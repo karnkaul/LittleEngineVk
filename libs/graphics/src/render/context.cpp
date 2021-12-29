@@ -15,10 +15,10 @@
 namespace le::graphics {
 namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
-	ENSURE(images > 1_B, "Insufficient swapchain images");
-	ENSURE(buffering > 0_B, "Insufficient buffering");
-	if ((s16)buffering.value - (s16)images.value > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
-	if (buffering < 2_B) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
+	ENSURE(images > Buffering::eSingle, "Insufficient swapchain images");
+	ENSURE(buffering > Buffering::eNone, "Insufficient buffering");
+	if ((s64)buffering - (s64)images > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < Buffering::eDouble) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {
@@ -86,9 +86,9 @@ RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram),
 	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
 	m_pipelineCache = m_pipelineCache.make(m_vram->m_device->makePipelineCache(), m_vram->m_device);
-	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
+	validateBuffering(Buffering{m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
-	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
+	for (Buffering i = {}; i < m_buffering; ++i) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), m_buffering); }

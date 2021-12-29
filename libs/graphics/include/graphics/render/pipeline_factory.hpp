@@ -17,7 +17,7 @@ class PipelineFactory {
 	static Spec spec(ShaderSpec shader, PFlags flags = pflags_all, VertexInputInfo vertexInput = {});
 	static vk::UniqueShaderModule makeModule(vk::Device device, SpirV const& spirV);
 
-	PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buffering buffering = 2_B) noexcept;
+	PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buffering buffering = Buffering::eDouble) noexcept;
 
 	Pipeline get(Spec const& spec, vk::RenderPass renderPass);
 	bool contains(Hash spec, vk::RenderPass renderPass) const;

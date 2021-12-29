@@ -5,6 +5,7 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/move_only_function.hpp>
 
 namespace le {
 template <typename T>
@@ -16,7 +17,7 @@ struct TAssetList {
 };
 
 template <typename T>
-using AssetList = TAssetList<std::function<std::unique_ptr<T>()>>;
+using AssetList = TAssetList<ktl::move_only_function<std::unique_ptr<T>()>>;
 
 template <typename T>
 using AssetLoadList = TAssetList<AssetLoadData<T>>;

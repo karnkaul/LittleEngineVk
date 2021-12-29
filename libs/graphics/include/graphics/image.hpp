@@ -1,6 +1,5 @@
 #pragma once
 #include <graphics/memory.hpp>
-#include <graphics/utils/defer.hpp>
 
 namespace le::graphics {
 class Image {
@@ -48,7 +47,7 @@ class Image {
 		u32 mipCount = 1U;
 		BlitFlags blitFlags;
 	};
-	Defer<Memory::Resource, Memory, Memory::Deleter> m_image;
+	Memory::Deferred m_image;
 	Defer<vk::ImageView> m_view;
 	Data m_data;
 	not_null<Memory*> m_memory;

@@ -72,26 +72,7 @@ struct Transition {
 	not_null<CommandBuffer*> cb;
 	vk::Image image;
 
-	void operator()(vk::ImageLayout layout, LayoutStages const& stages = LayoutStages::allCommands()) const;
-};
-
-class DualTransition {
-  public:
-	using Stages = TPair<LayoutStages>;
-
-	inline static LayoutPair const xfr_v = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal};
-	inline static Stages const ct_ac_v = {LayoutStages::colourTransfer(), LayoutStages::allCommands()};
-
-	DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts = xfr_v, Stages const& stages = ct_ac_v);
-	~DualTransition();
-
-	void changeStages(LayoutStages stages) noexcept { m_stages = stages; }
-
-  private:
-	Transition m_a;
-	Transition m_b;
-	LayoutPair m_layouts;
-	LayoutStages m_stages;
+	void operator()(vk::ImageLayout layout, LayerMip const& lm = {}, LayoutStages const& ls = {}) const;
 };
 
 template <typename T>
@@ -117,10 +98,11 @@ std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& pre
 
 BlitFlags blitFlags(not_null<Device*> device, ImageRef const& img);
 bool canBlit(not_null<Device*> device, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-bool blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-bool copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images);
-bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& img);
+bool blit(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
+bool copy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst);
+bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
+Buffer copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 offset);
+std::optional<Image> makeStorage(not_null<VRAM*> vram, ImageRef const& src);
 std::size_t writePPM(not_null<Device*> device, Image const& img, std::ostream& out_str);
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;

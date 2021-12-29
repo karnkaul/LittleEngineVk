@@ -69,7 +69,7 @@ class Engine {
 
 	bool nextFrame();
 	std::optional<RenderPass> beginRenderPass(RGBA clear, ClearDepth depth = {1.0f, 0}) { return beginRenderPass({}, clear, depth); }
-	std::optional<RenderPass> beginRenderPass(SceneRegistry* scene, RGBA clear, ClearDepth depth = {1.0f, 0});
+	std::optional<RenderPass> beginRenderPass(Opt<SceneRegistry> scene, RGBA clear, ClearDepth depth = {1.0f, 0});
 	bool endRenderPass(RenderPass& out_rp);
 
 	Editor& editor() const noexcept;

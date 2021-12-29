@@ -4,6 +4,8 @@
 #include <graphics/context/transfer.hpp>
 #include <graphics/image.hpp>
 #include <graphics/image_ref.hpp>
+#include <graphics/utils/command_pool.hpp>
+#include <unordered_map>
 
 namespace le::graphics {
 class Device;
@@ -20,12 +22,27 @@ class VRAM final : public Memory {
 	using Memory::copy;
 	using Images = ktl::fixed_vector<utils::STBImg, 6>;
 
+	struct Scratch {
+		std::optional<Buffer> buffer;
+		std::optional<Image> image;
+	};
+
+	template <typename T = bool>
+	struct Op {
+		Scratch scratch;
+		T outcome;
+
+		Op(T outcome = T{}) noexcept : outcome(outcome) {}
+	};
+
 	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
 
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();
 
 	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible);
+	Buffer makeStagingBuffer(vk::DeviceSize size) const { return m_transfer.makeStagingBuffer(size); }
+
 	template <typename T>
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
@@ -35,6 +52,9 @@ class VRAM final : public Memory {
 
 	bool blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
+	bool makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
+
+	CommandPool& commandPool();
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;
@@ -50,6 +70,7 @@ class VRAM final : public Memory {
 	struct ImageCopier;
 
 	Transfer m_transfer;
+	ktl::strict_tmutex<std::unordered_map<std::thread::id, CommandPool>> m_commandPools;
 	struct {
 		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe | vk::PipelineStageFlagBits::eVertexShader;
 		vk::AccessFlags access = vk::AccessFlagBits::eShaderRead;

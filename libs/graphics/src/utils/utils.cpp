@@ -8,7 +8,7 @@
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/utils/command_rotator.hpp>
+#include <graphics/utils/instant_command.hpp>
 #include <graphics/utils/utils.hpp>
 #include <ktl/stack_string.hpp>
 
@@ -376,20 +376,8 @@ std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path con
 	return ret;
 }
 
-void utils::Transition::operator()(vk::ImageLayout layout, LayoutStages const& stages) const {
-	if (layout != vIL::eUndefined) { device->m_layouts.transition(*cb, image, layout, stages); }
-}
-
-utils::DualTransition::DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts, Stages const& stages)
-	: m_a{device, cb, images.first}, m_b{device, cb, images.second}, m_stages(stages.second) {
-	m_layouts = {device->m_layouts.get(images.first), device->m_layouts.get(images.second)};
-	m_a(layouts.first, stages.first);
-	m_b(layouts.second, stages.first);
-}
-
-utils::DualTransition::~DualTransition() {
-	m_a(m_layouts.first, m_stages);
-	m_b(m_layouts.second, m_stages);
+void utils::Transition::operator()(vk::ImageLayout layout, LayerMip const& lm, LayoutStages const& ls) const {
+	if (layout != vIL::eUndefined) { device->m_layouts.transition(cb->m_cb, image, layout, ls, lm); }
 }
 
 BlitFlags utils::blitFlags(not_null<Device*> device, ImageRef const& img) {
@@ -407,36 +395,68 @@ bool utils::canBlit(not_null<Device*> device, TPair<ImageRef> const& images, Bli
 	}
 }
 
-bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {
-	EXPECT(canBlit(vram->m_device, images, filter));
-	if (!canBlit(vram->m_device, images, filter)) { return false; }
-	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
-	return vram->blit(cb, images, filter);
+namespace {
+template <typename F>
+auto xferImage(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, F func) {
+	LayoutPair const layouts = {vram->m_device->m_layouts.get(src.image), vram->m_device->m_layouts.get(out_dst.image())};
+	EXPECT(layouts.first != vIL::eUndefined);
+	utils::Transition tsrc{vram->m_device, &cb, src.image};
+	utils::Transition tdst{vram->m_device, &cb, out_dst.image()};
+	tsrc(vIL::eTransferSrcOptimal);
+	tdst(vIL::eTransferDstOptimal);
+	auto const ret = func();
+	tsrc(layouts.first);
+	if (layouts.second != vIL::eUndefined) { tdst(layouts.second); }
+	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, {layouts.second, layouts.second}); }
+	return ret;
+}
+} // namespace
+
+bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter) {
+	TPair<ImageRef> const imgs = {src, out_dst.ref()};
+	bool const blittable = canBlit(vram->m_device, imgs, filter);
+	EXPECT(blittable);
+	if (!blittable) { return false; }
+	return xferImage(vram, cb, src, out_dst, [vram, cb, imgs, filter] { return vram->blit(cb, imgs, filter); });
 }
 
-bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images) {
-	EXPECT(images.first.extent == images.second.extent);
-	if (images.first.extent != images.second.extent) { return false; }
-	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
-	return vram->copy(cb, images);
+bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst) {
+	TPair<ImageRef> const imgs = {src, out_dst.ref()};
+	return xferImage(vram, cb, src, out_dst, [vram, cb, imgs] { return vram->copy(cb, imgs); });
 }
 
-bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {
-	return canBlit(vram->m_device, images, filter) ? blit(vram, cb, images, filter) : copy(vram, cb, images);
+bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter) {
+	TPair<ImageRef> const imgs = {src, out_dst.ref()};
+	return canBlit(vram->m_device, imgs, filter) ? blit(vram, cb, src, out_dst, filter) : copy(vram, cb, src, out_dst);
 }
 
-std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& img) {
-	ImageRef dst = img;
+Buffer utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 ioffset) {
+	auto const extent = vk::Extent3D(bitmap.extent.x, bitmap.extent.y, 1U);
+	auto copyRegion = VRAM::bufferImageCopy(extent, vk::ImageAspectFlagBits::eColor, 0U, ioffset, 0U);
+	auto const layout = vram->m_device->m_layouts.get(out_dst.image());
+	auto buffer = vram->makeStagingBuffer(bitmap.bytes.size());
+	void const* data = buffer.map();
+	std::memcpy((u8*)data, bitmap.bytes.data(), bitmap.bytes.size());
+	VRAM::ImgMeta meta;
+	meta.layouts = {layout, layout};
+	meta.stages = {vPSFB::eAllCommands, vPSFB::eAllCommands};
+	meta.access = {vAFB::eMemoryRead | vAFB::eMemoryWrite, vAFB::eMemoryRead | vAFB::eMemoryWrite};
+	VRAM::copy(cb.m_cb, buffer.buffer(), out_dst.image(), copyRegion, meta);
+	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, meta.layouts); }
+	return buffer;
+}
+
+std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, ImageRef const& src) {
+	ImageRef dst = src;
 	dst.format = vk::Format::eR8G8B8A8Unorm;
 	dst.linear = true;
 	// if image will be copied, match RGBA vs BGRA to source format
-	if (!canBlit(vram->m_device, {img, dst}) && Surface::bgra(img.format)) { dst.format = vk::Format::eB8G8R8A8Unorm; }
+	if (!canBlit(vram->m_device, {src, dst}) && Surface::bgra(src.format)) { dst.format = vk::Format::eB8G8R8A8Unorm; }
 	Image ret(vram, Image::storageInfo(dst.extent, dst.format));
-	if (auto cmd = cr.instant()) {
-		if (blitOrCopy(vram, cmd.cb(), {img, ret.ref()})) {
-			ret.map();
-			return ret;
-		}
+	auto cmd = BlockingCommand(vram);
+	if (blitOrCopy(vram, cmd.cb(), src, ret)) {
+		ret.map();
+		return ret;
 	}
 	return std::nullopt;
 }
@@ -449,7 +469,7 @@ std::size_t utils::writePPM(not_null<Device*> device, Image const& img, std::ost
 		bool const swizzle = Surface::bgra(img.format());
 		auto const extent = img.extent2D();
 		auto isr = device->device().getImageSubresourceLayout(img.image(), vk::ImageSubresource(vIAFB::eColor));
-		data += isr.offset;
+		if (isr.offset < extent.x * extent.y * 4U) { data += isr.offset; }
 		auto const header = ktl::stack_string<256>("P6\n%u\n%u\n255\n", extent.x, extent.y);
 		out_str << header.get();
 		for (u32 y = 0; y < extent.y; ++y) {

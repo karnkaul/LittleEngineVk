@@ -3,6 +3,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/basis.hpp>
+#include <graphics/utils/quad_uv.hpp>
 #include <vector>
 
 namespace le::graphics {
@@ -20,18 +21,18 @@ using Geometry = Geom<VertType::ePosColNormUV>;
 template <>
 struct Vert<VertType::ePosCol> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 };
 template <>
 struct Vert<VertType::ePosColUV> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 	glm::vec2 texCoord = {};
 };
 template <>
 struct Vert<VertType::ePosColNormUV> {
 	glm::vec3 position = {};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 	glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec2 texCoord = {};
 };
@@ -64,17 +65,12 @@ struct Albedo final {
 	Colour specular = colours::white;
 };
 
-struct UVQuad {
-	glm::vec2 topLeft = {0.0f, 0.0f};
-	glm::vec2 bottomRight = {1.0f, 1.0f};
-};
-
 struct GeomInfo {
 	glm::vec3 origin{};
-	glm::vec3 colour = glm::vec3(1.0f);
+	glm::vec4 colour = glm::vec4(1.0f);
 };
 
-Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, GeomInfo const& info = {}, UVQuad const& uv = {}, Topology topo = Topology::eTriangleList);
+Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, GeomInfo const& info = {}, QuadUV const& uv = {}, Topology topo = Topology::eTriangleList);
 Geometry makeSector(glm::vec2 radExtent, f32 diameter, u16 points, GeomInfo const& info = {});
 Geometry makeCircle(f32 diameter = 1.0f, u16 points = 32, GeomInfo const& info = {});
 Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 32, GeomInfo const& info = {});

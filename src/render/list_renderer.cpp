@@ -16,7 +16,7 @@ constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
 };
 } // namespace
 
-void ListRenderer::add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+void ListRenderer::add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
 	if (!mesh.empty()) { out_map[rp].push_back({{}, model, {{}, mesh}, scissor}); }
 }
 
@@ -30,12 +30,12 @@ graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	return ret;
 }
 
-void ListRenderer::fill(LayerMap& out_map, dens::registry const& registry) {
+void ListRenderer::fill(DrawableMap& out_map, dens::registry const& registry) {
 	DrawListGen{}(out_map, registry);
 	DebugDrawListGen{}(out_map, registry);
 }
 
-void ListRenderer::render(RenderPass& out_rp, LayerMap map) {
+void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {
 	EXPECT(!out_rp.commandBuffers().empty());
 	if (out_rp.commandBuffers().empty()) { return; }
 	std::vector<DrawList> drawLists;
@@ -67,8 +67,11 @@ void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::C
 		for (u32 const set : d.sets) { bind(set); }
 		if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
 		for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
-			for (u32 const set : d.mesh.sets) { bind(set); }
-			mesh.primitive->draw(cb);
+			EXPECT(mesh.primitive);
+			if (mesh.primitive) {
+				for (u32 const set : d.mesh.sets) { bind(set); }
+				mesh.primitive->draw(cb);
+			}
 		}
 	}
 }

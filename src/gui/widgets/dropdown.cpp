@@ -3,10 +3,14 @@
 
 namespace le::gui {
 namespace {
-graphics::Geometry makeArrow(f32 scale, graphics::RGBA colour) {
+graphics::Geometry makeArrow(f32 scale, f32 z, graphics::RGBA colour) {
 	graphics::Geometry geom;
-	static constexpr glm::vec3 verts[] = {{-0.75f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.75f, 0.0f, 0.0f}};
-	for (auto const vert : verts) { geom.addVertex(graphics::Vertex{vert * scale, colour.toVec4()}); }
+	glm::vec3 const verts[] = {{-0.75f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.75f, 0.0f, 0.0f}};
+	for (auto const vert : verts) {
+		graphics::Vertex v{vert * scale, colour.toVec4()};
+		v.position.z = z;
+		geom.addVertex(v);
+	}
 	return geom;
 }
 } // namespace
@@ -26,9 +30,10 @@ bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept 
 }
 
 void Dropdown::init(CreateInfoBase info) {
+	if (info.zIndex) { m_zIndex = *info.zIndex; }
 	m_selected = info.selected;
-	m_style.base.text.size = info.textSize;
-	m_text->size(m_style.base.text.size);
+	m_style.base.text.height = info.textHeight;
+	m_text->height(m_style.base.text.height);
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
@@ -36,7 +41,7 @@ void Dropdown::init(CreateInfoBase info) {
 	m_cover->m_rect.anchor.norm.x = 0.5f;
 	m_cover->m_rect.offset({m_rect.size.x * 0.12f, m_rect.size.y}, {-1.0f, 0.0f});
 	m_arrow = &m_cover->push<Shape>();
-	m_arrow->set(makeArrow(8.0f, info.coverColours.arrow));
+	m_arrow->set(makeArrow(8.0f, m_zIndex, info.coverColours.arrow));
 	info.flexbox.axis = Flexbox::Axis::eVert;
 	m_flexbox = &push<Flexbox>(std::move(info.flexbox));
 	f32 const yOffset = m_rect.size.y * 0.5f + m_rect.size.y * 0.5f + 0.5f; // +0.5f to round to next pixel
@@ -56,7 +61,7 @@ void Dropdown::init(CreateInfoBase info) {
 }
 
 void Dropdown::add(Button& item, std::string_view text, std::size_t index) {
-	item.m_text->set(std::string(text)).size(m_style.base.text.size).colour(m_style.base.text.colour).align(m_style.base.text.align);
+	item.m_text->set(std::string(text)).height(m_style.base.text.height).colour(m_style.base.text.colour).align(m_style.base.text.pivot);
 	item.m_style = m_style;
 	auto signal = item.onClick();
 	signal += [this, index]() { select(index); };

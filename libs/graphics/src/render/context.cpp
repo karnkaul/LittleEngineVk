@@ -35,7 +35,7 @@ VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
 	qvi.binding = binding;
 	qvi.size = sizeof(Vertex);
 	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
-					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
+					  {vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, colour)},
 					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
 					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
 	return RenderContext::vertexInput(qvi);
@@ -83,7 +83,7 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 }
 
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
-	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram),
 	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
 	m_pipelineCache = m_pipelineCache.make(m_vram->m_device->makePipelineCache(), m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
@@ -101,11 +101,12 @@ void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
 std::optional<RenderPass> RenderContext::beginMainPass(RenderBegin const& rb, Extent2D fbSize) {
+	m_vram->m_device->decrementDeferred();
 	if (fbSize.x == 0 || fbSize.y == 0) { return std::nullopt; }
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
 		m_acquired = *acquired;
-		m_vram->m_device->resetFence(sync.drawn);
+		m_vram->m_device->resetFence(sync.drawn, true);
 		return m_renderer->beginMainPass(m_pipelineFactory, m_acquired->image, rb);
 	}
 	return std::nullopt;
@@ -119,7 +120,6 @@ bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
 		if (ret) { m_previousFrame = m_acquired->image; }
 		m_acquired.reset();
 	}
-	m_commandRotator.submit();
 	m_syncs.next();
 	return ret;
 }
@@ -131,7 +131,13 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
 	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	auto const& sync = m_syncs.get();
-	m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
+	auto const res = m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
+	EXPECT(res == vk::Result::eSuccess);
+	if (res != vk::Result::eSuccess) {
+		logW(LC_LibUser, "[Graphics] Queue submit failure");
+		m_previousFrame = {};
+		return false;
+	}
 	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
 	m_previousFrame = {};
 	return false;

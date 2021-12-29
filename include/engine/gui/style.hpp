@@ -5,16 +5,13 @@
 #include <engine/render/material.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/render/rgba.hpp>
-#include <ktl/either.hpp>
 #include <unordered_map>
 
 namespace le::gui {
 struct TextStyle {
-	using Size = ktl::either<u32, f32>;
-
-	glm::vec2 align = {};
+	glm::vec2 pivot = {};
 	graphics::RGBA colour = colours::black;
-	Size size = 40U;
+	u32 height = 40U;
 };
 
 constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept;

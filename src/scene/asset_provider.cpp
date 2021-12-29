@@ -11,13 +11,13 @@ MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialUR
 	Hash const mat = materialURI;
 	ret.m_materialURI = std::move(materialURI);
 	ret.m_sign = AssetStore::sign<MeshPrimitive>();
-	ret.m_getMesh = [mat](Hash primitiveURI) {
+	ret.m_getMesh = [mat](Hash primitiveURI) -> MeshView {
 		if (auto store = Services::find<AssetStore>()) {
 			auto const material = store->find<Material>(mat);
 			auto const primitive = store->find<MeshPrimitive>(primitiveURI);
 			if (material && primitive) { return MeshObj{.primitive = &*primitive, .material = &*material}; }
 		}
-		return MeshObj{};
+		return {};
 	};
 	return ret;
 }

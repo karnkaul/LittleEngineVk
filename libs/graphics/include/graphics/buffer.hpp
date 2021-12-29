@@ -1,7 +1,6 @@
 #pragma once
 #include <core/utils/expect.hpp>
 #include <graphics/memory.hpp>
-#include <graphics/utils/defer.hpp>
 
 namespace le::graphics {
 class Buffer {
@@ -32,7 +31,7 @@ class Buffer {
 		vk::BufferUsageFlags usage;
 		Type type{};
 	};
-	Defer<Memory::Resource, Memory, Memory::Deleter> m_buffer;
+	Memory::Deferred m_buffer;
 	Data m_data;
 	not_null<Memory*> m_memory;
 

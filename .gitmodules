@@ -36,3 +36,7 @@
 [submodule "libs/dens"]
 	path = libs/dens
 	url = https://github.com/karnkaul/dens
+[submodule "ext/freetype"]
+	path = ext/freetype
+	url = https://gitlab.freedesktop.org/freetype/freetype.git
+	shallow = true

@@ -31,6 +31,7 @@ class Transfer final : public Pinned {
 	Transfer(not_null<Memory*> memory, CreateInfo const& info);
 	~Transfer();
 
+	Buffer makeStagingBuffer(vk::DeviceSize size) const;
 	std::size_t update();
 	bool polling() const noexcept { return m_sync.poll.active(); }
 

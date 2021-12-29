@@ -36,12 +36,13 @@ class Device final : public Pinned {
 
 	vk::UniqueSurfaceKHR makeSurface() const;
 	vk::Semaphore makeSemaphore() const;
-	vk::Fence makeFence(bool bSignalled) const;
-	void resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const;
-	void waitFor(vk::Fence optional) const;
-	void waitAll(vAP<vk::Fence> validFences) const;
-	void resetFence(vk::Fence optional) const;
-	void resetAll(vAP<vk::Fence> validFences) const;
+	vk::Fence makeFence(bool signalled) const;
+	void resetOrMakeFence(vk::Fence& out_fence, bool signalled) const;
+	bool isBusy(vk::Fence fence) const;
+	void waitFor(vk::Fence fence) const;
+	void waitAll(vAP<vk::Fence> fences) const;
+	void resetFence(vk::Fence fence, bool wait) const;
+	void resetAll(vAP<vk::Fence> fences) const;
 	void resetCommandPool(vk::CommandPool pool) const;
 
 	bool signalled(Span<vk::Fence const> fences) const;
@@ -84,10 +85,12 @@ class Device final : public Pinned {
 
 	LayoutState m_layouts;
 
-  private:
-	CommandBuffer beginCmd();
-	void endCmd(CommandBuffer cb);
+	// for internal use
+	struct Impl;
+	Impl& impl() const noexcept;
 
+  private:
+	std::unique_ptr<Impl> m_impl;
 	MakeSurface m_makeSurface;
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;

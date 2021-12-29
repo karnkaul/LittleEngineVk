@@ -9,8 +9,8 @@
 namespace le::graphics {
 namespace {
 template <typename T>
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, T&& bitmaps) {
-	auto info = Image::textureInfo(extent, format);
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, T&& bitmaps, bool mips) {
+	auto info = Image::textureInfo(extent, format, mips);
 	if (bitmaps.size() > 1) {
 		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 		info.createInfo.arrayLayers = (u32)bitmaps.size();
@@ -66,41 +66,41 @@ Cubemap Texture::unitCubemap(Colour colour) {
 	return ret;
 }
 
-Texture::Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour, Extent2D extent, Payload payload)
-	: m_image(vram, Image::textureInfo(extent, Image::linear_v)), m_sampler(sampler), m_vram(vram) {
+Texture::Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour, Extent2D extent, Payload payload, bool mips)
+	: m_image(vram, Image::textureInfo(extent, Image::linear_v, mips)), m_sampler(sampler), m_vram(vram) {
 	Bitmap bmp;
 	bmp.bytes.reserve(std::size_t(extent.x * extent.y));
 	for (u32 i = 0; i < extent.x; ++i) {
 		for (u32 j = 0; j < extent.y; ++j) { utils::append(bmp.bytes, colour); }
 	}
 	bmp.extent = extent;
-	construct(std::move(bmp), payload);
+	construct(std::move(bmp), payload, Image::linear_v, mips);
 }
 
-bool Texture::construct(Bitmap const& bitmap, Payload payload, vk::Format format) {
+bool Texture::construct(Bitmap const& bitmap, Payload payload, vk::Format format, bool mips) {
 	if (!checkSize(bitmap.extent, bitmap.bytes)) { return false; }
-	constructImpl(BmpView(bitmap.bytes), bitmap.extent, payload, format);
+	constructImpl(BmpView(bitmap.bytes), bitmap.extent, payload, format, mips);
 	return true;
 }
 
-bool Texture::construct(ImageData img, Payload payload, vk::Format format) {
+bool Texture::construct(ImageData img, Payload payload, vk::Format format, bool mips) {
 	VRAM::Images imgs;
 	imgs.push_back(utils::STBImg(img));
-	return constructImpl(std::move(imgs), payload, format);
+	return constructImpl(std::move(imgs), payload, format, mips);
 }
 
-bool Texture::construct(Cubemap const& cubemap, Payload payload, vk::Format format) {
+bool Texture::construct(Cubemap const& cubemap, Payload payload, vk::Format format, bool mips) {
 	if (std::any_of(cubemap.bytes.begin(), cubemap.bytes.end(), [](Bitmap::type const& b) { return b.empty(); })) { return false; }
 	ktl::fixed_vector<BmpView, 6> bmps;
 	for (auto const& bytes : cubemap.bytes) { bmps.push_back(bytes); }
-	return constructImpl(bmps, cubemap.extent, payload, format);
+	return constructImpl(bmps, cubemap.extent, payload, format, mips);
 }
 
-bool Texture::construct(Span<ImageData const> cubeImgs, Payload payload, vk::Format format) {
+bool Texture::construct(Span<ImageData const> cubeImgs, Payload payload, vk::Format format, bool mips) {
 	if (std::any_of(cubeImgs.begin(), cubeImgs.end(), [](auto const& b) { return b.empty(); })) { return false; }
 	VRAM::Images imgs;
 	for (auto const& bytes : cubeImgs) { imgs.push_back(utils::STBImg(bytes)); }
-	return constructImpl(std::move(imgs), payload, format);
+	return constructImpl(std::move(imgs), payload, format, mips);
 }
 
 bool Texture::changeSampler(vk::Sampler sampler) {
@@ -124,42 +124,48 @@ bool Texture::assign(Image&& image, Type type, Payload payload) {
 	return false;
 }
 
-bool Texture::resize(CommandBuffer cb, Extent2D extent) {
+Texture::Result Texture::resizeBlit(CommandBuffer cb, Extent2D extent) {
 	if (extent == m_image.extent2D()) { return true; }
 	EXPECT(extent.x > 0 && extent.y > 0);
-	if (extent.x > 0 && extent.y > 0) {
-		Image image(m_vram, Image::textureInfo(extent, m_image.format()));
-		std::swap(m_image, image);
-		return utils::blit(m_vram, cb, {image.ref(), m_image.ref()}, BlitFilter::eLinear);
-	}
+	if (extent.x > 0 && extent.y > 0) { return resize(cb, extent, true); }
+	return false;
+}
+
+Texture::Result Texture::resizeCopy(CommandBuffer cb, Extent2D extent) {
+	if (extent == m_image.extent2D()) { return true; }
+	EXPECT(extent.x > 0 && extent.y > 0);
+	if (extent.x > 0 && extent.y > 0) { return resize(cb, extent, false); }
 	return false;
 }
 
 bool Texture::blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter) {
 	wait();
-	return utils::blit(m_vram, cb, {src, m_image.ref()}, filter);
+	return utils::blit(m_vram, cb, src, m_image, filter);
 }
 
-bool Texture::copy(CommandBuffer cb, ImageRef const& src, bool allowResize) {
+Texture::Result Texture::copy(CommandBuffer cb, ImageRef const& src, bool allowResize) {
 	wait();
+	Result ret;
 	if (m_image.extent2D() != src.extent) {
-		if (!allowResize || src.extent.x == 0 || src.extent.y == 0) { return false; }
-		m_image = Image(m_vram, Image::textureInfo(src.extent, m_image.format()));
+		if (!allowResize || src.extent.x == 0 || src.extent.y == 0) { return {}; }
+		ret.scratch.image = std::move(m_image);
+		m_image = Image(m_vram, Image::textureInfo(src.extent, m_image.format(), m_image.mipCount() > 1U));
 	}
-	return utils::copy(m_vram, cb, {src, m_image.ref()});
+	ret.outcome = utils::copy(m_vram, cb, src, m_image);
+	return ret;
 }
 
-bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload payload, vk::Format format) {
+bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload payload, vk::Format format, bool mips) {
 	for (auto const& bytes : imgs) {
 		if (!checkSize(extent, bytes)) { return false; }
 	}
 	m_payload = payload;
 	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
-	m_image = load(*m_vram, m_transfer, format, extent, imgs);
+	m_image = load(*m_vram, m_transfer, format, extent, imgs, mips);
 	return true;
 }
 
-bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format format) {
+bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format format, bool mips) {
 	if (imgs.empty()) { return false; }
 	for (auto const& img : imgs) {
 		if (!checkSize(img.extent, img.bytes)) { return false; }
@@ -167,7 +173,27 @@ bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format for
 	m_payload = payload;
 	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
 	auto const extent = imgs.front().extent;
-	m_image = load(*m_vram, m_transfer, format, extent, std::move(imgs));
+	m_image = load(*m_vram, m_transfer, format, extent, std::move(imgs), mips);
 	return true;
+}
+
+Texture::Result Texture::resize(CommandBuffer cb, Extent2D extent, bool viaBlit) {
+	wait();
+	Image image(m_vram, Image::textureInfo(extent, m_image.format(), m_image.mipCount() > 1U));
+	Result ret;
+	if (viaBlit) {
+		ret.outcome = utils::blit(m_vram, cb, m_image.ref(), image, BlitFilter::eLinear);
+	} else {
+		ret.outcome = utils::copy(m_vram, cb, m_image.ref(), image);
+	}
+	if (ret.outcome) {
+		LayerMip lm;
+		lm.layer.count = image.layerCount();
+		lm.mip.count = image.mipCount();
+		utils::Transition{m_vram->m_device, &cb, image.image()}(vIL::eShaderReadOnlyOptimal, lm);
+		std::swap(m_image, image);
+		ret.scratch.image = std::move(image);
+	}
+	return ret;
 }
 } // namespace le::graphics

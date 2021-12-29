@@ -64,7 +64,7 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::B
 	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
 	imageBarrier(cb, dst, first);
 	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
-	imageBarrier(cb, dst, second);
+	if (second.layouts.second != vIL::eUndefined) { imageBarrier(cb, dst, second); }
 }
 
 void Memory::copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects) {
@@ -97,33 +97,35 @@ void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& 
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = image;
 	barrier.subresourceRange.aspectMask = meta.aspects;
-	barrier.subresourceRange.baseMipLevel = meta.firstMip;
-	barrier.subresourceRange.levelCount = meta.mipLevels;
-	barrier.subresourceRange.baseArrayLayer = meta.firstLayer;
-	barrier.subresourceRange.layerCount = meta.layerCount;
+	barrier.subresourceRange.baseMipLevel = meta.layerMip.mip.first;
+	barrier.subresourceRange.levelCount = meta.layerMip.mip.count;
+	barrier.subresourceRange.baseArrayLayer = meta.layerMip.layer.first;
+	barrier.subresourceRange.layerCount = meta.layerMip.layer.count;
 	barrier.srcAccessMask = meta.access.first;
 	barrier.dstAccessMask = meta.access.second;
 	cb.pipelineBarrier(meta.stages.first, meta.stages.second, {}, {}, {}, barrier);
 }
 
-vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx) {
+vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize bo, glm::ivec2 io, u32 layerIdx) {
 	vk::BufferImageCopy ret;
-	ret.bufferOffset = offset;
+	ret.bufferOffset = bo;
 	ret.bufferRowLength = 0;
 	ret.bufferImageHeight = 0;
 	ret.imageSubresource.aspectMask = aspects;
 	ret.imageSubresource.mipLevel = 0U;
 	ret.imageSubresource.baseArrayLayer = layerIdx;
 	ret.imageSubresource.layerCount = 1U;
-	ret.imageOffset = vk::Offset3D(0, 0, 0);
+	ret.imageOffset = vk::Offset3D(io.x, io.y, 0);
 	ret.imageExtent = extent;
 	return ret;
 }
 
 vk::ImageBlit Memory::imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Offset3D> const& srcOff, TPair<vk::Offset3D> const& dstOff) noexcept {
 	vk::ImageBlit ret;
-	ret.srcSubresource = vk::ImageSubresourceLayers(meta.first.aspects, meta.first.firstMip, meta.first.firstLayer, meta.first.layerCount);
-	ret.dstSubresource = vk::ImageSubresourceLayers(meta.second.aspects, meta.second.firstMip, meta.second.firstLayer, meta.second.layerCount);
+	auto const& flm = meta.first.layerMip;
+	auto const& slm = meta.second.layerMip;
+	ret.srcSubresource = vk::ImageSubresourceLayers(meta.first.aspects, flm.mip.first, flm.layer.first, flm.layer.count);
+	ret.dstSubresource = vk::ImageSubresourceLayers(meta.second.aspects, slm.mip.first, slm.layer.first, slm.layer.count);
 	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
 	std::size_t idx = 0;
 	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
@@ -176,6 +178,7 @@ std::optional<Memory::Resource> Memory::makeImage(AllocInfo const& ai, vk::Image
 	ret.mode = ici.sharingMode;
 	ret.qcaps = ai.qcaps;
 	m_allocations[Type::eImage].fetch_add(ret.size);
+	m_device->m_layouts.force(image, ici.initialLayout);
 	return ret;
 }
 

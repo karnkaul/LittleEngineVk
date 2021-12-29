@@ -2,10 +2,12 @@
 #include <engine/gui/widget.hpp>
 #include <engine/input/receiver.hpp>
 #include <engine/input/text_cursor.hpp>
+#include <graphics/font/font.hpp>
 
 namespace le::gui {
 class InputField : public Widget, public input::Receiver {
   public:
+	using Font = graphics::Font;
 	struct CreateInfo;
 
 	InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI = defaultFontURI, Hash style = {});
@@ -19,12 +21,13 @@ class InputField : public Widget, public input::Receiver {
 	bool block(input::State const& state) override;
 
 	void setActive(bool active) noexcept;
-	InputField& align(glm::vec2 align) noexcept;
-	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_text; }
+	InputField& align(Font::Align horz) noexcept;
+	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_line; }
 
   protected:
+	not_null<Font*> m_font;
 	TextMesh m_textMesh;
-	input::TextCursor m_cursor;
+	input::TextCursor2 m_cursor;
 
   private:
 	void onUpdate(input::Space const& space) override;
@@ -43,14 +46,13 @@ struct InputField::CreateInfo {
 	f32 offsetX = 10.0f;
 	f32 alpha = 0.85f;
 	bool active = false;
-	bool multiLine = false;
 	bool secret = false;
 };
 
 // impl
 
-inline InputField& InputField::align(glm::vec2 align) noexcept {
-	m_cursor.m_gen.align = align;
+inline InputField& InputField::align(Font::Align const horz) noexcept {
+	m_cursor.m_layout.pivot = Font::pivot(horz, Font::Align::eMin);
 	reposition();
 	m_cursor.refresh();
 	return *this;

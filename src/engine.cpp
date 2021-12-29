@@ -195,7 +195,7 @@ bool Engine::nextFrame() {
 	return false;
 }
 
-std::optional<graphics::RenderPass> Engine::beginRenderPass(SceneRegistry* scene, RGBA clear, ClearDepth depth) {
+std::optional<graphics::RenderPass> Engine::beginRenderPass(Opt<SceneRegistry> scene, RGBA clear, ClearDepth depth) {
 	if (booted()) {
 		graphics::RenderBegin rb;
 		rb.clear = clear;

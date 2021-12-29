@@ -212,7 +212,7 @@ graphics::Geometry OBJReader::vertices(tinyobj::shape_t const& shape) {
 			ret.indices.push_back(search->second);
 		} else {
 			glm::vec3 const p = m_scale * (m_origin + vec3(m_attrib.vertices, (std::size_t)idx.vertex_index));
-			glm::vec3 const c = vec3(m_attrib.colors, (std::size_t)idx.vertex_index);
+			glm::vec4 const c = glm::vec4(vec3(m_attrib.colors, (std::size_t)idx.vertex_index), 1.0f);
 			glm::vec3 const n = vec3(m_attrib.normals, idx.normal_index);
 			glm::vec2 const t = texCoords(m_attrib.texcoords, idx.texcoord_index, m_invertV);
 			auto const idx = ret.addVertex({p, c, n, t});

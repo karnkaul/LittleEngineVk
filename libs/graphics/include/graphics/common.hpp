@@ -1,6 +1,7 @@
 #pragma once
 #include <core/std_types.hpp>
 #include <glm/vec2.hpp>
+#include <graphics/utils/extent2d.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <vulkan/vulkan.hpp>
 #include <string_view>
@@ -13,6 +14,18 @@ using BlitFlags = ktl::enum_flags<BlitFlag, u8>;
 struct BlitCaps {
 	BlitFlags optimal;
 	BlitFlags linear;
+};
+
+struct LayerMip {
+	struct Range {
+		u32 first = 0U;
+		u32 count = 1U;
+	};
+
+	Range layer;
+	Range mip;
+
+	static LayerMip make(u32 mipCount, u32 firstMip = 0U) noexcept { return LayerMip{{}, {firstMip, mipCount}}; }
 };
 
 template <typename T>
@@ -33,7 +46,6 @@ using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
 using ClearDepth = vk::ClearDepthStencilValue;
 
-using Extent2D = glm::tvec2<u32>;
 constexpr Extent2D cast(vk::Extent2D extent) noexcept { return {extent.width, extent.height}; }
 constexpr Extent2D cast(vk::Extent3D extent) noexcept { return {extent.width, extent.height}; }
 constexpr vk::Extent2D cast(Extent2D extent) noexcept { return {extent.x, extent.y}; }

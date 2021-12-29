@@ -11,7 +11,6 @@
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
-#include <graphics/utils/command_rotator.hpp>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -51,7 +50,6 @@ class RenderContext : public NoCopy {
 	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
 	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
 	VRAM& vram() noexcept { return *m_vram; }
-	CommandRotator const& commands() const noexcept { return m_commandRotator; }
 	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
 
 	struct Sync;
@@ -61,7 +59,6 @@ class RenderContext : public NoCopy {
 
 	Surface m_surface;
 	PipelineFactory m_pipelineFactory;
-	CommandRotator m_commandRotator;
 	RingBuffer<Sync> m_syncs;
 	std::optional<Acquire> m_acquired;
 	RenderTarget m_previousFrame;

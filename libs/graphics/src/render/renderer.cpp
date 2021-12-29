@@ -86,9 +86,9 @@ vk::Rect2D RenderPass::scissor() const { return Renderer::scissor(framebuffer().
 void RenderPass::beginPass() {
 	auto const cc = m_info.begin.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
-	m_device->m_layouts.transition(m_info.primary, m_info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
+	m_device->m_layouts.transition(m_info.primary.m_cb, m_info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
 	if (m_info.framebuffer.depth.image != vk::Image()) {
-		m_device->m_layouts.transition(m_info.primary, m_info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth());
+		m_device->m_layouts.transition(m_info.primary.m_cb, m_info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth());
 	}
 	graphics::CommandBuffer::PassInfo passInfo;
 	passInfo.clearValues = {clear, m_info.begin.depth};
@@ -240,11 +240,11 @@ vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
 	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, m_acquired.image};
 	if (m_target == Target::eOffScreen) {
-		ltcolour(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
-		ltacquired(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
+		ltcolour(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
+		ltacquired(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
 		m_vram->blit(cmd.cb, {colour.ref(), m_acquired.ref()});
 	}
-	ltacquired(vIL::ePresentSrcKHR, LayoutStages::transferBottom());
+	ltacquired(vIL::ePresentSrcKHR, {}, LayoutStages::transferBottom());
 	cmd.cb.end();
 	m_acquired = {};
 	next();

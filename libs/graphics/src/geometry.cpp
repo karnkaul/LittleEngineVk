@@ -5,6 +5,7 @@
 #include <iterator>
 
 namespace le {
+using v4 = glm::vec4;
 using v3 = glm::vec3;
 using v2 = glm::vec2;
 
@@ -21,7 +22,7 @@ void graphics::IndexStitcher::reset(u32 index) {
 	start = pin = index;
 }
 
-graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, UVQuad const& uv, Topology topo) {
+graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, QuadUV const& uv, Topology topo) {
 	Geometry ret;
 	f32 const x = size.x * 0.5f;
 	f32 const y = size.y * 0.5f;
@@ -29,10 +30,10 @@ graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, UVQu
 	auto const& c = info.colour;
 	// clang-format off
 	ret.vertices = {
-		{{o.x - x, o.y - y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, {uv.topLeft.x, uv.bottomRight.y}},
-		{{o.x + x, o.y - y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, uv.bottomRight},
-		{{o.x + x, o.y + y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, {uv.bottomRight.x, uv.topLeft.y}},
-		{{o.x - x, o.y + y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, uv.topLeft}
+		{{o.x - x, o.y - y, o.z}, c, {0.0f, 0.0f, 1.0f}, {uv.topLeft.x, uv.bottomRight.y}},
+		{{o.x + x, o.y - y, o.z}, c, {0.0f, 0.0f, 1.0f}, uv.bottomRight},
+		{{o.x + x, o.y + y, o.z}, c, {0.0f, 0.0f, 1.0f}, {uv.bottomRight.x, uv.topLeft.y}},
+		{{o.x - x, o.y + y, o.z}, c, {0.0f, 0.0f, 1.0f}, uv.topLeft}
 	};
 	// clang-format on
 	ret.autoIndex(topo, 4);

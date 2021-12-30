@@ -96,8 +96,8 @@ if(CI_BUILD)
   message(STATUS "== CI Build ==")
 endif()
 
-# vk_hpp
-add_subdirectory(ext/vk_hpp)
+# dyvk
+add_subdirectory(ext/dyvk)
 
 # external
 set(PHYSFS_BUILD_STATIC ON)

@@ -40,3 +40,6 @@
 	path = ext/freetype
 	url = https://gitlab.freedesktop.org/freetype/freetype.git
 	shallow = true
+[submodule "ext/dyvk"]
+	path = ext/dyvk
+	url = https://github.com/karnkaul/dyvk

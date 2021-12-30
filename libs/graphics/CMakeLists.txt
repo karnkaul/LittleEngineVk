@@ -11,7 +11,7 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    vk-hpp::vk-hpp
+    dyvk::dyvk
     spirv-cross-glsl
     vma
     levk::core

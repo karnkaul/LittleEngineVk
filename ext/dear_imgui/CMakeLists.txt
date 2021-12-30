@@ -27,5 +27,5 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPE
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     glfw
-    vk-hpp::vk-hpp
+    dyvk::dyvk
 )

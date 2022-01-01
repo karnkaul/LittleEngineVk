@@ -27,7 +27,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/window/types.hpp
 )
 add_subdirectory(src)
-target_source_group(${PROJECT_NAME})
+target_source_group(TARGET ${PROJECT_NAME})
 
 # PCH
 if(LEVK_USE_PCH)

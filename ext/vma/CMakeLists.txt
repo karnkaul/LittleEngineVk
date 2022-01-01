@@ -1,6 +1,6 @@
 project(vma)
 
-unzip_archive(vma.zip "${CMAKE_CURRENT_SOURCE_DIR}")
+unzip_archive(ARCHIVE vma.zip SUBDIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.[hc]*")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})

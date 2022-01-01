@@ -43,3 +43,4 @@
 [submodule "ext/dyvk"]
 	path = ext/dyvk
 	url = https://github.com/karnkaul/dyvk
+	shallow = true

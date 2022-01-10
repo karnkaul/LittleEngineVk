@@ -8,6 +8,7 @@
 #include <core/array_map.hpp>
 #include <core/log.hpp>
 #include <core/utils/error.hpp>
+#include <core/utils/expect.hpp>
 #include <ktl/fixed_any.hpp>
 #endif
 
@@ -162,41 +163,24 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 using lvl = LogLevel;
 constexpr std::string_view g_name = "Window";
 
-Manager::Manager() {
+Manager::Manager() : m_impl(std::make_unique<Impl>()) {
 #if defined(LEVK_USE_GLFW)
-	m_impl = std::make_unique<Impl>();
-	if (glfwInit() != GLFW_TRUE) {
-		log(lvl::error, LC_EndUser, "[{}] Could not initialise GLFW!", g_name);
-		m_impl.reset();
-		return;
-	} else if (glfwVulkanSupported() != GLFW_TRUE) {
-		log(lvl::error, LC_EndUser, "[{}] Vulkan not supported!", g_name);
-		m_impl.reset();
-		return;
-	} else {
-		log(lvl::info, LC_LibUser, "[{}] Manager initialised successfully", g_name);
-	}
+	auto inst = GlfwInst::make();
+	EXPECT(inst);
+	if (!inst) { return; }
+	m_impl->inst = std::move(*inst);
+	log(lvl::info, LC_LibUser, "[{}] Manager initialised successfully", g_name);
 #endif
 }
 
-Manager::~Manager() {
-#if defined(LEVK_USE_GLFW)
-	if (m_impl) {
-		for (Cursor& cursor : m_impl->m_cursors.arr) {
-			if (cursor.data.contains<GLFWcursor*>()) { glfwDestroyCursor(cursor.data.get<GLFWcursor*>()); }
-		}
-		glfwTerminate();
-		log(lvl::info, LC_LibUser, "[{}] Manager terminated", g_name);
-	}
-#endif
-}
+Manager::~Manager() noexcept = default;
 
 std::optional<Instance> Manager::make(CreateInfo const& info) {
 	std::optional<Instance> ret;
 #if defined(LEVK_USE_GLFW)
 	if (m_impl) {
 		if (auto win = m_impl->make(info)) {
-			ret = Instance(std::make_unique<Instance::Impl>(m_impl.get(), win));
+			ret = Instance(std::make_unique<Instance::Impl>(m_impl.get(), std::move(win)));
 			ret->m_impl->m_maximized = info.config.maximized;
 			if (info.options.autoShow) { ret->show(); }
 		}
@@ -213,10 +197,10 @@ std::size_t Manager::displayCount() const {
 	return ret;
 }
 
-Instance::Instance(Instance&&) = default;
-Instance& Instance::operator=(Instance&&) = default;
+Instance::Instance(Instance&&) noexcept = default;
+Instance& Instance::operator=(Instance&&) noexcept = default;
+Instance::~Instance() noexcept = default;
 Instance::Instance(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}
-Instance::~Instance() = default;
 EventQueue Instance::pollEvents() { return m_impl->pollEvents(); }
 bool Instance::show() { return m_impl->show(); }
 bool Instance::hide() { return m_impl->hide(); }

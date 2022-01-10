@@ -23,6 +23,6 @@ vk::SurfaceKHR makeSurface(vk::Instance vkInst, Instance const& wInst) {
 
 Instance::Impl& impl(Instance const& wInst) { return *wInst.m_impl; }
 
-GLFWwindow* glfwPtr(Instance const& wInst) { return impl(wInst).m_win; }
+GLFWwindow* glfwPtr(Instance const& wInst) { return *impl(wInst).m_win; }
 } // namespace le::window
 #endif

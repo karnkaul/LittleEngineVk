@@ -117,7 +117,6 @@ bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
 	if (m_acquired) {
 		auto cb = m_renderer->endMainPass(out_rp);
 		ret = submit(cb, *m_acquired, fbSize);
-		if (ret) { m_previousFrame = m_acquired->image; }
 		m_acquired.reset();
 	}
 	m_syncs.next();
@@ -131,15 +130,10 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
 	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	auto const& sync = m_syncs.get();
-	auto const res = m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
-	EXPECT(res == vk::Result::eSuccess);
-	if (res != vk::Result::eSuccess) {
-		logW(LC_LibUser, "[Graphics] Queue submit failure");
-		m_previousFrame = {};
-		return false;
-	}
-	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
-	m_previousFrame = {};
-	return false;
+	auto const submitted = m_surface.submit(cb, {sync.draw, sync.present, sync.drawn}) == vk::Result::eSuccess;
+	auto const presented = m_surface.present(fbSize, acquired, sync.present) == vk::Result::eSuccess;
+	EXPECT(submitted);
+	if (!submitted) { logW(LC_LibUser, "[Graphics] Queue submit failure"); }
+	return submitted && presented;
 }
 } // namespace le::graphics

@@ -41,6 +41,7 @@ class Surface {
 	static constexpr bool rgba(vk::Format format) noexcept;
 	static constexpr bool bgra(vk::Format format) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept { return framebufferSize.x > 0 && framebufferSize.y > 0; }
+	static constexpr bool outOfDate(vk::Result result) noexcept;
 
 	VRAM& vram() const noexcept { return *m_vram; }
 	VSyncs vsyncs() const noexcept { return m_vsyncs; }
@@ -55,7 +56,8 @@ class Surface {
 
 	std::optional<Acquire> acquireNextImage(Extent2D fbSize, vk::Semaphore signal);
 	vk::Result submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const;
-	bool present(Extent2D fbSize, Acquire image, vk::Semaphore wait);
+	vk::Result present(Extent2D fbSize, Acquire image, vk::Semaphore wait);
+	RenderTarget const& lastDrawn() const noexcept { return m_storage.lastDrawn; }
 
   private:
 	struct Info {
@@ -64,13 +66,18 @@ class Surface {
 		u32 minImageCount{};
 	};
 
-	struct Storage {
+	struct Swapchain {
 		vk::UniqueSwapchainKHR swapchain;
 		ktl::fixed_vector<vk::UniqueImageView, 8> imageViews;
+	};
+
+	struct Storage {
+		Swapchain swapchain;
 		ktl::fixed_vector<RenderTarget, 8> images;
 		Format format;
 		Info info;
 		BlitFlags blitFlags;
+		RenderTarget lastDrawn;
 	};
 
 	Info makeInfo(Extent2D extent) const;
@@ -78,7 +85,7 @@ class Surface {
 
 	vk::UniqueSurfaceKHR m_surface;
 	Storage m_storage;
-	Storage m_retired;
+	Swapchain m_retired;
 	vk::SwapchainCreateInfoKHR m_createInfo;
 	VSyncs m_vsyncs;
 	not_null<VRAM*> m_vram;
@@ -119,5 +126,14 @@ constexpr bool Surface::bgra(vk::Format format) noexcept {
 	case vk::Format::eB8G8R8A8Srgb: return true;
 	default: return false;
 	}
+}
+
+constexpr bool Surface::outOfDate(vk::Result result) noexcept {
+	switch (result) {
+	case vk::Result::eErrorOutOfDateKHR: return true;
+	case vk::Result::eSuboptimalKHR: return true;
+	default: break;
+	}
+	return false;
 }
 } // namespace le::graphics

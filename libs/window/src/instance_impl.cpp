@@ -17,14 +17,36 @@ glm::tvec2<T> getGlfwValue(GLFWwindow* win, F func) {
 }
 } // namespace
 
-Manager::Impl::Impl() {
+std::optional<GlfwInst> GlfwInst::make() noexcept {
+	if (glfwInit() != GLFW_TRUE) {
+		logE(LC_EndUser, "[{}] Failed to initialize GLFW!", g_name);
+		return std::nullopt;
+	}
+	if (glfwVulkanSupported() != GLFW_TRUE) {
+		logE(LC_EndUser, "[{}] Vulkan not supported!", g_name);
+		glfwTerminate();
+		return std::nullopt;
+	}
 	glfwSetErrorCallback([](int code, char const* szDesc) { logE(LC_EndUser, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
+	return GlfwInst{{}, true};
 }
 
-Manager::Impl::~Impl() { glfwSetErrorCallback(nullptr); }
+void GlfwDel::operator()(GlfwInst const& inst) const noexcept {
+	for (Cursor const& cursor : inst.cursors.arr) {
+		if (cursor.data.contains<GLFWcursor*>()) { glfwDestroyCursor(cursor.data.get<GLFWcursor*>()); }
+	}
+	glfwSetErrorCallback(nullptr);
+	glfwTerminate();
+	log(lvl::info, LC_LibUser, "[{}] Manager terminated", g_name);
+}
+
+void GlfwDel::operator()(GLFWwindow* win) const noexcept {
+	glfwDestroyWindow(win);
+	g_impls.erase(win);
+}
 
 Cursor const& Manager::Impl::cursor(CursorType type) {
-	auto& cursor = m_cursors[type];
+	auto& cursor = inst->cursors[type];
 	if (type != CursorType::eDefault && !cursor.data.contains<GLFWcursor*>()) {
 		int gCursor = 0;
 		switch (type) {
@@ -41,17 +63,17 @@ Cursor const& Manager::Impl::cursor(CursorType type) {
 	return cursor;
 }
 
-GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
+UniqueGlfwWin Manager::Impl::make(CreateInfo const& info) {
 	Span<GLFWmonitor* const> screens = displays();
 	if (screens.empty()) {
 		log(lvl::error, LC_EndUser, "[{}] Failed to detect screens!", g_name);
-		throw std::runtime_error("Failed to create Window");
+		return {};
 	}
 	DataStore::getOrSet<utils::SysInfo>("sys_info").displayCount = screens.size();
 	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
 		log(lvl::error, LC_EndUser, "[{}] Failed to detect video mode!", g_name);
-		throw std::runtime_error("Failed to create Window");
+		return {};
 	}
 	std::size_t const screenIdx = info.options.screenID < screens.size() ? (std::size_t)info.options.screenID : 0;
 	GLFWmonitor* target = screens[screenIdx];
@@ -103,24 +125,19 @@ Span<GLFWmonitor* const> Manager::Impl::displays() const {
 	return Span(ppScreens, static_cast<std::size_t>(count));
 }
 
-Instance::Impl::Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win) : m_win(win), m_manager(manager) {
-	glfwSetWindowFocusCallback(m_win, &onFocus);
-	glfwSetWindowSizeCallback(m_win, &onWindowResize);
-	glfwSetFramebufferSizeCallback(m_win, &onFramebufferResize);
-	glfwSetWindowCloseCallback(m_win, &onClose);
-	glfwSetKeyCallback(m_win, &onKey);
-	glfwSetCharCallback(m_win, &onText);
-	glfwSetCursorPosCallback(m_win, &onMouse);
-	glfwSetMouseButtonCallback(m_win, &onMouseButton);
-	glfwSetScrollCallback(m_win, &onScroll);
-	glfwSetWindowIconifyCallback(m_win, &onIconify);
-	glfwSetWindowMaximizeCallback(m_win, &onMaximize);
-	g_impls.emplace(m_win, this);
-}
-
-Instance::Impl::~Impl() {
-	glfwDestroyWindow(m_win);
-	g_impls.erase(m_win);
+Instance::Impl::Impl(not_null<Manager::Impl*> manager, UniqueGlfwWin win) : m_win(std::move(win)), m_manager(manager) {
+	glfwSetWindowFocusCallback(*m_win, &onFocus);
+	glfwSetWindowSizeCallback(*m_win, &onWindowResize);
+	glfwSetFramebufferSizeCallback(*m_win, &onFramebufferResize);
+	glfwSetWindowCloseCallback(*m_win, &onClose);
+	glfwSetKeyCallback(*m_win, &onKey);
+	glfwSetCharCallback(*m_win, &onText);
+	glfwSetCursorPosCallback(*m_win, &onMouse);
+	glfwSetMouseButtonCallback(*m_win, &onMouseButton);
+	glfwSetScrollCallback(*m_win, &onScroll);
+	glfwSetWindowIconifyCallback(*m_win, &onIconify);
+	glfwSetWindowMaximizeCallback(*m_win, &onMaximize);
+	g_impls.emplace(*m_win, this);
 }
 
 EventQueue Instance::Impl::pollEvents() {
@@ -134,7 +151,7 @@ bool Instance::Impl::show() {
 	bool ret{};
 #if defined(LEVK_USE_GLFW)
 	if (!visible()) {
-		glfwShowWindow(m_win);
+		glfwShowWindow(*m_win);
 		ret = true;
 	}
 #endif
@@ -145,7 +162,7 @@ bool Instance::Impl::hide() {
 	bool ret{};
 #if defined(LEVK_USE_GLFW)
 	if (visible()) {
-		glfwHideWindow(m_win);
+		glfwHideWindow(*m_win);
 		ret = true;
 	}
 #endif
@@ -155,14 +172,14 @@ bool Instance::Impl::hide() {
 bool Instance::Impl::visible() const noexcept {
 	bool ret{};
 #if defined(LEVK_USE_GLFW)
-	ret = glfwGetWindowAttrib(m_win, GLFW_VISIBLE) == 1;
+	ret = glfwGetWindowAttrib(*m_win, GLFW_VISIBLE) == 1;
 #endif
 	return ret;
 }
 
 void Instance::Impl::close() {
 #if defined(LEVK_USE_GLFW)
-	glfwSetWindowShouldClose(m_win, 1);
+	glfwSetWindowShouldClose(*m_win, 1);
 	Event event;
 	event.type = Event::Type::eClose;
 	m_events.push_back(event);
@@ -171,7 +188,7 @@ void Instance::Impl::close() {
 
 bool Instance::Impl::closing() const noexcept {
 #if defined(LEVK_USE_GLFW)
-	return glfwWindowShouldClose(m_win);
+	return glfwWindowShouldClose(*m_win);
 #else
 	return false;
 #endif
@@ -180,34 +197,34 @@ bool Instance::Impl::closing() const noexcept {
 glm::ivec2 Instance::Impl::position() const noexcept {
 	glm::ivec2 ret{};
 #if defined(LEVK_USE_GLFW)
-	glfwGetWindowPos(m_win, &ret.x, &ret.y);
+	glfwGetWindowPos(*m_win, &ret.x, &ret.y);
 #endif
 	return ret;
 }
 
 void Instance::Impl::position(glm::ivec2 pos) noexcept {
 #if defined(LEVK_USE_GLFW)
-	glfwSetWindowPos(m_win, pos.x, pos.y);
+	glfwSetWindowPos(*m_win, pos.x, pos.y);
 #endif
 }
 
 void Instance::Impl::maximize() noexcept {
 #if defined(LEVK_USE_GLFW)
 	m_maximized = true;
-	glfwMaximizeWindow(m_win);
+	glfwMaximizeWindow(*m_win);
 #endif
 }
 
 void Instance::Impl::restore() noexcept {
 #if defined(LEVK_USE_GLFW)
 	m_maximized = false;
-	glfwRestoreWindow(m_win);
+	glfwRestoreWindow(*m_win);
 #endif
 }
 
 CursorMode Instance::Impl::cursorMode() const noexcept {
 #if defined(LEVK_USE_GLFW)
-	int const val = glfwGetInputMode(m_win, GLFW_CURSOR);
+	int const val = glfwGetInputMode(*m_win, GLFW_CURSOR);
 	switch (val) {
 	case GLFW_CURSOR_NORMAL: return CursorMode::eDefault;
 	case GLFW_CURSOR_HIDDEN: return CursorMode::eHidden;
@@ -222,7 +239,7 @@ void Instance::Impl::cursorType(CursorType type) {
 	if (m_active.type != type) {
 #if defined(LEVK_USE_GLFW)
 		m_active = m_manager->cursor(type);
-		glfwSetCursor(m_win, m_active.data.value_or<GLFWcursor*>(nullptr));
+		glfwSetCursor(*m_win, m_active.data.value_or<GLFWcursor*>(nullptr));
 #endif
 	}
 }
@@ -236,16 +253,16 @@ void Instance::Impl::cursorMode([[maybe_unused]] CursorMode mode) {
 	case CursorMode::eDisabled: val = GLFW_CURSOR_DISABLED; break;
 	default:
 		mode = CursorMode::eDefault;
-		val = glfwGetInputMode(m_win, GLFW_CURSOR);
+		val = glfwGetInputMode(*m_win, GLFW_CURSOR);
 		break;
 	}
-	glfwSetInputMode(m_win, GLFW_CURSOR, val);
+	glfwSetInputMode(*m_win, GLFW_CURSOR, val);
 #endif
 }
 
 glm::vec2 Instance::Impl::cursorPosition() const noexcept {
 #if defined(LEVK_USE_GLFW)
-	return getGlfwValue<f32, f64>(m_win, &glfwGetCursorPos);
+	return getGlfwValue<f32, f64>(*m_win, &glfwGetCursorPos);
 #else
 	return {};
 #endif
@@ -253,7 +270,7 @@ glm::vec2 Instance::Impl::cursorPosition() const noexcept {
 
 glm::uvec2 Instance::Impl::windowSize() const noexcept {
 #if defined(LEVK_USE_GLFW)
-	return getGlfwValue<u32, int>(m_win, &glfwGetWindowSize);
+	return getGlfwValue<u32, int>(*m_win, &glfwGetWindowSize);
 #else
 	return {};
 #endif
@@ -261,7 +278,7 @@ glm::uvec2 Instance::Impl::windowSize() const noexcept {
 
 glm::uvec2 Instance::Impl::framebufferSize() const noexcept {
 #if defined(LEVK_USE_GLFW)
-	return getGlfwValue<u32, int>(m_win, &glfwGetFramebufferSize);
+	return getGlfwValue<u32, int>(*m_win, &glfwGetFramebufferSize);
 #else
 	return {};
 #endif

@@ -50,7 +50,7 @@ class RenderContext : public NoCopy {
 	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
 	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
 	VRAM& vram() noexcept { return *m_vram; }
-	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
+	RenderTarget const& lastDrawn() const noexcept { return m_surface.lastDrawn(); }
 
 	struct Sync;
 
@@ -61,7 +61,6 @@ class RenderContext : public NoCopy {
 	PipelineFactory m_pipelineFactory;
 	RingBuffer<Sync> m_syncs;
 	std::optional<Acquire> m_acquired;
-	RenderTarget m_previousFrame;
 	Defer<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;
 	std::unique_ptr<Renderer> m_renderer;

@@ -239,12 +239,14 @@ vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	auto const colour = out_rp.info().framebuffer.colour;
 	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
 	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, m_acquired.image};
+	LayoutStages presentLS = {LayoutStages::sa_colour_v, LayoutStages::sa_bottom_v};
 	if (m_target == Target::eOffScreen) {
 		ltcolour(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
 		ltacquired(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
 		m_vram->blit(cmd.cb, {colour.ref(), m_acquired.ref()});
+		presentLS.src = LayoutStages::sa_transfer_v;
 	}
-	ltacquired(vIL::ePresentSrcKHR, {}, LayoutStages::transferBottom());
+	ltacquired(vIL::ePresentSrcKHR, {}, presentLS);
 	cmd.cb.end();
 	m_acquired = {};
 	next();

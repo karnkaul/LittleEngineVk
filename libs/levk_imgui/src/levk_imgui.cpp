@@ -27,17 +27,19 @@ namespace {
 using DIS = DearImGui::State;
 
 vk::DescriptorPool makePool(Device& device, u32 count) {
-	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, count},
-										   {vk::DescriptorType::eCombinedImageSampler, count},
-										   {vk::DescriptorType::eSampledImage, count},
-										   {vk::DescriptorType::eStorageImage, count},
-										   {vk::DescriptorType::eUniformTexelBuffer, count},
-										   {vk::DescriptorType::eStorageTexelBuffer, count},
-										   {vk::DescriptorType::eUniformBuffer, count},
-										   {vk::DescriptorType::eStorageBuffer, count},
-										   {vk::DescriptorType::eUniformBufferDynamic, count},
-										   {vk::DescriptorType::eStorageBufferDynamic, count},
-										   {vk::DescriptorType::eInputAttachment, count}};
+	vk::DescriptorPoolSize pool_sizes[] = {
+		{vk::DescriptorType::eSampler, count},
+		{vk::DescriptorType::eCombinedImageSampler, count},
+		{vk::DescriptorType::eSampledImage, count},
+		{vk::DescriptorType::eStorageImage, count},
+		{vk::DescriptorType::eUniformTexelBuffer, count},
+		{vk::DescriptorType::eStorageTexelBuffer, count},
+		{vk::DescriptorType::eUniformBuffer, count},
+		{vk::DescriptorType::eStorageBuffer, count},
+		{vk::DescriptorType::eUniformBufferDynamic, count},
+		{vk::DescriptorType::eStorageBufferDynamic, count},
+		{vk::DescriptorType::eInputAttachment, count},
+	};
 	vk::DescriptorPoolCreateInfo pool_info;
 	pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 	pool_info.maxSets = (u32)(count * arraySize(pool_sizes));

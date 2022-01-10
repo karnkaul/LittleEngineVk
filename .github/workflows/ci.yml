@@ -15,7 +15,7 @@ jobs:
       - name: init
         run: sudo apt install -yqq ninja-build xorg-dev
       - name: configure
-        run: cp cmake/CMakePresets.json . && cmake -S . --preset=levk-rl -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build
+        run: cp cmake/CMakePresets.json . && cmake -S . --preset=levk-rl -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCI_BUILD=ON -B build
       - name: build
         run: cmake --build build
       - name: test
@@ -27,7 +27,7 @@ jobs:
       - name: init
         run: choco install ninja
       - name: configure
-        run: cp cmake/CMakePresets.json . && cmake -S . --preset=vs19 -B build
+        run: cp cmake/CMakePresets.json . && cmake -S . --preset=vs19 -DCI_BUILD=ON -B build
       - name: build
         run: cmake --build build --config=Release
       - name: test

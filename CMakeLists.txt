@@ -112,6 +112,7 @@ set(PHYSFS_ARCHIVE_SLB OFF)
 set(PHYSFS_ARCHIVE_VDF OFF)
 set(PHYSFS_ARCHIVE_WAD OFF)
 set(PHYSFS_ARCHIVE_ZIP ON)
+set(PHYSFS_BUILD_TEST OFF)
 add_subdirectory(ext/physfs)
 target_include_directories(physfs-static SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/physfs/src>)
 add_subdirectory(ext/glm)
@@ -174,7 +175,6 @@ if(LEVK_USE_PCH)
   endif()
 endif()
 
-
 # ktl
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
@@ -208,11 +208,6 @@ else()
 endif()
 
 # libraries
-if(NOT "${CI_BUILD}" AND "${LEVK_CONFIGURE_CI_SCRIPTS}")
-  message(STATUS "Configuring ${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in")
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-  # configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-endif()
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)

@@ -14,6 +14,31 @@
 			"binaryDir": "${sourceDir}/out/default"
 		},
 		{
+			"name": "vs19",
+			"description": "Build configuration using Visual Studio 16 (2019)",
+			"generator": "Visual Studio 16 2019",
+			"binaryDir": "out/vs",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			}
+		},
+		{
+			"name": "vs22",
+			"description": "Build configuration using Visual Studio 17 (2022)",
+			"inherits": "vs19",
+			"generator": "Visual Studio 17 2022"
+		},
+		{
+			"name": "ninja-cl",
+			"displayName": "Ninja/cl base config",
+			"inherits": "default",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "cl",
+				"CMAKE_CXX_COMPILER": "cl"
+			}
+		},
+		{
 			"name": "ninja-clang",
 			"displayName": "Ninja/clang base config",
 			"inherits": "default",

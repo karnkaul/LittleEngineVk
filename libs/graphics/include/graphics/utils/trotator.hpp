@@ -4,7 +4,7 @@
 
 namespace le {
 template <typename T>
-struct RingBuffer {
+struct TRotator {
 	using type = T;
 
 	template <typename... U>
@@ -25,32 +25,32 @@ struct RingBuffer {
 
 template <typename T>
 template <typename... U>
-void RingBuffer<T>::emplace(U&&... u) {
+void TRotator<T>::emplace(U&&... u) {
 	ts.emplace_back(std::forward<U>(u)...);
 }
 template <typename T>
-typename RingBuffer<T>::type& RingBuffer<T>::get() {
+typename TRotator<T>::type& TRotator<T>::get() {
 	ENSURE(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>
-typename RingBuffer<T>::type const& RingBuffer<T>::get() const {
+typename TRotator<T>::type const& TRotator<T>::get() const {
 	ENSURE(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>
-void RingBuffer<T>::next() noexcept {
+void TRotator<T>::next() noexcept {
 	if (!ts.empty()) {
 		index = (index + 1) % size();
 		++total;
 	}
 }
 template <typename T>
-std::size_t RingBuffer<T>::size() const noexcept {
+std::size_t TRotator<T>::size() const noexcept {
 	return ts.size();
 }
 template <typename T>
-bool RingBuffer<T>::empty() const noexcept {
+bool TRotator<T>::empty() const noexcept {
 	return ts.empty();
 }
 } // namespace le

@@ -1,7 +1,7 @@
 #pragma once
 #include <graphics/memory.hpp>
 #include <graphics/texture.hpp>
-#include <graphics/utils/ring_buffer.hpp>
+#include <graphics/utils/trotator.hpp>
 
 namespace le::graphics {
 class ShaderBuffer;
@@ -75,7 +75,7 @@ class DescriptorSet {
 	};
 	struct Storage {
 		SetBindingData bindingData[max_bindings_v];
-		RingBuffer<Set> sets;
+		TRotator<Set> sets;
 		vk::DescriptorSetLayout layout;
 		u32 setNumber = 0;
 		Buffering buffering{};

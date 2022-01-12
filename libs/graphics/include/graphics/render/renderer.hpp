@@ -6,7 +6,7 @@
 #include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
 #include <graphics/utils/defer.hpp>
-#include <graphics/utils/ring_buffer.hpp>
+#include <graphics/utils/trotator.hpp>
 
 namespace le::graphics {
 class PipelineFactory;
@@ -139,8 +139,8 @@ class Renderer {
 
 	using Cmds = ktl::fixed_vector<Cmd, max_secondary_cmd_v>;
 
-	RingBuffer<Cmd> m_primaryCmd;
-	RingBuffer<Cmds> m_secondaryCmds;
+	TRotator<Cmd> m_primaryCmd;
+	TRotator<Cmds> m_secondaryCmds;
 	Defer<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};

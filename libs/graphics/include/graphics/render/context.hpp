@@ -59,7 +59,7 @@ class RenderContext : public NoCopy {
 
 	Surface m_surface;
 	PipelineFactory m_pipelineFactory;
-	RingBuffer<Sync> m_syncs;
+	TRotator<Sync> m_syncs;
 	std::optional<Acquire> m_acquired;
 	Defer<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;

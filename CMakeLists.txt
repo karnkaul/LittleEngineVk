@@ -51,6 +51,19 @@ if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 endif()
 option(LEVK_BUILD_TESTS "Build Tests" ${is_root_project})
 option(LEVK_BUILD_DEMO "Build demo" ${is_root_project})
+option(LEVK_INSTALL "Install levk and dependencies (WIP)" ${is_root_project})
+if(LEVK_INSTALL)
+  set(KTL_INSTALL ON)
+  set(DTASKS_INSTALL ON)
+  set(DENS_INSTALL ON)
+  set(DYVK_INSTALL ON)
+  set(DJSON_INSTALL ON)
+  set(DLOG_INSTALL ON)
+  set(CLAP_INSTALL ON)
+  if(NOT KTL_INSTALL OR NOT DTASKS_INSTALL OR NOT DENS_INSTALL OR NOT DYVK_INSTALL OR NOT DJSON_INSTALL OR NOT DLOG_INSTALL)
+    message(WARNING "Invalid INSTALL flags")
+  endif()
+endif()
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
   option(LEVK_ASAN "Enable ASAN" OFF)
@@ -180,7 +193,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   ktl
   GIT_REPOSITORY https://github.com/karnkaul/ktl
-  GIT_TAG a6c5f32
+  GIT_TAG 378651d
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)

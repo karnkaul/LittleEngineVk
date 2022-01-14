@@ -1,7 +1,7 @@
+#include <imgui.h>
 #include <core/array_map.hpp>
 #include <core/maths.hpp>
 #include <levk/engine/editor/resizer.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 #include <window/instance.hpp>
 
 namespace le::edi {

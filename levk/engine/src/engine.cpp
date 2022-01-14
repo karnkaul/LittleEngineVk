@@ -16,7 +16,6 @@
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 #include <window/glue.hpp>
 #include <window/instance.hpp>
 
@@ -95,10 +94,9 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 }
 
 bool Engine::drawImgui(graphics::CommandBuffer cb) {
-	if constexpr (levk_imgui) {
-		if (auto eng = Services::find<Engine>(); eng && eng->gfx().imgui) {
-			eng->gfx().imgui->endFrame();
-			eng->gfx().imgui->renderDrawData(cb);
+	if constexpr (levk_editor) {
+		if (auto eng = Services::find<Engine>()) {
+			eng->m_impl->editor.render(cb);
 			return true;
 		}
 	}
@@ -138,7 +136,7 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->boot.device.physicalDevice().supportsLazyAllocation());
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
+	m_impl->editor.init(&m_impl->gfx->context, &*m_impl->win);
 	addDefaultAssets();
 	m_impl->win->show();
 }
@@ -148,6 +146,7 @@ bool Engine::unboot() noexcept {
 		saveConfig();
 		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
+		m_impl->editor.deinit();
 		m_impl->gfx->boot.vram.shutdown();
 		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
@@ -177,9 +176,9 @@ bool Engine::booted() const noexcept { return m_impl->gfx.has_value(); }
 
 bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
 	if (booted()) {
-		m_impl->gfx->imgui.reset();
+		m_impl->editor.deinit();
 		m_impl->gfx->context.setRenderer(std::move(renderer));
-		if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
+		m_impl->editor.init(&m_impl->gfx->context, &*m_impl->win);
 		return true;
 	}
 	return false;
@@ -200,8 +199,8 @@ std::optional<graphics::RenderPass> Engine::beginRenderPass(Opt<SceneRegistry> s
 		graphics::RenderBegin rb;
 		rb.clear = clear;
 		rb.depth = depth;
-		if constexpr (levk_imgui) {
-			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
+		if constexpr (levk_editor) {
+			[[maybe_unused]] bool const imgui_begun = m_impl->editor.beginFrame();
 			EXPECT(imgui_begun);
 			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), *this);
 		}

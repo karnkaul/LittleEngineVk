@@ -1,5 +1,6 @@
 #include <core/maths.hpp>
 #include <core/services.hpp>
+#include <editor/levk_imgui.hpp>
 #include <editor/sudo.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
@@ -604,6 +605,14 @@ bool Editor::active() const noexcept {
 	return false;
 }
 
+bool Editor::showImGuiDemo() const noexcept {
+	if (active() && m_imgui) {
+		m_imgui->m_showDemo = true;
+		return true;
+	}
+	return false;
+}
+
 Viewport const& Editor::view() const noexcept {
 	static constexpr Viewport s_default;
 	return active() && engaged() ? m_storage.gameView : s_default;
@@ -632,5 +641,22 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU Engine const& eng
 	}
 #endif
 	return {};
+}
+
+void Editor::init(graphics::RenderContext* context, window::Instance* window) {
+	if constexpr (levk_imgui) { m_imgui = std::make_unique<DearImGui>(context, window); }
+}
+
+void Editor::deinit() noexcept {
+	if constexpr (levk_imgui) { m_imgui.reset(); }
+}
+
+bool Editor::beginFrame() { return m_imgui ? m_imgui->beginFrame() : false; }
+
+void Editor::render(graphics::CommandBuffer const& cb) {
+	if (m_imgui) {
+		m_imgui->endFrame();
+		m_imgui->renderDrawData(cb);
+	}
 }
 } // namespace le

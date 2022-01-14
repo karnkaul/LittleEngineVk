@@ -6,7 +6,7 @@
 #include <levk/engine/editor/types.hpp>
 #include <levk/engine/input/frame.hpp>
 #include <levk/engine/render/viewport.hpp>
-#include <levk_imgui/levk_imgui.hpp>
+#include <memory>
 
 #if defined(LEVK_EDITOR)
 #include <levk/engine/editor/log_stats.hpp>
@@ -20,7 +20,9 @@ class Instance;
 }
 namespace graphics {
 struct ScreenView;
-}
+class RenderContext;
+class CommandBuffer;
+} // namespace graphics
 namespace gui {
 class TreeRoot;
 }
@@ -42,11 +44,16 @@ class Editor {
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
+	bool showImGuiDemo() const noexcept;
 
 	edi::MenuList m_menu;
 
   private:
+	void init(graphics::RenderContext* context, window::Instance* window);
+	void deinit() noexcept;
+	bool beginFrame();
 	graphics::ScreenView update(edi::SceneRef scene, Engine const& engine);
+	void render(graphics::CommandBuffer const& cb);
 
 	struct {
 #if defined(LEVK_EDITOR)
@@ -70,6 +77,8 @@ class Editor {
 
 	Rail m_left = {"Left", {}};
 	Rail m_right = {"Right", {}};
+
+	std::unique_ptr<class DearImGui> m_imgui;
 
 	friend class Engine;
 };

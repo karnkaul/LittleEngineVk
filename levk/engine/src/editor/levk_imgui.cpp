@@ -1,4 +1,4 @@
-#include <levk_imgui/levk_imgui.hpp>
+#include <editor/levk_imgui.hpp>
 #include <stdexcept>
 
 #if defined(LEVK_USE_IMGUI)

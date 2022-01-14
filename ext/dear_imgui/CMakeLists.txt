@@ -21,8 +21,10 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 target_source_group(TARGET ${PROJECT_NAME})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PRIVATE src)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC src)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC 
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 target_link_libraries(${PROJECT_NAME}
   PUBLIC

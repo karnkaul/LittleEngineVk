@@ -1,6 +1,7 @@
 #include <levk/engine/editor/main_menu.hpp>
 
 #if defined(LEVK_USE_IMGUI)
+#include <imgui.h>
 #include <core/services.hpp>
 #include <core/utils/string.hpp>
 #include <levk/engine/assets/asset_store.hpp>
@@ -96,7 +97,7 @@ MainMenu::MainMenu() {
 	MenuList::Menu assetIndex{"Asset Index", []() { g_panes.flag(Flag::eAssetIndex) = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->editor().showImGuiDemo(); }};
 	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
 	main.push_front(std::move(quit));

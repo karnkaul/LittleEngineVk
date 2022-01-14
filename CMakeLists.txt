@@ -176,7 +176,6 @@ add_subdirectory(libs/clap)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
-add_subdirectory(libs/levk_imgui)
 # export clap targets for tools projects to find
 export(EXPORT clap-targets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"

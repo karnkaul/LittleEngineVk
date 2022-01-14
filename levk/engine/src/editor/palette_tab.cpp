@@ -1,5 +1,5 @@
+#include <imgui.h>
 #include <levk/engine/editor/palette_tab.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 #include <algorithm>
 
 namespace le::edi {

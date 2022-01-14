@@ -20,7 +20,6 @@ class ViewStack;
 
 class AssetStore;
 class Editor;
-class DearImGui;
 class SceneRegistry;
 
 namespace utils {
@@ -115,7 +114,6 @@ struct Engine::CreateInfo {
 struct Engine::GFX {
 	Boot boot;
 	Context context;
-	std::unique_ptr<DearImGui> imgui;
 
 	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync);
 };

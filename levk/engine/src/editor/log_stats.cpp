@@ -2,6 +2,7 @@
 #include <levk/engine/editor/types.hpp>
 
 #if defined(LEVK_USE_IMGUI)
+#include <imgui.h>
 #include <core/array_map.hpp>
 #include <core/colour.hpp>
 #include <core/services.hpp>
@@ -9,7 +10,6 @@
 #include <ktl/async/kmutex.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 #endif
 
 namespace le::edi {

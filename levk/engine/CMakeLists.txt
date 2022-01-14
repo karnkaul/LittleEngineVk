@@ -15,7 +15,7 @@ target_include_directories(${target_name} PRIVATE
 )
 target_link_libraries(${target_name}
   PUBLIC
-    levk::imgui
+    $<$<BOOL:${LEVK_USE_IMGUI}>:dear-imgui::dear-imgui>
     levk::graphics
     levk::window
     levk::core

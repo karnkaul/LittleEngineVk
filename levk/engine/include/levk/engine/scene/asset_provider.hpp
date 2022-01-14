@@ -1,7 +1,7 @@
 #pragma once
-#include <core/hash.hpp>
-#include <core/services.hpp>
 #include <ktl/async/kfunction.hpp>
+#include <levk/core/hash.hpp>
+#include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
 #include <type_traits>

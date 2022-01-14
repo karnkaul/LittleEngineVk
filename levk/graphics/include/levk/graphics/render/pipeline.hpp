@@ -1,5 +1,5 @@
 #pragma once
-#include <core/not_null.hpp>
+#include <levk/core/not_null.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {

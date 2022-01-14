@@ -1,6 +1,6 @@
 #pragma once
-#include <core/utils/algo.hpp>
 #include <ktl/delegate.hpp>
+#include <levk/core/utils/algo.hpp>
 #include <levk/engine/assets/resources.hpp>
 #include <memory>
 #include <vector>

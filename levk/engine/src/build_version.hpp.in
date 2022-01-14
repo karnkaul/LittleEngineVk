@@ -1,5 +1,5 @@
 #pragma once
-#include <core/version.hpp>
+#include <levk/core/version.hpp>
 #include <string_view>
 
 namespace le {

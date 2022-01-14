@@ -1,7 +1,7 @@
 #pragma once
-#include <core/hash.hpp>
-#include <core/io/path.hpp>
 #include <ktl/expected.hpp>
+#include <levk/core/hash.hpp>
+#include <levk/core/io/path.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
 #include <levk/graphics/mesh_primitive.hpp>

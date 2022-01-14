@@ -1,5 +1,5 @@
 #pragma once
-#include <core/not_null.hpp>
+#include <levk/core/not_null.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <core/hash.hpp>
+#include <levk/core/hash.hpp>
 #include <levk/engine/render/drawable.hpp>
 #include <levk/graphics/render/pipeline.hpp>
 #include <vector>

@@ -1,8 +1,8 @@
 #pragma once
-#include <core/std_types.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
 
 namespace le {

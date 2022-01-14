@@ -1,7 +1,7 @@
 #pragma once
-#include <core/io/media.hpp>
-#include <core/os.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <levk/core/io/media.hpp>
+#include <levk/core/os.hpp>
 #include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/context/physical_device.hpp>

@@ -1,7 +1,7 @@
 #pragma once
-#include <core/span.hpp>
-#include <core/std_types.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/std_types.hpp>
 
 namespace le::graphics {
 using Extent2D = glm::uvec2;

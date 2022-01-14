@@ -18,7 +18,7 @@ target_link_libraries(${target_name}
     $<$<BOOL:${LEVK_USE_IMGUI}>:dear-imgui::dear-imgui>
     levk::levk-graphics
     levk::levk-window
-    levk::core
+    levk::levk-core
     djson::djson
     dtasks::dtasks
     clap::clap

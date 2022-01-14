@@ -1,8 +1,8 @@
 #pragma once
-#include <core/hash.hpp>
-#include <core/not_null.hpp>
-#include <core/span.hpp>
-#include <core/utils/vbase.hpp>
+#include <levk/core/hash.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/utils/vbase.hpp>
 #include <levk/engine/gui/rect.hpp>
 #include <levk/engine/render/flex.hpp>
 #include <levk/engine/scene/mesh_view.hpp>

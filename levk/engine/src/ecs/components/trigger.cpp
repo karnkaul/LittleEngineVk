@@ -1,6 +1,6 @@
-#include <core/services.hpp>
-#include <core/transform.hpp>
 #include <dens/registry.hpp>
+#include <levk/core/services.hpp>
+#include <levk/core/transform.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>
 #include <levk/graphics/mesh_primitive.hpp>

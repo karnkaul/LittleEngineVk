@@ -1,6 +1,6 @@
 #pragma once
-#include <core/log_channel.hpp>
-#include <core/std_types.hpp>
+#include <levk/core/log_channel.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/window/event_queue.hpp>
 #include <memory>
 #include <optional>

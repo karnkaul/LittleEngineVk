@@ -1,7 +1,7 @@
 #pragma once
-#include <core/time.hpp>
 #include <dens/entity.hpp>
 #include <ktl/either.hpp>
+#include <levk/core/time.hpp>
 #include <levk/engine/editor/palette_tab.hpp>
 #include <levk/engine/editor/types.hpp>
 #include <levk/engine/input/frame.hpp>

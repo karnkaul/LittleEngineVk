@@ -3,10 +3,10 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
-#include <core/span.hpp>
-#include <core/std_types.hpp>
-#include <core/utils/unique.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/std_types.hpp>
+#include <levk/core/utils/unique.hpp>
 #include <levk/graphics/utils/extent2d.hpp>
 
 namespace le::graphics {

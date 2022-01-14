@@ -1,8 +1,8 @@
 #pragma once
-#include <core/std_types.hpp>
-#include <core/time.hpp>
 #include <dens/entity.hpp>
 #include <glm/vec3.hpp>
+#include <levk/core/std_types.hpp>
+#include <levk/core/time.hpp>
 #include <levk/engine/editor/inspect.hpp>
 
 namespace dens {

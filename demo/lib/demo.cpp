@@ -1,8 +1,8 @@
-#include <core/not_null.hpp>
-#include <core/utils/algo.hpp>
-#include <core/utils/std_hash.hpp>
-#include <core/utils/string.hpp>
 #include <dumb_tasks/scheduler.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/utils/algo.hpp>
+#include <levk/core/utils/std_hash.hpp>
+#include <levk/core/utils/string.hpp>
 #include <levk/engine/assets/asset_list.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/editor/inspector.hpp>
@@ -27,14 +27,14 @@
 #include <levk/engine/scene/scene_registry.hpp>
 #include <levk/engine/utils/exec.hpp>
 
-#include <core/utils/enumerate.hpp>
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/gui/widgets/dropdown.hpp>
 #include <levk/engine/render/descriptor_helper.hpp>
 
-#include <core/utils/shell.hpp>
-#include <core/utils/tween.hpp>
 #include <ktl/async/kasync.hpp>
+#include <levk/core/utils/shell.hpp>
+#include <levk/core/utils/tween.hpp>
 #include <levk/engine/gui/widgets/input_field.hpp>
 #include <levk/engine/input/text_cursor.hpp>
 #include <levk/engine/render/quad_emitter.hpp>

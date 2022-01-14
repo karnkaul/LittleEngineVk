@@ -1,6 +1,6 @@
 #pragma once
-#include <core/hash.hpp>
 #include <ktl/async/kfunction.hpp>
+#include <levk/core/hash.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <levk/graphics/render/pipeline.hpp>
 #include <levk/graphics/render/pipeline_spec.hpp>

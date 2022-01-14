@@ -1,7 +1,7 @@
 #pragma once
-#include <core/array_map.hpp>
-#include <core/io/converters.hpp>
-#include <core/io/path.hpp>
+#include <levk/core/array_map.hpp>
+#include <levk/core/io/converters.hpp>
+#include <levk/core/io/path.hpp>
 #include <levk/engine/render/layer.hpp>
 
 namespace le {

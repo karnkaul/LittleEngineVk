@@ -1,4 +1,4 @@
-#include <core/services.hpp>
+#include <levk/core/services.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 
 namespace le::edi {

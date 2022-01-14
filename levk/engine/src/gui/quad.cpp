@@ -1,5 +1,5 @@
-#include <core/maths.hpp>
-#include <core/services.hpp>
+#include <levk/core/maths.hpp>
+#include <levk/core/services.hpp>
 #include <levk/engine/gui/quad.hpp>
 
 namespace le::gui {

@@ -1,8 +1,8 @@
 #pragma once
-#include <core/std_types.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <levk/core/std_types.hpp>
 
 namespace le::graphics {
 template <typename T = f32, s64 Min = 0, s64 Max = 1>

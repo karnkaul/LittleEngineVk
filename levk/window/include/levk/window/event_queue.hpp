@@ -1,6 +1,6 @@
 #pragma once
-#include <core/codepoint.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/codepoint.hpp>
 #include <levk/window/types.hpp>
 #include <optional>
 

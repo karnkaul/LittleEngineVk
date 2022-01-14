@@ -1,5 +1,5 @@
 #pragma once
-#include <core/colour.hpp>
+#include <levk/core/colour.hpp>
 
 namespace le::graphics {
 struct RGBA {

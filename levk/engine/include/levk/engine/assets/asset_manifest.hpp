@@ -1,6 +1,6 @@
 #pragma once
-#include <core/utils/vbase.hpp>
 #include <dumb_json/json.hpp>
+#include <levk/core/utils/vbase.hpp>
 #include <levk/engine/assets/asset_list.hpp>
 #include <levk/engine/assets/asset_loaders.hpp>
 #include <levk/engine/render/pipeline.hpp>

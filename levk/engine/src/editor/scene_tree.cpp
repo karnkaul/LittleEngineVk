@@ -1,8 +1,8 @@
-#include <core/maths.hpp>
-#include <core/services.hpp>
-#include <core/utils/enumerate.hpp>
-#include <core/utils/string.hpp>
 #include <editor/sudo.hpp>
+#include <levk/core/maths.hpp>
+#include <levk/core/services.hpp>
+#include <levk/core/utils/enumerate.hpp>
+#include <levk/core/utils/string.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/scene_tree.hpp>
 #include <levk/engine/engine.hpp>

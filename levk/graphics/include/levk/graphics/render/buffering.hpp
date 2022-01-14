@@ -1,5 +1,5 @@
 #pragma once
-#include <core/std_types.hpp>
+#include <levk/core/std_types.hpp>
 
 namespace le::graphics {
 enum struct Buffering : u32 { eNone = 0U, eSingle = 1U, eDouble = 2U, eTriple = 3U };

@@ -1,7 +1,7 @@
 #pragma once
-#include <core/services.hpp>
-#include <core/utils/profiler.hpp>
-#include <core/version.hpp>
+#include <levk/core/services.hpp>
+#include <levk/core/utils/profiler.hpp>
+#include <levk/core/version.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/scene/space.hpp>

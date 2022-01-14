@@ -1,5 +1,5 @@
 #pragma once
-#include <core/time.hpp>
+#include <levk/core/time.hpp>
 #include <levk/engine/input/control.hpp>
 #include <levk/graphics/render/camera.hpp>
 

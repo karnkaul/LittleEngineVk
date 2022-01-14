@@ -1,7 +1,7 @@
 #pragma once
-#include <core/hash.hpp>
-#include <core/utils/error.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/hash.hpp>
+#include <levk/core/utils/error.hpp>
 #include <levk/engine/gui/interact.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/graphics/render/rgba.hpp>

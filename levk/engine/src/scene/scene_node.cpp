@@ -1,6 +1,6 @@
-#include <core/utils/debug.hpp>
-#include <core/utils/expect.hpp>
 #include <dens/registry.hpp>
+#include <levk/core/utils/debug.hpp>
+#include <levk/core/utils/expect.hpp>
 #include <levk/engine/scene/scene_node.hpp>
 #include <algorithm>
 

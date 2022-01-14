@@ -1,5 +1,5 @@
 #pragma once
-#include <core/codepoint.hpp>
+#include <levk/core/codepoint.hpp>
 #include <levk/graphics/utils/quad_uv.hpp>
 
 namespace le::graphics {

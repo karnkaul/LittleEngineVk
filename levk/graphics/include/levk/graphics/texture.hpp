@@ -1,7 +1,7 @@
 #pragma once
-#include <core/colour.hpp>
 #include <glm/vec2.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <levk/core/colour.hpp>
 #include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/context/vram.hpp>
 

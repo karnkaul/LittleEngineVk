@@ -1,9 +1,9 @@
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
-#include <core/io/media.hpp>
-#include <core/utils/expect.hpp>
 #include <dumb_json/json.hpp>
 #include <glm/gtx/hash.hpp>
+#include <levk/core/io/media.hpp>
+#include <levk/core/utils/expect.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/render/model.hpp>
 #include <levk/graphics/mesh_primitive.hpp>

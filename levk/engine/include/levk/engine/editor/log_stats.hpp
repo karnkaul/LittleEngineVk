@@ -1,11 +1,11 @@
 #pragma once
-#include <core/log.hpp>
-#include <core/std_types.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/log.hpp>
+#include <levk/core/std_types.hpp>
 
 #if defined(LEVK_USE_IMGUI)
-#include <core/time.hpp>
 #include <dumb_log/pipe.hpp>
+#include <levk/core/time.hpp>
 #include <deque>
 #endif
 

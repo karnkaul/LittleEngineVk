@@ -1,7 +1,7 @@
 #pragma once
-#include <core/span.hpp>
-#include <core/std_types.hpp>
 #include <ktl/async/kmutex.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/graphics/qtype.hpp>
 #include <vulkan/vulkan.hpp>
 

@@ -1,7 +1,7 @@
 #pragma once
-#include <core/span.hpp>
 #include <dens/entity.hpp>
 #include <ktl/either.hpp>
+#include <levk/core/span.hpp>
 
 namespace dens {
 class registry;

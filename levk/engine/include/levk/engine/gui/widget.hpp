@@ -1,6 +1,6 @@
 #pragma once
-#include <core/time.hpp>
 #include <ktl/delegate.hpp>
+#include <levk/core/time.hpp>
 #include <levk/engine/gui/quad.hpp>
 #include <levk/engine/gui/style.hpp>
 #include <levk/engine/input/state.hpp>

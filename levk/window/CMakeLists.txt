@@ -2,7 +2,7 @@ project(levk-window)
 
 # Library
 add_library(${PROJECT_NAME})
-add_library(levk::levk-window ALIAS ${PROJECT_NAME})
+add_library(levk::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC
@@ -14,7 +14,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     dyvk::dyvk
-    levk::core
+    levk::levk-core
     $<$<BOOL:${LEVK_USE_GLFW}>:glfw>
   PRIVATE
     levk::compile-options

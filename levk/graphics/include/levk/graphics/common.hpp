@@ -1,7 +1,7 @@
 #pragma once
-#include <core/std_types.hpp>
 #include <glm/vec2.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/graphics/utils/extent2d.hpp>
 #include <vulkan/vulkan.hpp>
 #include <string_view>

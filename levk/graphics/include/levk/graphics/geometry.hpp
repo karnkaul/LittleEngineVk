@@ -1,7 +1,7 @@
 #pragma once
-#include <core/colour.hpp>
-#include <core/span.hpp>
-#include <core/std_types.hpp>
+#include <levk/core/colour.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/graphics/basis.hpp>
 #include <levk/graphics/utils/quad_uv.hpp>
 #include <vector>

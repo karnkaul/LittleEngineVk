@@ -1,7 +1,7 @@
-#include <core/maths.hpp>
-#include <core/services.hpp>
 #include <editor/levk_imgui.hpp>
 #include <editor/sudo.hpp>
+#include <levk/core/maths.hpp>
+#include <levk/core/services.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/inspector.hpp>

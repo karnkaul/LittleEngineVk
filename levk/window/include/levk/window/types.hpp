@@ -1,6 +1,6 @@
 #pragma once
-#include <core/span.hpp>
-#include <core/std_types.hpp>
+#include <levk/core/span.hpp>
+#include <levk/core/std_types.hpp>
 #include <string>
 #include <vector>
 

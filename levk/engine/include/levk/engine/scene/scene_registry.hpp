@@ -1,6 +1,6 @@
 #pragma once
-#include <core/utils/vbase.hpp>
 #include <dens/registry.hpp>
+#include <levk/core/utils/vbase.hpp>
 #include <levk/engine/ecs/systems/system_groups.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/scene/asset_provider.hpp>

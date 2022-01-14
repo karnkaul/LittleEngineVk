@@ -2,7 +2,7 @@ project(levk-graphics)
 
 # Library
 add_library(${PROJECT_NAME})
-add_library(levk::levk-graphics ALIAS ${PROJECT_NAME})
+add_library(levk::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -15,7 +15,7 @@ target_link_libraries(${PROJECT_NAME}
     dyvk::dyvk
     spirv-cross-glsl
     vma
-    levk::core
+    levk::levk-core
   PRIVATE
     levk::compile-options
     stb-image

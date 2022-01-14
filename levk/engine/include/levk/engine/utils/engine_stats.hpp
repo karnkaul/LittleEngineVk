@@ -1,6 +1,6 @@
 #pragma once
-#include <core/time.hpp>
 #include <glm/vec2.hpp>
+#include <levk/core/time.hpp>
 
 namespace le::utils {
 struct EngineStats {

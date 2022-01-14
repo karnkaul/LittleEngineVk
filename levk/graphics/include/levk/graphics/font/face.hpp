@@ -1,6 +1,6 @@
 #pragma once
-#include <core/not_null.hpp>
-#include <core/span.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/span.hpp>
 #include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/font/glyph.hpp>
 #include <memory>

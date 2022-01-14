@@ -3,11 +3,11 @@
 
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
-#include <core/array_map.hpp>
-#include <core/colour.hpp>
-#include <core/services.hpp>
 #include <dumb_log/pipe.hpp>
 #include <ktl/async/kmutex.hpp>
+#include <levk/core/array_map.hpp>
+#include <levk/core/colour.hpp>
+#include <levk/core/services.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #endif

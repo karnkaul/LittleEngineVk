@@ -1,4 +1,4 @@
-#include <core/log_channel.hpp>
+#include <levk/core/log_channel.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/context/bootstrap.hpp>
 

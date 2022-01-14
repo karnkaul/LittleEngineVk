@@ -1,7 +1,7 @@
 #pragma once
-#include <core/utils/expect.hpp>
-#include <core/utils/string.hpp>
 #include <dens/detail/sign.hpp>
+#include <levk/core/utils/expect.hpp>
+#include <levk/core/utils/string.hpp>
 #include <levk/engine/editor/inspect.hpp>
 #include <levk/engine/editor/types.hpp>
 

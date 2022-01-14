@@ -1,6 +1,6 @@
 #pragma once
-#include <core/colour.hpp>
-#include <core/hash.hpp>
+#include <levk/core/colour.hpp>
+#include <levk/core/hash.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/draw_view.hpp>

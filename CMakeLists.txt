@@ -173,16 +173,16 @@ add_subdirectory(libs/dtasks)
 set(DENS_BUILD_TESTS ON)
 add_subdirectory(libs/dens)
 add_subdirectory(libs/clap)
-add_subdirectory(libs/core)
-add_subdirectory(levk/window)
-add_subdirectory(levk/graphics)
 # export clap targets for tools projects to find
 export(EXPORT clap-targets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
   NAMESPACE clap::
 )
 
-# engine
+# components
+add_subdirectory(levk/core)
+add_subdirectory(levk/window)
+add_subdirectory(levk/graphics)
 add_subdirectory(levk/engine)
 
 # demo

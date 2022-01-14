@@ -1,8 +1,8 @@
 #pragma once
-#include <core/std_types.hpp>
 #include <dens/entity.hpp>
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/engine/render/drawable.hpp>
 #include <levk/engine/render/material.hpp>
 

@@ -1,6 +1,6 @@
 #pragma once
-#include <core/utils/expect.hpp>
-#include <core/utils/vbase.hpp>
+#include <levk/core/utils/expect.hpp>
+#include <levk/core/utils/vbase.hpp>
 #include <levk/engine/editor/types.hpp>
 
 namespace le::edi {

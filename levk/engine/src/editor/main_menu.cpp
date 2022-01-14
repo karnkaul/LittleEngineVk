@@ -2,8 +2,8 @@
 
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
-#include <core/services.hpp>
-#include <core/utils/string.hpp>
+#include <levk/core/services.hpp>
+#include <levk/core/utils/string.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 #include <levk/engine/editor/editor.hpp>

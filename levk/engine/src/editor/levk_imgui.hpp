@@ -1,6 +1,6 @@
 #pragma once
-#include <core/not_null.hpp>
-#include <core/std_types.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/std_types.hpp>
 #include <levk/graphics/texture.hpp>
 #include <levk/graphics/utils/defer.hpp>
 #include <cstdint>

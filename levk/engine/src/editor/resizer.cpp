@@ -1,5 +1,5 @@
-#include <core/array_map.hpp>
-#include <core/maths.hpp>
+#include <levk/core/array_map.hpp>
+#include <levk/core/maths.hpp>
 #include <levk/engine/editor/resizer.hpp>
 #include <levk/window/instance.hpp>
 

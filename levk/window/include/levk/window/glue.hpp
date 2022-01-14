@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <GLFW/glfw3.h>
-#include <core/span.hpp>
+#include <levk/core/span.hpp>
 #include <levk/window/instance.hpp>
 #include <vulkan/vulkan.hpp>
 

@@ -1,6 +1,6 @@
 #pragma once
-#include <core/span.hpp>
 #include <dens/entity.hpp>
+#include <levk/core/span.hpp>
 #include <unordered_set>
 
 namespace le::edi {

@@ -5,7 +5,7 @@
 #include <levk/graphics/mesh_primitive.hpp>
 #include <unordered_set>
 
-#include <core/log.hpp>
+#include <levk/core/log.hpp>
 
 namespace le {
 namespace {

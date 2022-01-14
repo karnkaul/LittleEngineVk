@@ -1,9 +1,9 @@
 #pragma once
-#include <core/time.hpp>
-#include <core/utils/vbase.hpp>
 #include <dens/registry.hpp>
 #include <dens/system.hpp>
 #include <dumb_tasks/scheduler.hpp>
+#include <levk/core/time.hpp>
+#include <levk/core/utils/vbase.hpp>
 #include <levk/engine/input/frame.hpp>
 
 namespace le {

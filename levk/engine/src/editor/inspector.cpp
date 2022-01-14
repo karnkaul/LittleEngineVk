@@ -1,6 +1,6 @@
-#include <core/services.hpp>
-#include <core/utils/algo.hpp>
 #include <editor/sudo.hpp>
+#include <levk/core/services.hpp>
+#include <levk/core/utils/algo.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/editor/inspector.hpp>
 #include <levk/engine/engine.hpp>

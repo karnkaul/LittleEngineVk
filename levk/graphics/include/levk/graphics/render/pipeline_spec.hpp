@@ -1,6 +1,6 @@
 #pragma once
-#include <core/hash.hpp>
-#include <core/span.hpp>
+#include <levk/core/hash.hpp>
+#include <levk/core/span.hpp>
 #include <levk/graphics/render/pipeline_flags.hpp>
 #include <levk/graphics/render/vertex_input.hpp>
 

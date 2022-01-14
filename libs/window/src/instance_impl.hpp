@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 #include <core/not_null.hpp>
+#include <core/utils/unique.hpp>
 #include <ktl/fixed_any.hpp>
 #include <unordered_map>
 
@@ -19,29 +20,38 @@ struct Cursor {
 inline std::unordered_map<GLFWwindow*, not_null<Instance::Impl*>> g_impls;
 #endif
 
-class Manager::Impl {
-#if defined(LEVK_USE_GLFW)
-  public:
-	Impl();
-	~Impl();
+struct GlfwInst {
+	EnumArray<CursorType, Cursor> cursors;
+	bool init{};
 
+	static std::optional<GlfwInst> make() noexcept;
+
+	constexpr bool operator==(GlfwInst const& rhs) const { return init == rhs.init; }
+};
+
+struct GlfwDel {
+	void operator()(GlfwInst const&) const noexcept;
+	void operator()(GLFWwindow* win) const noexcept;
+};
+
+using UniqueGlfwInst = Unique<GlfwInst, GlfwDel>;
+using UniqueGlfwWin = Unique<GLFWwindow*, GlfwDel>;
+
+struct Manager::Impl {
+#if defined(LEVK_USE_GLFW)
 	Cursor const& cursor(CursorType type);
-	GLFWwindow* make(CreateInfo const& info);
+	UniqueGlfwWin make(CreateInfo const& info);
 
 	Span<GLFWmonitor* const> displays() const;
 
-  private:
-	EnumArray<CursorType, Cursor> m_cursors;
-
-	friend class Manager;
+	UniqueGlfwInst inst;
 #endif
 };
 
 class Instance::Impl {
   public:
 #if defined(LEVK_USE_GLFW)
-	Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win);
-	~Impl();
+	Impl(not_null<Manager::Impl*> manager, UniqueGlfwWin win);
 #endif
 
 	EventQueue pollEvents();
@@ -72,7 +82,7 @@ class Instance::Impl {
 	Cursor m_active;
 	bool m_maximized{};
 #if defined(LEVK_USE_GLFW)
-	not_null<GLFWwindow*> m_win;
+	UniqueGlfwWin m_win;
 #endif
 
   private:

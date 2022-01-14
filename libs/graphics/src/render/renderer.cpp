@@ -174,12 +174,12 @@ Defer<vk::RenderPass> Renderer::makeMainRenderPass(not_null<Device*> device, vk:
 }
 
 Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourImage(info.vram), m_vram(info.vram), m_target(info.target) {
-	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
+	Buffering const buffering = info.buffering < Buffering::eDouble ? Buffering::eDouble : info.buffering;
 	EXPECT(info.secondaryCmds <= max_secondary_cmd_v);
 	EXPECT(info.target == Target::eSwapchain || info.surfaceBlitFlags.test(BlitFlag::eDst));
 	if (!info.surfaceBlitFlags.test(BlitFlag::eDst)) { m_target = Target::eSwapchain; }
 	u8 const secondaryCmds = std::min(info.secondaryCmds, max_secondary_cmd_v);
-	for (Buffering i{0}; i < buffering; ++i.value) {
+	for (Buffering i{0}; i < buffering; ++i) {
 		m_primaryCmd.push(Cmd::make(m_vram->m_device));
 		Cmds cmds;
 		for (u8 j = 0; j < secondaryCmds; ++j) { cmds.push_back(Cmd::make(m_vram->m_device, true)); }
@@ -239,12 +239,14 @@ vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	auto const colour = out_rp.info().framebuffer.colour;
 	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
 	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, m_acquired.image};
+	LayoutStages presentLS = {LayoutStages::sa_colour_v, LayoutStages::sa_bottom_v};
 	if (m_target == Target::eOffScreen) {
 		ltcolour(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
 		ltacquired(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
 		m_vram->blit(cmd.cb, {colour.ref(), m_acquired.ref()});
+		presentLS.src = LayoutStages::sa_transfer_v;
 	}
-	ltacquired(vIL::ePresentSrcKHR, {}, LayoutStages::transferBottom());
+	ltacquired(vIL::ePresentSrcKHR, {}, presentLS);
 	cmd.cb.end();
 	m_acquired = {};
 	next();

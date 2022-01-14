@@ -33,7 +33,6 @@ class AssetManifest : public utils::VBase {
 	Flags& flags() noexcept { return m_loader.m_flags; }
 	Flags const& flags() const noexcept { return m_loader.m_flags; }
 
-	void append(AssetManifest const& rhs);
 	std::size_t preload(dj::json const& root);
 	void stage(dts::scheduler* scheduler);
 	template <typename T>

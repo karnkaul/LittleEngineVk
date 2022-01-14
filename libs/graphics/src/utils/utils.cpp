@@ -447,6 +447,7 @@ Buffer utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitm
 }
 
 std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, ImageRef const& src) {
+	if (!src.image) { return std::nullopt; }
 	ImageRef dst = src;
 	dst.format = vk::Format::eR8G8B8A8Unorm;
 	dst.linear = true;

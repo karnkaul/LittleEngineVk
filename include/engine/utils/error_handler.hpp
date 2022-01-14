@@ -7,7 +7,7 @@
 #include <core/utils/sys_info.hpp>
 #include <core/version.hpp>
 #include <glm/vec2.hpp>
-#include <ktl/tmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 
 namespace le::utils {
 struct ErrInfo {
@@ -32,7 +32,7 @@ struct ErrList {
 	static Version const build;
 
 	SysInfo sysInfo;
-	ktl::tmutex<std::vector<ErrInfo>> errors;
+	ktl::kmutex<std::vector<ErrInfo>> errors;
 };
 
 class ErrorHandler : public OnError {

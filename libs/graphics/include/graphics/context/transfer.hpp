@@ -3,10 +3,10 @@
 #include <core/span.hpp>
 #include <core/time.hpp>
 #include <graphics/buffer.hpp>
-#include <ktl/async_queue.hpp>
-#include <ktl/future.hpp>
-#include <ktl/kthread.hpp>
-#include <ktl/move_only_function.hpp>
+#include <ktl/async/async_queue.hpp>
+#include <ktl/async/kfunction.hpp>
+#include <ktl/async/kfuture.hpp>
+#include <ktl/async/kthread.hpp>
 #include <list>
 #include <memory>
 #include <vector>
@@ -17,8 +17,8 @@ constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size <<
 class Transfer final : public Pinned {
   public:
 	using notify_t = void;
-	using Promise = ktl::promise<notify_t>;
-	using Future = ktl::future<notify_t>;
+	using Promise = ktl::kpromise<notify_t>;
+	using Future = ktl::kfuture<notify_t>;
 
 	struct MemRange final {
 		vk::DeviceSize size = 2;
@@ -74,7 +74,7 @@ class Transfer final : public Pinned {
 		Batch active;
 		std::vector<Batch> submitted;
 	} m_batches;
-	ktl::async_queue<ktl::move_only_function<void()>> m_queue;
+	ktl::async_queue<ktl::kfunction<void()>> m_queue;
 	not_null<Memory*> m_memory;
 
 	friend class VRAM;

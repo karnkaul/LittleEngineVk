@@ -40,10 +40,11 @@
 #include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
-#include <ktl/async.hpp>
+#include <ktl/async/kasync.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
 #include <engine/ecs/components/trigger.hpp>
+#include <engine/render/shader_data.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -67,21 +68,12 @@ using namespace dts;
 
 using namespace std::chrono;
 
-struct ViewMats {
-	alignas(16) glm::mat4 mat_v;
-	alignas(16) glm::mat4 mat_p;
-	alignas(16) glm::mat4 mat_ui;
-	alignas(16) glm::vec4 pos_v;
-};
-
 struct Albedo {
 	alignas(16) glm::vec4 ambient;
 	alignas(16) glm::vec4 diffuse;
 	alignas(16) glm::vec4 specular;
 
-	static Albedo make(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
-		return make(colour.toVec4(), amdispsh);
-	}
+	static Albedo make(RGBA colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept { return make(colour.toVec4(), amdispsh); }
 
 	static Albedo make(glm::vec4 const& colour, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
 		Albedo ret;
@@ -90,20 +82,6 @@ struct Albedo {
 		ret.ambient = {c * amdispsh.x, a};
 		ret.diffuse = {c * amdispsh.y, a};
 		ret.specular = {c * amdispsh.z, amdispsh.w};
-		return ret;
-	}
-};
-
-struct ShadeMat {
-	alignas(16) glm::vec4 tint;
-	alignas(16) Albedo albedo;
-
-	static ShadeMat make(Material const& mtl) noexcept {
-		ShadeMat ret;
-		ret.albedo.ambient = mtl.Ka.toVec4();
-		ret.albedo.diffuse = mtl.Kd.toVec4();
-		ret.albedo.specular = mtl.Ks.toVec4();
-		ret.tint = {static_cast<glm::vec3 const&>(mtl.Tf.toVec4()), mtl.d};
 		return ret;
 	}
 };
@@ -155,10 +133,9 @@ class Renderer : public ListRenderer {
 	using Camera = graphics::Camera;
 
 	struct Scene {
+		ShaderSceneView view;
 		dens::registry const* registry{};
-		Camera const* camera{};
 		Span<DirLight const> lights;
-		glm::vec2 size{};
 	};
 
 	Renderer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
@@ -169,13 +146,7 @@ class Renderer : public ListRenderer {
 	void render(RenderPass& out_rp, Scene const& scene) {
 		m_view.lights.swap();
 		m_view.mats.swap();
-		if (scene.camera) {
-			auto const& cam = *scene.camera;
-			ViewMats const v{cam.view(), cam.perspective(scene.size), cam.ortho(scene.size), {cam.position, 1.0f}};
-			m_view.mats.write(v);
-		} else {
-			m_view.mats.write(ViewMats());
-		}
+		m_view.mats.write(scene.view);
 		if (!scene.lights.empty()) {
 			DirLights dl;
 			for (std::size_t idx = 0; idx < scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = scene.lights[idx]; }
@@ -211,7 +182,7 @@ class Renderer : public ListRenderer {
 					set2.update(0, mat.map_Kd);
 					set2.update(1, mat.map_d);
 					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
-					drawMesh.set(map, 3).update(0, ShadeMat::make(mat));
+					drawMesh.set(map, 3).update(0, ShaderMaterial::make(mat));
 				}
 			}
 		}
@@ -677,9 +648,8 @@ class App : public input::Receiver, public SceneRegistry {
 		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
 			Renderer::Scene scene;
 			scene.registry = &m_registry;
-			scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
+			scene.view = ShaderSceneView::make(*m_registry.find<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace());
 			scene.lights = m_data.dirLights;
-			scene.size = m_eng->sceneSpace();
 			m_renderer.render(*rp, scene);
 			m_eng->endRenderPass(*rp);
 		}
@@ -797,8 +767,8 @@ bool run(io::Media const& media) {
 		engine.boot(bootInfo);
 		App app(&engine);
 		DeltaTime dt;
-		ktl::future<bool> bf;
-		ktl::async async;
+		ktl::kfuture<bool> bf;
+		ktl::kasync async;
 		while (!engine.closing()) {
 			if (!engine.nextFrame()) { continue; }
 			poll(flags, engine.poll(true).residue);
@@ -816,7 +786,7 @@ bool run(io::Media const& media) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				auto& ctx = engine.gfx().context;
-				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.previousFrame().ref())) {
+				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
 						if (written > 0) { logD("Screenshot saved to shot.ppm"); }

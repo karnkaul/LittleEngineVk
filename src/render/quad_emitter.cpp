@@ -85,9 +85,11 @@ void QuadEmitter::tick(Time_s dt, Opt<dts::task_queue> tasks) {
 	std::size_t end = m_data.pos.size();
 	for (std::size_t i = 0; i < end;) {
 		if (m_data.pos[i].ratio >= 1.0f) {
-			std::swap(m_data.pos[i], m_data.pos.back());
+			if (i + 1 < end) {
+				std::swap(m_data.pos[i], m_data.pos.back());
+				std::swap(m_data.gen[i], m_data.gen.back());
+			}
 			m_data.pos.pop_back();
-			std::swap(m_data.gen[i], m_data.gen.back());
 			m_data.gen.pop_back();
 			EXPECT(end > 0U);
 			--end;

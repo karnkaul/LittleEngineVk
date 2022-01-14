@@ -3,7 +3,7 @@
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/memory.hpp>
-#include <graphics/utils/ring_buffer.hpp>
+#include <graphics/utils/trotator.hpp>
 
 namespace le::graphics {
 class DescriptorSet;
@@ -30,7 +30,7 @@ class ShaderBuffer {
 	void resize(std::size_t size, std::size_t count);
 
 	struct Storage {
-		std::vector<RingBuffer<Buffer>> buffers;
+		std::vector<TRotator<Buffer>> buffers;
 		vk::DescriptorType type;
 		vk::BufferUsageFlagBits usage = {};
 		Buffering buffering;

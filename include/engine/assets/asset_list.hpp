@@ -4,6 +4,7 @@
 #include <core/utils/std_hash.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <ktl/async/kfunction.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 
 namespace le {
@@ -16,7 +17,7 @@ struct TAssetList {
 };
 
 template <typename T>
-using AssetList = TAssetList<std::function<std::unique_ptr<T>()>>;
+using AssetList = TAssetList<ktl::kfunction<std::unique_ptr<T>()>>;
 
 template <typename T>
 using AssetLoadList = TAssetList<AssetLoadData<T>>;

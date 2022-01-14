@@ -15,12 +15,12 @@ DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_v
 	if (active) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve(max_bindings_v);
-		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
+		for (Buffering buf{}; buf < m_storage.buffering; ++buf) {
 			Set set;
 			std::size_t idx{};
 			for (auto const& binding : m_storage.bindingData) {
 				if (binding.binding.descriptorType != vk::DescriptorType()) {
-					u32 const totalSize = binding.binding.descriptorCount * m_storage.buffering.value;
+					u32 const totalSize = binding.binding.descriptorCount * u32(m_storage.buffering);
 					poolSizes.push_back({binding.binding.descriptorType, totalSize});
 					set.bindings[idx].type = binding.binding.descriptorType;
 					set.bindings[idx].count = binding.binding.descriptorCount;
@@ -132,7 +132,7 @@ Texture::Type ShaderInput::textureType(u32 set, u32 bind) const noexcept {
 }
 
 ShaderInput::ShaderInput(not_null<VRAM*> vram, SetPoolsData data) : m_vram(vram) {
-	Buffering const buffering = data.buffering == 0_B ? 2_B : data.buffering;
+	Buffering const buffering = data.buffering == Buffering::eNone ? Buffering::eDouble : data.buffering;
 	for (std::size_t set = 0; set < data.sets.size(); ++set) {
 		Pool pool;
 		pool.vram = m_vram;

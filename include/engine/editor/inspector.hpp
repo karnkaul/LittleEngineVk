@@ -11,9 +11,9 @@ class Inspector {
 	static constexpr std::string_view title_v = "Inspector";
 
 	template <dens::Component T>
-	using OnAttach = ktl::move_only_function<T()>;
+	using OnAttach = ktl::kfunction<T()>;
 	template <dens::Component T>
-	using OnInspect = ktl::move_only_function<void(Inspect<T>)>;
+	using OnInspect = ktl::kfunction<void(Inspect<T>)>;
 
 	template <dens::Component T>
 	static std::string_view defaultName() {

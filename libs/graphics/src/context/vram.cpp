@@ -218,7 +218,7 @@ bool VRAM::makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo
 }
 
 CommandPool& VRAM::commandPool() {
-	auto lock = ktl::tlock(m_commandPools);
+	auto lock = ktl::klock(m_commandPools);
 	if (auto it = lock->find(std::this_thread::get_id()); it != lock->end()) { return it->second; }
 	auto [it, _] = lock->emplace(std::this_thread::get_id(), m_device);
 	return it->second;

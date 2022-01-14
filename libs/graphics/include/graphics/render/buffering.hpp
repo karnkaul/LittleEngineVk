@@ -2,14 +2,8 @@
 #include <core/std_types.hpp>
 
 namespace le::graphics {
-struct Buffering {
-	u8 value{};
+enum struct Buffering : u32 { eNone = 0U, eSingle = 1U, eDouble = 2U, eTriple = 3U };
 
-	constexpr auto operator<=>(Buffering const&) const = default;
-};
-
-constexpr Buffering operator""_B(unsigned long long value) noexcept { return Buffering{static_cast<u8>(value)}; }
-
-constexpr auto doubleBuffer = 2_B;
-constexpr auto tripleBuffer = 3_B;
+constexpr Buffering& operator++(Buffering& b) noexcept { return (b = Buffering{u32(b) + 1}, b); }
+constexpr Buffering operator+(Buffering a, Buffering b) noexcept { return Buffering{u32(a) + u32(b)}; }
 } // namespace le::graphics

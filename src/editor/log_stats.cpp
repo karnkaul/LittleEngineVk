@@ -8,7 +8,7 @@
 #include <dumb_log/pipe.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/engine_stats.hpp>
-#include <ktl/tmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #endif
 
@@ -29,7 +29,7 @@ ktl::strict_tmutex<std::deque<LogText>> g_logs;
 
 struct LogPipe : dlog::pipe {
 	void operator()(dlog::level level, std::string_view text) const override {
-		ktl::tlock lock(g_logs);
+		ktl::klock lock(g_logs);
 		ImVec4 const colour = imvec4(logColour[level]);
 		lock->push_front({std::string(text), colour, level});
 		while (lock->size() > LogStats::s_maxLines) { lock->pop_back(); }
@@ -100,7 +100,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 			std::vector<Ref<LogText const>> filtered;
 			filtered.reserve(LogStats::s_lineCount);
-			ktl::tlock lock(g_logs);
+			ktl::klock lock(g_logs);
 			if (bClear) { lock->clear(); }
 			for (auto const& entry : *lock) {
 				if (entry.level >= LogStats::s_logLevel && (logFilter.empty() || entry.text.find(logFilter) != std::string::npos)) {

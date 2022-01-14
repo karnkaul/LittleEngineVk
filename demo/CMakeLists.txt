@@ -6,7 +6,7 @@ add_subdirectory(lib)
 # executable
 add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE main.cpp)
-target_source_group(${PROJECT_NAME} src)
+target_source_group(TARGET ${PROJECT_NAME} PREFIX src)
 target_include_directories(${PROJECT_NAME} PRIVATE .)
 target_link_libraries(${PROJECT_NAME} levk::demo::lib levk::interface::exe)
 

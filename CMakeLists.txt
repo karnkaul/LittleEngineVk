@@ -51,6 +51,19 @@ if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 endif()
 option(LEVK_BUILD_TESTS "Build Tests" ${is_root_project})
 option(LEVK_BUILD_DEMO "Build demo" ${is_root_project})
+option(LEVK_INSTALL "Install levk and dependencies (WIP)" ${is_root_project})
+if(LEVK_INSTALL)
+  set(KTL_INSTALL ON)
+  set(DTASKS_INSTALL ON)
+  set(DENS_INSTALL ON)
+  set(DYVK_INSTALL ON)
+  set(DJSON_INSTALL ON)
+  set(DLOG_INSTALL ON)
+  set(CLAP_INSTALL ON)
+  if(NOT KTL_INSTALL OR NOT DTASKS_INSTALL OR NOT DENS_INSTALL OR NOT DYVK_INSTALL OR NOT DJSON_INSTALL OR NOT DLOG_INSTALL)
+    message(WARNING "Invalid INSTALL flags")
+  endif()
+endif()
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
   option(LEVK_ASAN "Enable ASAN" OFF)
@@ -96,66 +109,8 @@ if(CI_BUILD)
   message(STATUS "== CI Build ==")
 endif()
 
-# vk_hpp
-add_subdirectory(ext/vk_hpp)
-
-# external
-set(PHYSFS_BUILD_STATIC ON)
-set(PHYSFS_BUILD_SHARED OFF)
-set(PHYSFS_BUILD_DOCS OFF)
-set(PHYSFS_ARCHIVE_GRP OFF)
-set(PHYSFS_ARCHIVE_HOG OFF)
-set(PHYSFS_ARCHIVE_ISO9660 OFF)
-set(PHYSFS_ARCHIVE_MVL OFF)
-set(PHYSFS_ARCHIVE_QPAK OFF)
-set(PHYSFS_ARCHIVE_SLB OFF)
-set(PHYSFS_ARCHIVE_VDF OFF)
-set(PHYSFS_ARCHIVE_WAD OFF)
-set(PHYSFS_ARCHIVE_ZIP ON)
-add_subdirectory(ext/physfs)
-target_include_directories(physfs-static SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/physfs/src>)
-add_subdirectory(ext/glm)
-target_compile_options(glm INTERFACE 
-  $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-Wno-volatile> 
-  $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
-)
-if(LEVK_USE_GLFW)
-  set(GLFW_VULKAN_STATIC OFF)
-  set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
-  set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
-  set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
-  set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
-  add_subdirectory(ext/glfw)
-  if(WINDOWS_CLANG)
-    target_compile_options(glfw PRIVATE -w)
-  endif()
-endif()
-add_subdirectory(ext/vma)
-add_subdirectory(ext/stb)
-add_subdirectory(ext/tinyobjloader)
-if(LEVK_USE_IMGUI)
-  add_subdirectory(ext/dear_imgui)
-endif()
-set(SPIRV_CROSS_CLI OFF)
-set(SPIRV_CROSS_ENABLE_CPP OFF)
-set(SPIRV_CROSS_ENABLE_C_API OFF)
-set(SPIRV_CROSS_ENABLE_GLSL ON)
-set(SPIRV_CROSS_ENABLE_HLSL OFF)
-set(SPIRV_CROSS_ENABLE_MSL OFF)
-set(SPIRV_CROSS_ENABLE_REFLECT OFF)
-set(SPIRV_CROSS_ENABLE_TESTS OFF)
-set(SPIRV_CROSS_ENABLE_UTIL OFF)
-set(SPIRV_CROSS_SHARED OFF)
-set(SPIRV_CROSS_STATIC ON)
-add_subdirectory(ext/spirv_cross)
-if(LINUX_CLANG OR LINUX_GCC OR WINDOWS_CLANG OR WINDOWS_GCC)
-  target_compile_options(spirv-cross-core PRIVATE -w)
-  target_compile_options(spirv-cross-glsl PRIVATE -w)
-  target_include_directories(spirv-cross-glsl SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/spirv_cross>)
-elseif(PLATFORM STREQUAL Win64)
-  target_compile_definitions(spirv-cross-core PUBLIC _CRT_SECURE_NO_WARNINGS NO_MIN_MAX)
-endif()
-add_subdirectory(ext/freetype)
+# ext
+add_subdirectory(ext)
 
 # engine
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
@@ -174,13 +129,12 @@ if(LEVK_USE_PCH)
   endif()
 endif()
 
-
 # ktl
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   ktl
   GIT_REPOSITORY https://github.com/karnkaul/ktl
-  GIT_TAG 728a4ad
+  GIT_TAG 5278a75
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)
@@ -196,7 +150,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   dtest
   GIT_REPOSITORY https://github.com/karnkaul/dtest
-  GIT_TAG 8c07e2c
+  GIT_TAG 0ca8c64
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
 )
 FetchContent_MakeAvailable(dtest)
@@ -208,11 +162,6 @@ else()
 endif()
 
 # libraries
-if(NOT "${CI_BUILD}" AND "${LEVK_CONFIGURE_CI_SCRIPTS}")
-  message(STATUS "Configuring ${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in")
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-  # configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-endif()
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)

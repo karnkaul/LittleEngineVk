@@ -3,7 +3,7 @@
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/scene/mesh_view.hpp>
-#include <ktl/move_only_function.hpp>
+#include <ktl/async/kfunction.hpp>
 #include <type_traits>
 
 namespace le {
@@ -54,7 +54,7 @@ class MeshProvider {
 	Sign sign() const noexcept { return m_sign; }
 
   private:
-	using GetMesh = ktl::move_only_function<MeshView(Hash)>;
+	using GetMesh = ktl::kfunction<MeshView(Hash)>;
 
 	std::string m_assetURI;
 	std::string m_materialURI;
@@ -65,7 +65,7 @@ class MeshProvider {
 
 class DynamicMesh {
   public:
-	using GetMesh = ktl::move_only_function<MeshView()>;
+	using GetMesh = ktl::kfunction<MeshView()>;
 
 	static DynamicMesh make(GetMesh&& getMesh);
 	template <MeshAPI T>

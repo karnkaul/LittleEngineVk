@@ -46,7 +46,7 @@ bool ErrInfo::writeToFile(io::Path const& path) const {
 OnError const* g_onEnsureFail{};
 
 void ErrorHandler::operator()(std::string_view message, SrcInfo const& source) {
-	ktl::tlock(m_list.errors)->emplace_back(std::string(message), source);
+	ktl::klock(m_list.errors)->emplace_back(std::string(message), source);
 	logD("Error recorded: {}", message);
 }
 
@@ -85,6 +85,6 @@ dj::json Jsonify<ErrInfo>::operator()(utils::ErrInfo const& info) const {
 }
 
 dj::json Jsonify<ErrList>::operator()(utils::ErrList const& list) const {
-	return build("build", list.build.toString(true), "system", list.sysInfo, "errors", *ktl::tlock(list.errors));
+	return build("build", list.build.toString(true), "system", list.sysInfo, "errors", *ktl::klock(list.errors));
 }
 } // namespace le::io

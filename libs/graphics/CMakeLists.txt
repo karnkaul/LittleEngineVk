@@ -11,7 +11,7 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    vk-hpp::vk-hpp
+    dyvk::dyvk
     spirv-cross-glsl
     vma
     levk::core
@@ -25,7 +25,7 @@ target_link_libraries(${PROJECT_NAME}
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
 include(graphics_includes.cmake)
 add_subdirectory(src)
-target_source_group(${PROJECT_NAME})
+target_source_group(TARGET ${PROJECT_NAME})
 
 # PCH
 if(LEVK_USE_PCH)

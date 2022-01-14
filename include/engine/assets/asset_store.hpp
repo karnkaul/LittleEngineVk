@@ -6,8 +6,8 @@
 #include <dens/detail/sign.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/assets/asset_loader.hpp>
+#include <ktl/async/shared_kmutex.hpp>
 #include <ktl/delegate.hpp>
-#include <ktl/shared_tmutex.hpp>
 
 namespace le {
 class AssetStore : public NoCopy {
@@ -55,7 +55,7 @@ class AssetStore : public NoCopy {
 
   private:
 	struct Base;
-	using DoUpdate = ktl::move_only_function<bool(Base*)>;
+	using DoUpdate = ktl::kfunction<bool(Base*)>;
 	using TAssets = std::unordered_map<Hash, std::unique_ptr<Base>>;
 	template <typename T>
 	struct TAsset;
@@ -118,7 +118,7 @@ Asset<T> AssetStore::add(std::string uri, T t) {
 template <typename T>
 Asset<T> AssetStore::add(std::string uri, std::unique_ptr<T>&& t) {
 	if (t) {
-		ktl::unique_tlock<TAssets> lock(m_assets);
+		ktl::unique_klock<TAssets> lock(m_assets);
 		Hash const key = uri;
 		auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(t));
 		TAsset<T>& ret = *tasset;
@@ -147,7 +147,7 @@ Asset<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
 	auto& ret = *tasset;
 	if ((ret.t = loader.load(*ret.info)); ret.t) {
 		logI(LC_EndUser, "== [Asset] [{}] loaded", ret.uri);
-		ktl::unique_tlock<TAssets> lock(m_assets);
+		ktl::unique_klock<TAssets> lock(m_assets);
 		lock->emplace(key, std::move(tasset));
 		return makeAsset(ret);
 	}
@@ -157,7 +157,7 @@ Asset<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
 
 template <typename T>
 Asset<T> AssetStore::find(Hash uri) const {
-	ktl::shared_tlock<TAssets const> lock(m_assets);
+	ktl::shared_klock<TAssets const> lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
 		if (it->second->sign == Sign::make<T>()) { return makeAsset(static_cast<TAsset<T>&>(*it->second)); }
@@ -167,7 +167,7 @@ Asset<T> AssetStore::find(Hash uri) const {
 
 template <typename T>
 bool AssetStore::exists(Hash uri) const noexcept {
-	ktl::shared_tlock<TAssets const> lock(m_assets);
+	ktl::shared_klock<TAssets const> lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
 		if (it->second->sign == Sign::make<T>()) { return true; }
@@ -178,7 +178,7 @@ bool AssetStore::exists(Hash uri) const noexcept {
 template <typename T>
 	requires(detail::reloadable_asset_v<T>)
 bool AssetStore::reload(Hash uri) {
-	ktl::shared_tlock<TAssets> lock(m_assets);
+	ktl::shared_klock<TAssets> lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
 		if (it->second->sign == Sign::make<T>()) { return reloadAsset(static_cast<TAsset<T>&>(*it->second)); }
@@ -188,7 +188,7 @@ bool AssetStore::reload(Hash uri) {
 
 template <typename T>
 bool AssetStore::unload(Hash uri) {
-	ktl::shared_tlock<TAssets> lock(m_assets);
+	ktl::shared_klock<TAssets> lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
 		if (it->second->sign == Sign::make<T>()) {

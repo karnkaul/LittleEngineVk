@@ -1,5 +1,5 @@
 #include <core/utils/string.hpp>
-#include <ktl/tmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <algorithm>
 #include <cerrno>
 #include <unordered_map>
@@ -56,7 +56,7 @@ struct TNames {
 
 	std::string_view operator()(Full name, bool minimal) {
 		if (name.empty()) { return {}; }
-		auto lock = ktl::tlock(names);
+		auto lock = ktl::klock(names);
 		auto it = lock->find(name);
 		if (it == lock->end()) {
 			auto [i, _] = lock->insert_or_assign(name, Demangled());
@@ -66,7 +66,7 @@ struct TNames {
 		return minimal ? it->second.minimal : it->second.full;
 	}
 
-	void clear() noexcept { ktl::tlock(names)->clear(); }
+	void clear() noexcept { ktl::klock(names)->clear(); }
 };
 
 TNames g_tNames;

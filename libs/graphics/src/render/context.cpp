@@ -15,10 +15,10 @@
 namespace le::graphics {
 namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
-	ENSURE(images > 1_B, "Insufficient swapchain images");
-	ENSURE(buffering > 0_B, "Insufficient buffering");
-	if ((s16)buffering.value - (s16)images.value > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
-	if (buffering < 2_B) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
+	ENSURE(images > Buffering::eSingle, "Insufficient swapchain images");
+	ENSURE(buffering > Buffering::eNone, "Insufficient buffering");
+	if ((s64)buffering - (s64)images > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < Buffering::eDouble) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {
@@ -86,9 +86,9 @@ RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram),
 	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
 	m_pipelineCache = m_pipelineCache.make(m_vram->m_device->makePipelineCache(), m_vram->m_device);
-	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
+	validateBuffering(Buffering{m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
-	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
+	for (Buffering i = {}; i < m_buffering; ++i) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), m_buffering); }
@@ -117,7 +117,6 @@ bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
 	if (m_acquired) {
 		auto cb = m_renderer->endMainPass(out_rp);
 		ret = submit(cb, *m_acquired, fbSize);
-		if (ret) { m_previousFrame = m_acquired->image; }
 		m_acquired.reset();
 	}
 	m_syncs.next();
@@ -131,15 +130,10 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
 	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	auto const& sync = m_syncs.get();
-	auto const res = m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
-	EXPECT(res == vk::Result::eSuccess);
-	if (res != vk::Result::eSuccess) {
-		logW(LC_LibUser, "[Graphics] Queue submit failure");
-		m_previousFrame = {};
-		return false;
-	}
-	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
-	m_previousFrame = {};
-	return false;
+	auto const submitted = m_surface.submit(cb, {sync.draw, sync.present, sync.drawn}) == vk::Result::eSuccess;
+	auto const presented = m_surface.present(fbSize, acquired, sync.present) == vk::Result::eSuccess;
+	EXPECT(submitted);
+	if (!submitted) { logW(LC_LibUser, "[Graphics] Queue submit failure"); }
+	return submitted && presented;
 }
 } // namespace le::graphics

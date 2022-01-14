@@ -1,7 +1,6 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <core/span.hpp>
-#include <core/utils/value.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/font/glyph.hpp>
 #include <memory>
@@ -13,7 +12,7 @@ constexpr Codepoint codepoint_ellipses_v = Codepoint(0x2026);
 
 class FontFace {
   public:
-	using Height = le::utils::Value<u32, 64U>;
+	enum struct Height : u32 { eDefault = 64U };
 
 	struct Slot {
 		Bitmap pixmap;

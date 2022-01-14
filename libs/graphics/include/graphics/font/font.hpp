@@ -19,7 +19,7 @@ class Font {
 		std::string name;
 		Span<std::byte const> ttf;
 		TPair<Codepoint> preload = {33U, 128U};
-		Height height;
+		Height height = Height::eDefault;
 	};
 
 	Font(not_null<VRAM*> vram, Info info);
@@ -31,11 +31,11 @@ class Font {
 	std::vector<Height> sizes() const;
 
 	std::string_view name() const noexcept { return m_info.name; }
-	FontFace const& face(Opt<Height const> size = {}) const noexcept { return atlas(size).face(); }
-	FontAtlas const& atlas(Opt<Height const> size = {}) const noexcept;
+	FontFace const& face(Height size = {}) const noexcept { return atlas(size).face(); }
+	FontAtlas const& atlas(Height size = {}) const noexcept;
 
 	static constexpr glm::vec2 pivot(Align horz = Align::eMin, Align vert = Align::eMin) noexcept;
-	f32 scale(u32 height, Opt<Height const> size = {}) const noexcept;
+	f32 scale(u32 height, Height size = {}) const noexcept;
 
 	bool write(Geometry& out, Glyph const& glyph, glm::vec3 origin = {}, f32 scale = 1.0f) const;
 
@@ -44,7 +44,7 @@ class Font {
   private:
 	bool load(FontAtlas& out, Height size);
 
-	std::unordered_map<u32, FontAtlas> m_atlases;
+	std::unordered_map<Height, FontAtlas> m_atlases;
 	Info m_info;
 };
 

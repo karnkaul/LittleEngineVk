@@ -2,7 +2,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/qtype.hpp>
-#include <ktl/tmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -24,7 +24,7 @@ class Queue : public Pinned {
 	vk::Result present(vk::PresentInfoKHR const& info) const;
 
   private:
-	ktl::tmutex<vk::Queue> m_queue;
+	ktl::kmutex<vk::Queue> m_queue;
 	u32 m_family = 0;
 	QCaps m_qcaps;
 };

@@ -1,16 +1,16 @@
 #pragma once
 #include <core/std_types.hpp>
 #include <graphics/render/buffering.hpp>
-#include <ktl/tmutex.hpp>
-#include <functional>
+#include <ktl/async/kfunction.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <vector>
 
 namespace le::graphics {
 class DeferQueue : public Pinned {
   public:
-	using Callback = std::function<void()>;
+	using Callback = ktl::kfunction<void()>;
 
-	inline static Buffering defaultDefer = 2_B;
+	inline static Buffering defaultDefer = Buffering::eDouble;
 
 	void defer(Callback&& callback, Buffering defer = defaultDefer);
 	std::size_t decrement();

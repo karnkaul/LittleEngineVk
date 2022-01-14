@@ -29,7 +29,7 @@ class RenderContext : public NoCopy {
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 
-	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
+	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = Buffering::eDouble);
 
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
@@ -50,7 +50,7 @@ class RenderContext : public NoCopy {
 	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
 	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
 	VRAM& vram() noexcept { return *m_vram; }
-	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
+	RenderTarget const& lastDrawn() const noexcept { return m_surface.lastDrawn(); }
 
 	struct Sync;
 
@@ -59,9 +59,8 @@ class RenderContext : public NoCopy {
 
 	Surface m_surface;
 	PipelineFactory m_pipelineFactory;
-	RingBuffer<Sync> m_syncs;
+	TRotator<Sync> m_syncs;
 	std::optional<Acquire> m_acquired;
-	RenderTarget m_previousFrame;
 	Defer<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;
 	std::unique_ptr<Renderer> m_renderer;

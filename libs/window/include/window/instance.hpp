@@ -12,7 +12,7 @@ class Instance;
 class Manager {
   public:
 	explicit Manager();
-	~Manager();
+	~Manager() noexcept;
 
 	bool ready() const noexcept { return m_impl != nullptr; }
 	explicit operator bool() const noexcept { return ready(); }
@@ -21,7 +21,7 @@ class Manager {
 
 	std::size_t displayCount() const;
 
-	class Impl;
+	struct Impl;
 
   private:
 	std::unique_ptr<Impl> m_impl;
@@ -48,9 +48,9 @@ struct CreateInfo {
 
 class Instance {
   public:
-	Instance(Instance&&);
-	Instance& operator=(Instance&&);
-	~Instance();
+	Instance(Instance&&) noexcept;
+	Instance& operator=(Instance&&) noexcept;
+	~Instance() noexcept;
 
 	EventQueue pollEvents();
 	bool show();

@@ -1,7 +1,7 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <graphics/common.hpp>
-#include <ktl/tmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <unordered_map>
 
 namespace le::graphics {
@@ -34,7 +34,7 @@ class LayoutState {
   public:
 	vk::ImageLayout get(vk::Image img) const;
 	void transition(vk::CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls = {}, LayerMip const& lm = {});
-	void clear() { ktl::tlock(m_map)->clear(); }
+	void clear() { ktl::klock(m_map)->clear(); }
 
 	void presented(vk::Image image) { force(image, vk::ImageLayout::ePresentSrcKHR); }
 	void drawn(vk::Image depth) { force(depth, vk::ImageLayout::eUndefined); }

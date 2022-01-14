@@ -24,7 +24,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk_imgui/levk_imgui.hpp
   src/levk_imgui.cpp
 )
-target_source_group(${PROJECT_NAME})
+target_source_group(TARGET ${PROJECT_NAME})
 
 # PCH
 if(LEVK_USE_PCH)

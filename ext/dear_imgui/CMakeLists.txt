@@ -19,7 +19,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/imstb_textedit.h
   src/imstb_truetype.h
 )
-target_source_group(${PROJECT_NAME})
+target_source_group(TARGET ${PROJECT_NAME})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC src)
@@ -27,5 +27,5 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPE
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     glfw
-    vk-hpp::vk-hpp
+    dyvk::dyvk
 )

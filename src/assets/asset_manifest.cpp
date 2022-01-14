@@ -8,11 +8,6 @@
 #include <ktl/stack_string.hpp>
 
 namespace le {
-void AssetManifest::append(AssetManifest const& rhs) {
-	m_samplers = m_samplers + rhs.m_samplers;
-	m_textures = m_textures + rhs.m_textures;
-}
-
 std::size_t AssetManifest::preload(dj::json const& root) {
 	std::size_t ret{};
 	for (auto const& [groupName, entries] : root.as<dj::map_t>()) {
@@ -220,7 +215,7 @@ std::size_t AssetManifest::addFonts(Group group) {
 			data.ttfURI = path / path.filename() + ".ttf";
 		}
 		data.info.atlas.mipMaps = json->get_as<bool>("mip_maps", data.info.atlas.mipMaps);
-		data.info.height = graphics::Font::Height{json->get_as<u32>("height", data.info.height)};
+		data.info.height = graphics::Font::Height{json->get_as<u32>("height", u32(data.info.height))};
 		m_fonts.add(std::move(uri), std::move(data));
 		++ret;
 	}

@@ -1,7 +1,7 @@
 #pragma once
 #include <graphics/memory.hpp>
 #include <graphics/texture.hpp>
-#include <graphics/utils/ring_buffer.hpp>
+#include <graphics/utils/trotator.hpp>
 
 namespace le::graphics {
 class ShaderBuffer;
@@ -19,7 +19,7 @@ struct SetLayoutData {
 
 struct SetPoolsData {
 	std::vector<SetLayoutData> sets;
-	Buffering buffering = 2_B;
+	Buffering buffering = Buffering::eDouble;
 };
 
 static constexpr std::size_t max_bindings_v = 16;
@@ -75,10 +75,10 @@ class DescriptorSet {
 	};
 	struct Storage {
 		SetBindingData bindingData[max_bindings_v];
-		RingBuffer<Set> sets;
+		TRotator<Set> sets;
 		vk::DescriptorSetLayout layout;
 		u32 setNumber = 0;
-		Buffering buffering = 1_B;
+		Buffering buffering{};
 	} m_storage;
 	not_null<VRAM*> m_vram;
 
@@ -88,7 +88,7 @@ class DescriptorSet {
 struct DescriptorSet::CreateInfo {
 	vk::DescriptorSetLayout layout;
 	Span<SetBindingData const> bindingData;
-	Buffering buffering = 2_B;
+	Buffering buffering = Buffering::eDouble;
 	u32 setNumber = 0;
 };
 

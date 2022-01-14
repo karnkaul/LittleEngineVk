@@ -80,11 +80,11 @@ Surface::Surface(not_null<VRAM*> vram, Extent2D fbSize, std::optional<VSync> vsy
 Surface::~Surface() { m_vram->m_device->waitIdle(); }
 
 bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
-	m_retired = std::exchange(m_storage, Storage());
+	auto retired = std::exchange(m_storage.swapchain, Swapchain());
 	auto const pd = m_vram->m_device->physicalDevice().device;
 	m_vsyncs = availableVsyncs(pd, *m_surface);
 	m_storage.format.vsync = bestVSync(m_vsyncs, vsync);
-	m_createInfo.oldSwapchain = m_retired.swapchain ? *m_retired.swapchain : vk::SwapchainKHR();
+	m_createInfo.oldSwapchain = retired.swapchain ? *retired.swapchain : vk::SwapchainKHR();
 	m_createInfo.presentMode = g_modes[m_storage.format.vsync];
 	m_createInfo.imageArrayLayers = 1U;
 	m_createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
@@ -108,28 +108,31 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	auto const ret = m_vram->m_device->device().createSwapchainKHR(&m_createInfo, nullptr, &swapchain) == vk::Result::eSuccess;
 	auto const extent = cast(m_storage.info.extent);
 	if (ret) {
-		m_storage.swapchain = vk::UniqueSwapchainKHR(swapchain, m_vram->m_device->device());
-		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain);
+		m_storage.swapchain.swapchain = vk::UniqueSwapchainKHR(swapchain, m_vram->m_device->device());
+		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain.swapchain);
+		m_storage.images.clear();
 		for (auto const image : images) {
-			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
-			m_storage.images.push_back(RenderTarget{{image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat}});
+			m_storage.swapchain.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
+			m_storage.images.push_back(RenderTarget{{image, *m_storage.swapchain.imageViews.back(), extent, m_createInfo.imageFormat}});
 		}
 		m_storage.blitFlags = bf;
+		m_retired = std::move(retired);
 	} else {
-		m_storage = std::exchange(m_retired, Storage());
+		m_storage.swapchain = std::exchange(retired, Swapchain());
 	}
 	return ret;
 }
 
 std::optional<Surface::Acquire> Surface::acquireNextImage(Extent2D fbSize, vk::Semaphore signal) {
 	std::uint32_t idx{};
-	auto const result = m_vram->m_device->device().acquireNextImageKHR(*m_storage.swapchain, maths::max<u64>(), signal, {}, &idx);
+	auto const result = m_vram->m_device->device().acquireNextImageKHR(*m_storage.swapchain.swapchain, maths::max<u64>(), signal, {}, &idx);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
 		makeSwapchain(fbSize, format().vsync);
 		return std::nullopt;
 	}
 	auto const i = std::size_t(idx);
 	assert(i < m_storage.images.size());
+	m_storage.lastDrawn = m_storage.images[i];
 	return Acquire{m_storage.images[i], idx};
 }
 
@@ -146,19 +149,16 @@ vk::Result Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) 
 	return m_vram->m_device->queues().graphics().submit(submitInfo, sync.fsignal);
 }
 
-bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
+vk::Result Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
 	vk::PresentInfoKHR info;
 	info.waitSemaphoreCount = 1;
 	info.pWaitSemaphores = &wait;
 	info.swapchainCount = 1;
-	info.pSwapchains = &*m_storage.swapchain;
+	info.pSwapchains = &*m_storage.swapchain.swapchain;
 	info.pImageIndices = &acquired.index;
-	auto const result = m_vram->m_device->queues().graphics().present(info);
-	if (result != vk::Result::eSuccess) {
-		makeSwapchain(fbSize, format().vsync);
-		return false;
-	}
-	return true;
+	auto const ret = m_vram->m_device->queues().graphics().present(info);
+	if (outOfDate(ret)) { makeSwapchain(fbSize, format().vsync); }
+	return ret;
 }
 
 Surface::Info Surface::makeInfo(Extent2D extent) const {

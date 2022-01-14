@@ -25,9 +25,9 @@ target_compile_options(glm INTERFACE
   $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
 )
 if(LEVK_INSTALL)
-  install(DIRECTORY glm
+  install(DIRECTORY glm/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hpp"
+    FILES_MATCHING PATTERN "*.h*" PATTERN "*.inl"
   )
 endif()
 

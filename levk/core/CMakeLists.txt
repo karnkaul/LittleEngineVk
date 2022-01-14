@@ -47,4 +47,8 @@ if(LEVK_INSTALL)
     NAMESPACE levk::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/levk
   )
+  install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+  )
 endif()

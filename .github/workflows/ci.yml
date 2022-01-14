@@ -27,8 +27,8 @@ jobs:
       - name: init
         run: choco install ninja
       - name: configure
-        run: cp cmake/CMakePresets.json . && cmake -S . --preset=vs19 -DCI_BUILD=ON -B build
+        run: cp cmake/CMakePresets.json . && cmake -S . --preset=levk-rl -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_RC_COMPILER=llvm-rc -DCI_BUILD=ON -B build
       - name: build
-        run: cmake --build build --config=Release
+        run: cmake --build build
       - name: test
-        run: cd build && ctest --config=Release
+        run: cd build && ctest

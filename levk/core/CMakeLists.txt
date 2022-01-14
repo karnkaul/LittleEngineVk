@@ -39,3 +39,12 @@ if(LEVK_USE_PCH)
   )
   target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
 endif()
+
+if(LEVK_INSTALL)
+  install(TARGETS levk-core EXPORT levk-core-targets)
+  install(EXPORT levk-core-targets
+    FILE levk-core-targets.cmake
+    NAMESPACE levk::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/levk
+  )
+endif()

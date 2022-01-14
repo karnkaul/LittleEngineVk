@@ -1,4 +1,5 @@
-# external
+set(optional_exports "")
+
 set(PHYSFS_BUILD_STATIC ON)
 set(PHYSFS_BUILD_SHARED OFF)
 set(PHYSFS_BUILD_DOCS OFF)
@@ -13,9 +14,9 @@ set(PHYSFS_ARCHIVE_WAD OFF)
 set(PHYSFS_ARCHIVE_ZIP ON)
 set(PHYSFS_BUILD_TEST OFF)
 add_subdirectory(physfs)
-target_include_directories(physfs-static SYSTEM INTERFACE 
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/physfs/src>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}
+target_include_directories(physfs-static SYSTEM INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/physfs/src>"
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 add_subdirectory(glm)
@@ -23,6 +24,12 @@ target_compile_options(glm INTERFACE
   $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-Wno-volatile> 
   $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
 )
+if(LEVK_INSTALL)
+  install(DIRECTORY glm
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+  )
+endif()
 
 if(LEVK_USE_GLFW)
   set(GLFW_VULKAN_STATIC OFF)
@@ -40,13 +47,12 @@ if(LEVK_USE_GLFW)
 endif()
 
 add_subdirectory(vma)
-
 add_subdirectory(stb)
-
 add_subdirectory(tinyobjloader)
 
 if(LEVK_USE_IMGUI)
   add_subdirectory(dear_imgui)
+  list(APPEND optional_exports dear-imgui)
 endif()
 
 set(SPIRV_CROSS_CLI OFF)
@@ -64,9 +70,21 @@ add_subdirectory(spirv_cross)
 if(LINUX_CLANG OR LINUX_GCC OR WINDOWS_CLANG OR WINDOWS_GCC)
   target_compile_options(spirv-cross-core PRIVATE -w)
   target_compile_options(spirv-cross-glsl PRIVATE -w)
-  target_include_directories(spirv-cross-glsl SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/spirv_cross>)
+  target_include_directories(spirv-cross-glsl SYSTEM INTERFACE 
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/spirv_cross>"
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
 elseif(PLATFORM STREQUAL Win64)
   target_compile_definitions(spirv-cross-core PUBLIC _CRT_SECURE_NO_WARNINGS NO_MIN_MAX)
 endif()
 
 add_subdirectory(freetype)
+
+if(LEVK_INSTALL)
+  install(TARGETS vma stb-image tinyobjloader physfs-static glm ${optional_exports} EXPORT levk-ext-targets)
+  install(EXPORT levk-ext-targets
+    FILE levk-ext-targets.cmake
+    NAMESPACE levk::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/levk
+  )
+endif()

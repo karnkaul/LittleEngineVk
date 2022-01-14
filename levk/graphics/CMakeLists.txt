@@ -17,7 +17,7 @@ target_link_libraries(${PROJECT_NAME}
     vma
     levk::levk-core
   PRIVATE
-    levk::compile-options
+    levk::levk-compile-options
     stb-image
     tinyobjloader
     freetype

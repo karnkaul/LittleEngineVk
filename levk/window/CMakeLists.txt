@@ -17,7 +17,7 @@ target_link_libraries(${PROJECT_NAME}
     levk::levk-core
     $<$<BOOL:${LEVK_USE_GLFW}>:glfw>
   PRIVATE
-    levk::compile-options
+    levk::levk-compile-options
 )
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW LEVK_DESKTOP>)
 

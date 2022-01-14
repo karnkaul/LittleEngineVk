@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 add_library(levk-test INTERFACE)
-target_link_libraries(levk-test INTERFACE levk::compile-options levk::interface::exe)
+target_link_libraries(levk-test INTERFACE levk::levk-compile-options levk::levk-link-options)
 
 # Hash
 add_executable(test-hash hash_test.cpp)

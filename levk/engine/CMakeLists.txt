@@ -22,11 +22,10 @@ target_link_libraries(${target_name}
     djson::djson
     dtasks::dtasks
     clap::clap
-    levk::interface
     dens::dens
 
   PRIVATE
-    levk::compile-options
+    levk::levk-compile-options
     stb-image
     tinyobjloader
 )

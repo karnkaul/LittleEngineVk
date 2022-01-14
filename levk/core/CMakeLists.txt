@@ -21,9 +21,9 @@ target_link_libraries(${PROJECT_NAME}
     dlog::dlog
     dtasks::dtasks
     djson::djson
-    levk::interface
+    levk::levk-build-interface
   PRIVATE
-    levk::compile-options
+    levk::levk-compile-options
     physfs-static
 )
 include(core_includes.cmake)

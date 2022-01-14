@@ -96,9 +96,6 @@ if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
   endif()
 endif()
 
-# interface
-add_subdirectory(cmake/interface)
-
 # header text
 set(build_config ${CMAKE_BUILD_TYPE})
 if(CMAKE_CONFIGURATION_TYPES)
@@ -180,10 +177,16 @@ export(EXPORT clap-targets
 )
 
 # components
+add_subdirectory(levk/build_interface)
 add_subdirectory(levk/core)
 add_subdirectory(levk/window)
 add_subdirectory(levk/graphics)
 add_subdirectory(levk/engine)
+
+export(EXPORT levk-build-interface-targets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/levk-build-interface-targets.cmake"
+  NAMESPACE levk::
+)
 
 # demo
 if(LEVK_BUILD_DEMO)

@@ -20,7 +20,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/imstb_truetype.h
 )
 target_source_group(TARGET ${PROJECT_NAME})
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(levk::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC 
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>

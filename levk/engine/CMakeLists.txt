@@ -15,11 +15,10 @@ target_include_directories(${target_name} PRIVATE
 )
 target_link_libraries(${target_name}
   PUBLIC
-    $<$<BOOL:${LEVK_USE_IMGUI}>:dear-imgui::dear-imgui>
+    $<$<BOOL:${LEVK_USE_IMGUI}>:levk::dear-imgui>
     levk::levk-graphics
     levk::levk-window
     levk::levk-core
-    djson::djson
     dtasks::dtasks
     clap::clap
     dens::dens
@@ -41,3 +40,16 @@ file(GLOB_RECURSE levk_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sr
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${levk_includes} ${levk_sources})
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${version_file})
 target_sources(${target_name} PRIVATE ${levk_includes} ${levk_sources} ${version_file})
+
+if(LEVK_INSTALL)
+  install(TARGETS levk-engine EXPORT levk-engine-targets)
+  install(EXPORT levk-engine-targets
+    FILE levk-engine-targets.cmake
+    NAMESPACE levk::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/levk
+  )
+  install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+  )
+endif()

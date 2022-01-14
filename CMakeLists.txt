@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
+set(CMAKE_DEBUG_POSTFIX -d)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# don't let OPTION erase above non-cache variables
 set(CMAKE_POLICY_DEFAULT_CMP0076 NEW)	# relative target_sources
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
@@ -28,7 +29,19 @@ include(CheckPIESupported)
 check_pie_supported()
 include(FetchContent)
 include(cmake/platform.cmake)
-include(cmake/utils.cmake)
+
+# cmake-utils
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+FetchContent_Declare(
+  cmake-utils
+  GIT_REPOSITORY https://github.com/karnkaul/cmake-utils
+  GIT_TAG v1.0.1
+  GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(cmake-utils)
+FetchContent_GetProperties(cmake-utils)
+include("${cmake-utils_SOURCE_DIR}/cmake-utils.cmake")
 
 if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   message(WARNING "Unsupported architecture, must be 64-bit")
@@ -66,14 +79,25 @@ if(LEVK_INSTALL)
     message(WARNING "Invalid INSTALL flags")
   endif()
 endif()
+if(GCC_RUNTIME)
+  option(LEVK_DEBUG_STDLIB OFF)
+endif()
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
   option(LEVK_ASAN "Enable ASAN" OFF)
   option(LEVK_UBSAN "Enable UBSAN" OFF)
 endif()
 
+set(non_portable_build OFF)
+if(LEVK_ASAN OR LEVK_UBSAN OR "${LEVK_DEBUG_STDLIB}")
+  set(non_portable_build ON)
+endif()
+if(non_portable_build AND LEVK_INSTALL)
+  message(FATAL_ERROR "Cannot have LEVK_INSTALL set with ASan/UBSan/Debug stdlib/etc")
+endif()
+
 # debug libstdc++
-if(is_root_project AND GCC_RUNTIME AND "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT LEVK_ASAN AND NOT LEVK_UBSAN)
+if(LEVK_DEBUG_STDLIB)
   add_definitions(-D_GLIBCXX_DEBUG)
 endif()
 
@@ -170,11 +194,13 @@ add_subdirectory(libs/dtasks)
 set(DENS_BUILD_TESTS ON)
 add_subdirectory(libs/dens)
 add_subdirectory(libs/clap)
-# export clap targets for tools projects to find
-export(EXPORT clap-targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
-  NAMESPACE clap::
-)
+if(CLAP_INSTALL)
+  # export clap targets for tools projects to find
+  export(EXPORT clap-targets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
+    NAMESPACE clap::
+  )
+endif()
 
 # components
 add_subdirectory(levk/build_interface)
@@ -183,10 +209,26 @@ add_subdirectory(levk/window)
 add_subdirectory(levk/graphics)
 add_subdirectory(levk/engine)
 
-export(EXPORT levk-build-interface-targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/levk-build-interface-targets.cmake"
-  NAMESPACE levk::
-)
+if(LEVK_INSTALL)
+  set(package_name levk)
+  # generate the version file for the config file
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+    VERSION "${build_version}"
+    COMPATIBILITY AnyNewerVersion
+  )
+  # create config file
+  configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+  )
+  # install config files
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+  )
+endif()
 
 # demo
 if(LEVK_BUILD_DEMO)

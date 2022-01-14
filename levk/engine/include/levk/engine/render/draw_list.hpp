@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <levk/engine/render/drawable.hpp>
+#include <levk/graphics/render/pipeline.hpp>
 #include <vector>
 
 namespace le {

@@ -1,8 +1,8 @@
 #pragma once
-#include <graphics/mesh_primitive.hpp>
 #include <ktl/either.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 
 namespace le {
 namespace graphics {

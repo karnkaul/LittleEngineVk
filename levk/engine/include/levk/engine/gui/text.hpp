@@ -1,7 +1,7 @@
 #pragma once
-#include <graphics/mesh_primitive.hpp>
 #include <levk/engine/gui/tree.hpp>
 #include <levk/engine/render/text_mesh.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 
 namespace le::gui {
 class Text : public TreeNode {

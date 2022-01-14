@@ -2,7 +2,7 @@
 #include <core/maths.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/fixed_vector.hpp>
-#include <window/types.hpp>
+#include <levk/window/types.hpp>
 
 namespace le::window {
 class Instance;

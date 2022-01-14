@@ -1,6 +1,4 @@
 #include <core/services.hpp>
-#include <graphics/mesh_primitive.hpp>
-#include <graphics/render/camera.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/ecs/systems/gui_system.hpp>
 #include <levk/engine/ecs/systems/physics_system.hpp>
@@ -11,6 +9,8 @@
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/scene_registry.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
+#include <levk/graphics/render/camera.hpp>
 
 namespace le {
 namespace {

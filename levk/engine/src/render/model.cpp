@@ -4,11 +4,11 @@
 #include <core/utils/expect.hpp>
 #include <dumb_json/json.hpp>
 #include <glm/gtx/hash.hpp>
-#include <graphics/mesh_primitive.hpp>
-#include <graphics/texture.hpp>
-#include <graphics/utils/utils.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/render/model.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
+#include <levk/graphics/texture.hpp>
+#include <levk/graphics/utils/utils.hpp>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>

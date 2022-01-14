@@ -1,8 +1,8 @@
 #include <core/services.hpp>
 #include <core/utils/enumerate.hpp>
-#include <graphics/font/font.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/gui/widgets/input_field.hpp>
+#include <levk/graphics/font/font.hpp>
 
 namespace le::gui {
 InputField::InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI, Hash style)

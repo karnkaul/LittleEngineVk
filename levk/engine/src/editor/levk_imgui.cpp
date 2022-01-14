@@ -11,9 +11,9 @@
 #include <core/log.hpp>
 #include <core/utils/error.hpp>
 #include <glm/common.hpp>
-#include <graphics/command_buffer.hpp>
-#include <graphics/render/context.hpp>
-#include <window/glue.hpp>
+#include <levk/graphics/command_buffer.hpp>
+#include <levk/graphics/render/context.hpp>
+#include <levk/window/glue.hpp>
 #endif
 
 namespace le {

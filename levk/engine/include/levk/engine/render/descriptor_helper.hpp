@@ -1,6 +1,6 @@
 #pragma once
-#include <graphics/command_buffer.hpp>
-#include <graphics/render/descriptor_set.hpp>
+#include <levk/graphics/command_buffer.hpp>
+#include <levk/graphics/render/descriptor_set.hpp>
 #include <map>
 
 namespace le {

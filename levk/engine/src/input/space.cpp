@@ -1,6 +1,6 @@
 #include <core/maths.hpp>
-#include <graphics/basis.hpp>
 #include <levk/engine/input/space.hpp>
+#include <levk/graphics/basis.hpp>
 
 namespace le ::input {
 Space Space::make(glm::vec2 scene, glm::uvec2 swap, glm::uvec2 win, Viewport const& view, f32 rscale) noexcept {

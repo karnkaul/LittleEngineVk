@@ -1,8 +1,8 @@
-#include <graphics/mesh_primitive.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/list_renderer.hpp>
 #include <levk/engine/scene/draw_list_gen.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 #include <unordered_set>
 
 #include <core/log.hpp>

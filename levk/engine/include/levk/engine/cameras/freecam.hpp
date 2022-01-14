@@ -1,7 +1,7 @@
 #pragma once
 #include <core/time.hpp>
-#include <graphics/render/camera.hpp>
 #include <levk/engine/input/control.hpp>
+#include <levk/graphics/render/camera.hpp>
 
 namespace le {
 namespace window {

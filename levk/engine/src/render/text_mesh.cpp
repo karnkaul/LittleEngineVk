@@ -1,5 +1,5 @@
-#include <graphics/font/font.hpp>
 #include <levk/engine/render/text_mesh.hpp>
+#include <levk/graphics/font/font.hpp>
 
 namespace le {
 TextMesh::Obj TextMesh::Obj::make(not_null<graphics::VRAM*> vram) { return Obj{{vram, graphics::MeshPrimitive::Type::eDynamic}, {}}; }

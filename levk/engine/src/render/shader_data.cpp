@@ -1,6 +1,6 @@
-#include <graphics/render/camera.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/render/shader_data.hpp>
+#include <levk/graphics/render/camera.hpp>
 
 namespace le {
 ShaderSceneView ShaderSceneView::make(graphics::Camera const& camera, glm::vec2 const extent) noexcept {

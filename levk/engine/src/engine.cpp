@@ -3,7 +3,6 @@
 #include <core/log_channel.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/error.hpp>
-#include <graphics/utils/utils.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
 #include <levk/engine/build_version.hpp>
 #include <levk/engine/editor/editor.hpp>
@@ -16,8 +15,9 @@
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
-#include <window/glue.hpp>
-#include <window/instance.hpp>
+#include <levk/graphics/utils/utils.hpp>
+#include <levk/window/glue.hpp>
+#include <levk/window/instance.hpp>
 
 namespace le {
 namespace {

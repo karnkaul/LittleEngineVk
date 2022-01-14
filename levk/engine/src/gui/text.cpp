@@ -1,7 +1,7 @@
 #include <core/services.hpp>
-#include <graphics/font/font.hpp>
 #include <levk/engine/gui/text.hpp>
 #include <levk/engine/input/space.hpp>
+#include <levk/graphics/font/font.hpp>
 
 namespace le::gui {
 Text::Text(not_null<TreeRoot*> const root, Hash const fontURI) noexcept : TreeNode(root), m_font(findFont(fontURI)), m_fontURI(fontURI), m_textMesh(m_font) {}

@@ -1,7 +1,7 @@
 #pragma once
-#include <graphics/mesh_primitive.hpp>
 #include <levk/engine/gui/tree.hpp>
 #include <levk/engine/render/material.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 
 namespace le::gui {
 class Quad : public TreeNode {

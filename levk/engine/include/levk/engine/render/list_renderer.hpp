@@ -1,9 +1,9 @@
 #pragma once
-#include <graphics/render/pipeline_factory.hpp>
-#include <graphics/render/renderer.hpp>
 #include <levk/engine/render/descriptor_helper.hpp>
 #include <levk/engine/render/draw_list.hpp>
 #include <levk/engine/render/pipeline.hpp>
+#include <levk/graphics/render/pipeline_factory.hpp>
+#include <levk/graphics/render/renderer.hpp>
 
 namespace dens {
 class registry;

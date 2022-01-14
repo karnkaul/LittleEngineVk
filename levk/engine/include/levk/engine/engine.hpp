@@ -2,12 +2,12 @@
 #include <core/services.hpp>
 #include <core/utils/profiler.hpp>
 #include <core/version.hpp>
-#include <graphics/context/bootstrap.hpp>
-#include <graphics/render/context.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/scene/space.hpp>
-#include <window/instance.hpp>
+#include <levk/graphics/context/bootstrap.hpp>
+#include <levk/graphics/render/context.hpp>
+#include <levk/window/instance.hpp>
 
 namespace le {
 namespace io {

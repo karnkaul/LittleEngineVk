@@ -1,10 +1,10 @@
 #include <core/services.hpp>
-#include <graphics/geometry.hpp>
-#include <graphics/mesh_primitive.hpp>
-#include <graphics/texture.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/skybox.hpp>
+#include <levk/graphics/geometry.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
+#include <levk/graphics/texture.hpp>
 
 namespace le {
 Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cubemap(cubemap) { ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap"); }

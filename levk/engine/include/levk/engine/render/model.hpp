@@ -1,11 +1,11 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <graphics/mesh_primitive.hpp>
-#include <graphics/texture.hpp>
 #include <ktl/expected.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
+#include <levk/graphics/texture.hpp>
 
 namespace le {
 namespace io {

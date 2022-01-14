@@ -1,8 +1,8 @@
 #include <core/utils/expect.hpp>
-#include <graphics/mesh_primitive.hpp>
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/engine/scene/asset_provider.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 
 namespace le {
 MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialURI) {

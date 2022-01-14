@@ -3,9 +3,9 @@
 #include <core/time.hpp>
 #include <core/transform.hpp>
 #include <dumb_tasks/task_queue.hpp>
-#include <graphics/geometry.hpp>
-#include <graphics/render/rgba.hpp>
 #include <levk/engine/input/space.hpp>
+#include <levk/graphics/geometry.hpp>
+#include <levk/graphics/render/rgba.hpp>
 #include <utility>
 #include <vector>
 

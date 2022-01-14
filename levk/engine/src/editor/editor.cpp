@@ -2,9 +2,6 @@
 #include <core/services.hpp>
 #include <editor/levk_imgui.hpp>
 #include <editor/sudo.hpp>
-#include <graphics/context/bootstrap.hpp>
-#include <graphics/geometry.hpp>
-#include <graphics/render/renderer.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/inspector.hpp>
@@ -17,6 +14,9 @@
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/engine/render/skybox.hpp>
 #include <levk/engine/scene/asset_provider.hpp>
+#include <levk/graphics/context/bootstrap.hpp>
+#include <levk/graphics/geometry.hpp>
+#include <levk/graphics/render/renderer.hpp>
 
 #define MU [[maybe_unused]]
 

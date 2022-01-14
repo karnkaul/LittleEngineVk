@@ -1,8 +1,8 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
-#include <graphics/texture.hpp>
-#include <graphics/utils/defer.hpp>
+#include <levk/graphics/texture.hpp>
+#include <levk/graphics/utils/defer.hpp>
 #include <cstdint>
 
 #if defined(LEVK_USE_IMGUI)

@@ -3,9 +3,6 @@
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
 #include <dumb_tasks/scheduler.hpp>
-#include <graphics/common.hpp>
-#include <graphics/render/shader_buffer.hpp>
-#include <graphics/utils/utils.hpp>
 #include <levk/engine/assets/asset_list.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/editor/inspector.hpp>
@@ -13,6 +10,9 @@
 #include <levk/engine/input/control.hpp>
 #include <levk/engine/render/model.hpp>
 #include <levk/engine/scene/scene_node.hpp>
+#include <levk/graphics/common.hpp>
+#include <levk/graphics/render/shader_buffer.hpp>
+#include <levk/graphics/utils/utils.hpp>
 #include <fstream>
 
 #include <levk/engine/editor/editor.hpp>
@@ -34,13 +34,13 @@
 
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
-#include <graphics/font/font.hpp>
-#include <graphics/utils/instant_command.hpp>
 #include <ktl/async/kasync.hpp>
 #include <levk/engine/gui/widgets/input_field.hpp>
 #include <levk/engine/input/text_cursor.hpp>
 #include <levk/engine/render/quad_emitter.hpp>
 #include <levk/engine/render/text_mesh.hpp>
+#include <levk/graphics/font/font.hpp>
+#include <levk/graphics/utils/instant_command.hpp>
 
 #include <levk/engine/ecs/components/spring_arm.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>

@@ -1,8 +1,8 @@
 #pragma once
 #include <core/std_types.hpp>
 #include <glm/vec2.hpp>
-#include <graphics/screen_rect.hpp>
 #include <levk/engine/render/flex.hpp>
+#include <levk/graphics/screen_rect.hpp>
 #include <algorithm>
 
 namespace le {

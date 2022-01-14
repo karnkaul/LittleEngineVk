@@ -1,5 +1,5 @@
 #pragma once
-#include <graphics/render/pipeline_flags.hpp>
+#include <levk/graphics/render/pipeline_flags.hpp>
 
 namespace le {
 enum class PolygonMode { eFill, eLine, ePoint, eCOUNT_ };

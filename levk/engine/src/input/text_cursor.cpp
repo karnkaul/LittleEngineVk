@@ -1,6 +1,6 @@
-#include <graphics/font/font.hpp>
 #include <levk/engine/input/state.hpp>
 #include <levk/engine/input/text_cursor.hpp>
+#include <levk/graphics/font/font.hpp>
 
 namespace le::input {
 TextCursor2::TextCursor2(not_null<Font*> font, Flags flags) : m_flags(flags), m_primitive(font->m_vram), m_font(font) { refresh(); }

@@ -3,12 +3,12 @@
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/utils/vbase.hpp>
-#include <graphics/basis.hpp>
-#include <graphics/draw_view.hpp>
 #include <levk/engine/gui/rect.hpp>
 #include <levk/engine/render/flex.hpp>
 #include <levk/engine/scene/mesh_view.hpp>
 #include <levk/engine/utils/owner.hpp>
+#include <levk/graphics/basis.hpp>
+#include <levk/graphics/draw_view.hpp>
 #include <optional>
 
 namespace le {

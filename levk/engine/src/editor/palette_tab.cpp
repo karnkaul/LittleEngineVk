@@ -1,6 +1,9 @@
-#include <imgui.h>
 #include <levk/engine/editor/palette_tab.hpp>
 #include <algorithm>
+
+#if defined(LEVK_USE_IMGUI)
+#include <imgui.h>
+#endif
 
 namespace le::edi {
 bool PaletteTab::detach(std::string_view id) {

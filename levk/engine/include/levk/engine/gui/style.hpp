@@ -2,9 +2,9 @@
 #include <core/hash.hpp>
 #include <core/utils/error.hpp>
 #include <glm/vec2.hpp>
-#include <graphics/render/rgba.hpp>
 #include <levk/engine/gui/interact.hpp>
 #include <levk/engine/render/material.hpp>
+#include <levk/graphics/render/rgba.hpp>
 #include <unordered_map>
 
 namespace le::gui {

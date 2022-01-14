@@ -3,7 +3,7 @@
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/space.hpp>
 #include <levk/engine/render/viewport.hpp>
-#include <window/instance.hpp>
+#include <levk/window/instance.hpp>
 
 namespace le::input {
 void Driver::KeyQueue::insert(KeyEvent event) noexcept {

@@ -1,6 +1,6 @@
 #pragma once
 #include <levk/engine/input/frame.hpp>
-#include <window/event_queue.hpp>
+#include <levk/window/event_queue.hpp>
 #include <memory>
 
 namespace le {

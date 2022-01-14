@@ -1,8 +1,11 @@
-#include <imgui.h>
 #include <core/array_map.hpp>
 #include <core/maths.hpp>
 #include <levk/engine/editor/resizer.hpp>
-#include <window/instance.hpp>
+#include <levk/window/instance.hpp>
+
+#if defined(LEVK_USE_IMGUI)
+#include <imgui.h>
+#endif
 
 namespace le::edi {
 using Key = window::Key;

@@ -1,11 +1,11 @@
 #include <core/log_channel.hpp>
-#include <graphics/context/bootstrap.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 #include <ktl/stack_string.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/skybox.hpp>
+#include <levk/graphics/context/bootstrap.hpp>
 
 namespace le {
 std::size_t AssetManifest::preload(dj::json const& root) {

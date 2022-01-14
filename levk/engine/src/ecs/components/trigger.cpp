@@ -1,9 +1,9 @@
 #include <core/services.hpp>
 #include <core/transform.hpp>
 #include <dens/registry.hpp>
-#include <graphics/mesh_primitive.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>
+#include <levk/graphics/mesh_primitive.hpp>
 
 namespace le::physics {
 namespace {

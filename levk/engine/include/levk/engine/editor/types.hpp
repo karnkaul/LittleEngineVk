@@ -5,13 +5,13 @@
 #include <core/utils/error.hpp>
 #include <core/utils/string.hpp>
 #include <dens/registry.hpp>
-#include <graphics/render/rgba.hpp>
 #include <ktl/async/kfunction.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/n_tree.hpp>
 #include <ktl/stack_string.hpp>
 #include <levk/engine/editor/scene_ref.hpp>
 #include <levk/engine/scene/scene_node.hpp>
+#include <levk/graphics/render/rgba.hpp>
 #include <optional>
 #include <string>
 

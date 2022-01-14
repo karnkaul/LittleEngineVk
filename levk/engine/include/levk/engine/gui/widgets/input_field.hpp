@@ -1,8 +1,8 @@
 #pragma once
-#include <graphics/font/font.hpp>
 #include <levk/engine/gui/widget.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/input/text_cursor.hpp>
+#include <levk/graphics/font/font.hpp>
 
 namespace le::gui {
 class InputField : public Widget, public input::Receiver {

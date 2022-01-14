@@ -1,6 +1,3 @@
-# dyvk
-add_subdirectory(dyvk)
-
 # external
 set(PHYSFS_BUILD_STATIC ON)
 set(PHYSFS_BUILD_SHARED OFF)

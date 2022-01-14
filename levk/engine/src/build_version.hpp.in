@@ -1,0 +1,9 @@
+#pragma once
+#include <core/version.hpp>
+#include <string_view>
+
+namespace le {
+inline constexpr Version g_engineVersion = Version(@PROJECT_VERSION_MAJOR@, @PROJECT_VERSION_MINOR@, @PROJECT_VERSION_PATCH@, @PROJECT_VERSION_TWEAK@);
+inline constexpr std::string_view g_commitHash = "@LEVK_GIT_COMMIT_HASH@";
+inline constexpr std::string_view g_buildVersion = "@build_version@-@LEVK_GIT_COMMIT_HASH@";
+} // namespace le

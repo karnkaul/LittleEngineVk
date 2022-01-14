@@ -41,6 +41,6 @@
 	url = https://gitlab.freedesktop.org/freetype/freetype.git
 	shallow = true
 [submodule "ext/dyvk"]
-	path = ext/dyvk
+	path = libs/dyvk
 	url = https://github.com/karnkaul/dyvk
 	shallow = true

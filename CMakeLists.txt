@@ -6,9 +6,11 @@ set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(target_name levk-engine)
-set(LEVK_VERSION 0.0.9.0 CACHE STRING "Application Version" FORCE)
-project(LittleEngineVk VERSION ${LEVK_VERSION})
+# build version
+include(cmake/build_version.cmake)
+
+# project parameters
+project(LittleEngineVk VERSION ${build_version})
 
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
   message(FATAL_ERROR "In-source builds are not supported; choose a subdirectory like `out/*` or `build/*` for CMake output")
@@ -32,7 +34,7 @@ if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   message(WARNING "Unsupported architecture, must be 64-bit")
 endif()
 
-if(${LEVK_VERSION} VERSION_LESS 1.0)
+if(${build_version} VERSION_LESS 1.0)
   set(LEVK_PRE_RELEASE ON)
 else()
   set(LEVK_PRE_RELEASE OFF)
@@ -109,6 +111,9 @@ if(CI_BUILD)
   message(STATUS "== CI Build ==")
 endif()
 
+# dyvk
+add_subdirectory(libs/dyvk)
+
 # ext
 add_subdirectory(ext)
 
@@ -179,46 +184,7 @@ export(EXPORT clap-targets
 )
 
 # engine
-set(levk_generated "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/build_version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
-file(GLOB_RECURSE levk_includes CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")
-file(GLOB_RECURSE levk_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${levk_includes} ${levk_sources})
-source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${levk_generated})
-add_library(${target_name} ${LEVK_LIBRARY_TYPE} ${levk_includes} ${levk_sources} ${levk_generated})
-add_library(levk::engine ALIAS ${target_name})
-target_compile_definitions(${target_name} PUBLIC $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
-target_include_directories(${target_name} SYSTEM
-  INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/src/generated"
-)
-target_include_directories(${target_name}
-  PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/src/generated"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-target_link_libraries(${target_name}
-  PUBLIC
-    levk::imgui
-    levk::graphics
-    levk::window
-    levk::core
-    djson::djson
-    dtasks::dtasks
-    clap::clap
-    levk::interface
-    dens::dens
-
-  PRIVATE
-    levk::compile-options
-    stb-image
-    tinyobjloader
-)
-if(LEVK_USE_PCH)
-  target_precompile_headers(${target_name} REUSE_FROM levk-graphics)
-endif()
+add_subdirectory(levk/engine)
 
 # demo
 if(LEVK_BUILD_DEMO)

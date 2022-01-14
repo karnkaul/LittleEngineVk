@@ -3,7 +3,7 @@
 #include <core/log.hpp>
 #include <core/utils/execute.hpp>
 #include <demo.hpp>
-#include <engine/utils/env.hpp>
+#include <levk/engine/utils/env.hpp>
 
 int main(int argc, char const* const argv[]) {
 	using namespace le;

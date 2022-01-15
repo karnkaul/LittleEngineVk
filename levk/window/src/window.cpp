@@ -61,7 +61,7 @@ Window::Window(Window&&) noexcept = default;
 Window& Window::operator=(Window&&) noexcept = default;
 Window::~Window() noexcept = default;
 Window::Window(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}
-std::vector<Event> Window::pollEvents() { return m_impl->pollEvents(); }
+Span<Event const> Window::pollEvents() { return m_impl->pollEvents(); }
 bool Window::show() { return m_impl->show(); }
 bool Window::hide() { return m_impl->hide(); }
 bool Window::visible() const noexcept { return m_impl->visible(); }

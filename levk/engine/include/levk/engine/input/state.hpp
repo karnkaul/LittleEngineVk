@@ -16,7 +16,7 @@ struct State {
 	Span<u32 const> codepoints;
 	KeyDB const* keyDB{};
 	Focus focus = Focus::eUnchanged;
-	bool suspended = false;
+	bool iconified = false;
 
 	static Mods const* getMods(std::optional<Mods> const& m) noexcept { return m ? &*m : nullptr; }
 	Mods const* mods(Key key, Action action) const noexcept { return keyDB ? getMods(keyDB->mods[key][action]) : nullptr; }

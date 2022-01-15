@@ -11,33 +11,33 @@ namespace le::input {
 using Event = window::Event;
 using EventQueue = std::vector<Event>;
 
-// Calls parser(Event const&, State&) and expects it to return true on consuming event
-template <typename Parser>
-EventQueue parse(Parser& parser, Span<Event const> in, State& out);
+struct EventParser {
+	Opt<EventParser> next{};
+	virtual bool operator()(Event const& event) = 0;
+};
 
 class Driver {
   public:
 	struct In {
-		std::vector<Event> queue;
+		Span<Event const> events;
 		struct {
 			glm::uvec2 swapchain{};
 			glm::vec2 scene{};
 		} size;
 		f32 renderScale = 1.0f;
 		Window const* win{};
+		EventParser* customParser{};
 	};
-	struct Out {
-		Frame frame;
-		std::vector<Event> residue;
-	};
+
+	static void parse(Span<Event const> events, EventParser& parser);
 
 	Driver();
 
-	Out update(In in, Viewport const& view, bool consume = true);
-
-	bool operator()(Event const& event, State& out_state);
+	Frame update(In const& in, Viewport const& view);
 
   private:
+	struct Parser;
+
 	struct KeyQueue {
 		ktl::fixed_vector<KeyEvent, 16> keys;
 
@@ -52,21 +52,10 @@ class Driver {
 
 	struct {
 		glm::vec2 cursor = {};
-		bool suspended = false;
+		bool iconified = false;
 	} m_persistent;
 
 	KeyQueue m_keyQueue;
 	std::unique_ptr<KeyDB> m_keyDB; // 4K bytes, hence on heap
 };
-
-// impl
-
-template <typename Parser>
-std::vector<Event> parse(Parser& parser, Span<Event const> in, State& out) {
-	std::vector<Event> ret;
-	for (auto const& event : in) {
-		if (!parser(event, out)) { ret.push_back(event); }
-	}
-	return ret;
-}
 } // namespace le::input

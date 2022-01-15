@@ -56,7 +56,7 @@ class Engine {
 
 	bool bootReady() const noexcept;
 
-	input::Driver::Out poll(bool consume);
+	void poll(Opt<input::EventParser> custom = {});
 	void pushReceiver(not_null<input::Receiver*> context);
 	input::Receiver::Store& receiverStore() noexcept;
 	void update(gui::ViewStack& out_stack);

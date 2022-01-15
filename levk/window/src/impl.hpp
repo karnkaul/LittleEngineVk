@@ -56,7 +56,7 @@ class Window::Impl {
 	~Impl() noexcept;
 #endif
 
-	std::vector<Event> pollEvents();
+	Span<Event const> pollEvents();
 	bool show();
 	bool hide();
 	bool visible() const noexcept;

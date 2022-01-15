@@ -52,18 +52,6 @@ using RGBA = graphics::RGBA;
 enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
-static void poll(Flags& out_flags, input::EventQueue const& queue) {
-	for (auto const& event : queue) {
-		switch (event.type()) {
-		case window::Event::Type::eClosed: {
-			out_flags.set(Flag::eClosed);
-			break;
-		}
-		default: break;
-		}
-	}
-}
-
 using namespace dts;
 
 using namespace std::chrono;
@@ -764,6 +752,18 @@ bool run(io::Media const& media) {
 	Engine::Boot::CreateInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
 	bootInfo.device.validationLogLevel = LogLevel::info;
+	struct Poll : input::EventParser {
+		Flags* flags{};
+		bool operator()(input::Event const& event) override {
+			if (event.type() == input::Event::Type::eClosed) {
+				flags->set(Flag::eClosed);
+				return true;
+			}
+			return false;
+		}
+	};
+	Poll poll;
+	poll.flags = &flags;
 	do {
 		engine.boot(bootInfo);
 		App app(&engine);
@@ -772,7 +772,7 @@ bool run(io::Media const& media) {
 		ktl::kasync async;
 		while (!engine.closing()) {
 			if (!engine.nextFrame()) { continue; }
-			poll(flags, engine.poll(true).residue);
+			engine.poll(&poll);
 			if (flags.test(Flag::eClosed)) {
 				reboot = false;
 				break;

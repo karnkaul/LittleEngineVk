@@ -123,6 +123,7 @@ Window::Impl::Impl(not_null<Manager::Impl*> manager, UniqueGlfwWin win) : m_win(
 		glfwSetCharCallback(*m_win, &onText);
 		glfwSetDropCallback(*m_win, &onFileDrop);
 		g_impls.emplace(*m_win, this);
+		m_events.reserve(64);
 	}
 }
 
@@ -145,12 +146,13 @@ Window::Impl::~Impl() noexcept {
 	}
 }
 
-std::vector<Event> Window::Impl::pollEvents() {
+Span<Event const> Window::Impl::pollEvents() {
 #if defined(LEVK_USE_GLFW)
+	m_events.clear();
 	m_eventStorage.drops.clear();
 	glfwPollEvents();
 #endif
-	return std::move(m_events);
+	return m_events;
 }
 
 bool Window::Impl::show() {

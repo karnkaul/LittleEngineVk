@@ -54,7 +54,7 @@ class Window {
 	Window& operator=(Window&&) noexcept;
 	~Window() noexcept;
 
-	std::vector<Event> pollEvents();
+	Span<Event const> pollEvents();
 	bool show();
 	bool hide();
 	bool visible() const noexcept;

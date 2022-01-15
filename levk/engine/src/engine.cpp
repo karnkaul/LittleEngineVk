@@ -157,17 +157,15 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
-input::Driver::Out Engine::poll(bool consume) {
+void Engine::poll(Opt<input::EventParser> custom) {
 	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
-	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win};
-	auto ret = m_impl->input.update(std::move(in), editor().view(), consume);
-	m_impl->inputFrame = ret.frame;
+	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win, custom};
+	m_impl->inputFrame = m_impl->input.update(in, editor().view());
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
-		if ((*it)->block(ret.frame.state)) { break; }
+		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
 	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
-	return ret;
 }
 
 void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_impl->inputFrame); }

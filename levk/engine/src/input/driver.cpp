@@ -22,21 +22,75 @@ void Driver::KeyQueue::collapse(KeyDB& out) noexcept {
 	keys.clear();
 }
 
+struct Driver::Parser : EventParser {
+	Driver* driver{};
+	State* state{};
+
+	bool operator()(Event const& event) override {
+		EXPECT(driver && state);
+		switch (event.type()) {
+		case Event::Type::eKey: {
+			if (auto const& key = event.key(); key.key != GLFW_KEY_UNKNOWN) {
+				driver->m_keyQueue.insert({Key(key.key), Action(key.action), Mod(key.mods)});
+				return true;
+			}
+			return false;
+		}
+		case Event::Type::eMouseButton: {
+			auto const& button = event.mouseButton();
+			driver->m_keyQueue.insert({Key(button.button + int(Key::eMouseButton1)), Action(button.action), Mod(button.mods)});
+			return true;
+		}
+		case Event::Type::eCursor: {
+			driver->m_persistent.cursor = event.cursor();
+			return true;
+		}
+		case Event::Type::eScroll: {
+			state->cursor.scroll = event.scroll();
+			return true;
+		}
+		case Event::Type::eText: {
+			if (driver->m_transient.codepoints.has_space()) { driver->m_transient.codepoints.push_back(event.codepoint()); }
+			return true;
+		}
+		case Event::Type::eFocusChange: {
+			state->focus = event.focusGained() ? Focus::eGained : Focus::eLost;
+			return true;
+		}
+		case Event::Type::eIconify: {
+			driver->m_persistent.iconified = event.iconified();
+			return false;
+		}
+		default: return false;
+		}
+	}
+};
+
+static void recurse(Event const& event, EventParser& root) {
+	if (!root(event) && root.next) { recurse(event, *root.next); }
+}
+
+void Driver::parse(Span<Event const> events, EventParser& parser) {
+	for (auto const& event : events) { recurse(event, parser); }
+}
+
 Driver::Driver() : m_keyDB(std::make_unique<KeyDB>()) {}
 
-Driver::Out Driver::update(In in, Viewport const& view, bool consume) {
-	Out ret;
-	auto& [f, q] = ret;
-	auto& [st, sp] = f;
+Frame Driver::update(In const& in, Viewport const& view) {
+	Frame ret;
+	auto& [st, sp] = ret;
 	m_transient = {};
-	q = parse(*this, in.queue, st);
-	if (!consume) { q = in.queue; }
+	Parser parser;
+	parser.driver = this;
+	parser.state = &st;
+	parser.next = in.customParser;
+	parse(in.events, parser);
 	st.keyQueue = m_keyQueue.keys;
 	st.keyDB = m_keyDB.get();
 	m_keyQueue.collapse(*m_keyDB);
 	st.cursor.screenPos = m_persistent.cursor;
 	st.codepoints = m_transient.codepoints;
-	st.suspended = m_persistent.suspended;
+	st.iconified = m_persistent.iconified;
 	glm::vec2 wSize = {};
 	if (in.win) {
 		wSize = in.win->windowSize();
@@ -46,43 +100,5 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) {
 	sp = Space::make(in.size.scene, in.size.swapchain, wSize, view, in.renderScale);
 	st.cursor.position = sp.unproject(st.cursor.screenPos, false);
 	return ret;
-}
-
-bool Driver::operator()(Event const& event, State& out_state) {
-	switch (event.type()) {
-	case Event::Type::eKey: {
-		if (auto const& key = event.key(); key.key != GLFW_KEY_UNKNOWN) {
-			m_keyQueue.insert({Key(key.key), Action(key.action), Mod(key.mods)});
-			return true;
-		}
-		return false;
-	}
-	case Event::Type::eMouseButton: {
-		auto const& button = event.mouseButton();
-		m_keyQueue.insert({Key(button.button + int(Key::eMouseButton1)), Action(button.action), Mod(button.mods)});
-		return true;
-	}
-	case Event::Type::eCursor: {
-		m_persistent.cursor = event.cursor();
-		return true;
-	}
-	case Event::Type::eScroll: {
-		out_state.cursor.scroll = event.scroll();
-		return true;
-	}
-	case Event::Type::eText: {
-		if (m_transient.codepoints.has_space()) { m_transient.codepoints.push_back(event.codepoint()); }
-		return true;
-	}
-	case Event::Type::eFocusChange: {
-		out_state.focus = event.focusGained() ? Focus::eGained : Focus::eLost;
-		return true;
-	}
-	case Event::Type::eIconify: {
-		m_persistent.suspended = event.iconified();
-		return false;
-	}
-	default: return false;
-	}
 }
 } // namespace le::input

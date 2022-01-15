@@ -17,7 +17,7 @@
 #include <levk/engine/utils/error_handler.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 namespace le {
 namespace {
@@ -47,7 +47,7 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 	return original.save(path.generic_string(), opts);
 }
 
-graphics::Bootstrap::MakeSurface makeSurface(window::Instance const& winst) {
+graphics::Bootstrap::MakeSurface makeSurface(window::Window const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
 
@@ -61,7 +61,7 @@ graphics::RenderContext::GetSpirV getShader(AssetStore const& store) {
 
 struct Engine::Impl {
 	io::Service io;
-	window::Manager wm;
+	std::optional<window::Manager> wm;
 	std::optional<Window> win;
 	std::optional<GFX> gfx;
 	AssetStore store;
@@ -104,7 +104,9 @@ bool Engine::drawImgui(graphics::CommandBuffer cb) {
 }
 
 Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::make_unique<Impl>(std::move(info.logFile), info.logChannels)) {
-	if (!m_impl->wm.ready()) { throw std::runtime_error("Window manager not ready"); }
+	auto wm = window::Manager::make();
+	if (!wm) { throw std::runtime_error("Window manager not ready"); }
+	m_impl->wm = std::move(wm);
 	if (custom) { m_impl->store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
@@ -115,7 +117,7 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::ma
 		if (config->win.size.x > 0 && config->win.size.y > 0) { winInfo.config.size = config->win.size; }
 		winInfo.config.position = config->win.position;
 	}
-	m_impl->win = m_impl->wm.make(winInfo);
+	m_impl->win = m_impl->wm->make(winInfo);
 	if (!m_impl->win) { throw std::runtime_error("Failed to create window"); }
 	m_impl->errorHandler.deleteFile();
 	if (!m_impl->errorHandler.activeHandler()) { m_impl->errorHandler.setActive(); }
@@ -155,7 +157,7 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
-input::Driver::Out Engine::poll(bool consume) noexcept {
+input::Driver::Out Engine::poll(bool consume) {
 	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
 	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win};
 	auto ret = m_impl->input.update(std::move(in), editor().view(), consume);
@@ -215,7 +217,7 @@ input::Receiver::Store& Engine::receiverStore() noexcept { return m_impl->receiv
 input::Frame const& Engine::inputFrame() const noexcept { return m_impl->inputFrame; }
 AssetStore& Engine::store() const noexcept { return m_impl->store; }
 glm::vec2 Engine::sceneSpace() const noexcept { return m_space(m_impl->inputFrame.space); }
-window::Manager& Engine::windowManager() const noexcept { return m_impl->wm; }
+window::Manager& Engine::windowManager() const noexcept { return *m_impl->wm; }
 bool Engine::closing() const { return window().closing(); }
 
 Engine::GFX& Engine::gfx() const {

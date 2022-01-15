@@ -1,7 +1,7 @@
 #include <levk/core/maths.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/input/state.hpp>
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 namespace le {
 void FreeCam::tick(input::State const& state, Time_s dt, Window* win) {

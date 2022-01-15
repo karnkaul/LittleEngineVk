@@ -5,12 +5,12 @@
 
 namespace le {
 namespace window {
-class Instance;
+class Window;
 }
 
 class FreeCam : public graphics::Camera {
   public:
-	using Window = window::Instance;
+	using Window = window::Window;
 
 	void tick(input::State const& state, Time_s dt, Window* win = nullptr);
 

@@ -1,29 +1,31 @@
 #pragma once
 #include <levk/core/log_channel.hpp>
 #include <levk/core/std_types.hpp>
-#include <levk/window/event_queue.hpp>
+#include <levk/window/event.hpp>
 #include <memory>
 #include <optional>
 
 namespace le::window {
 struct CreateInfo;
-class Instance;
+class Window;
 
 class Manager {
   public:
-	explicit Manager();
+	Manager(Manager&&) noexcept;
+	Manager& operator=(Manager&&) noexcept;
 	~Manager() noexcept;
 
-	bool ready() const noexcept { return m_impl != nullptr; }
-	explicit operator bool() const noexcept { return ready(); }
+	static std::optional<Manager> make();
 
-	std::optional<Instance> make(CreateInfo const& info);
+	std::optional<Window> make(CreateInfo const& info);
 
 	std::size_t displayCount() const;
 
 	struct Impl;
 
   private:
+	Manager(std::unique_ptr<Impl>&& impl) noexcept;
+
 	std::unique_ptr<Impl> m_impl;
 };
 
@@ -46,13 +48,13 @@ struct CreateInfo {
 	} options;
 };
 
-class Instance {
+class Window {
   public:
-	Instance(Instance&&) noexcept;
-	Instance& operator=(Instance&&) noexcept;
-	~Instance() noexcept;
+	Window(Window&&) noexcept;
+	Window& operator=(Window&&) noexcept;
+	~Window() noexcept;
 
-	EventQueue pollEvents();
+	std::vector<Event> pollEvents();
 	bool show();
 	bool hide();
 	bool visible() const noexcept;
@@ -81,20 +83,16 @@ class Instance {
 	std::size_t joystickAxesCount(s32 id) const;
 	std::size_t joysticKButtonsCount(s32 id) const;
 
-	static std::string_view keyName(Key key, int scancode) noexcept;
-	static Key parseKey(std::string_view str) noexcept;
-	static Action parseAction(std::string_view str) noexcept;
-	static Mods parseMods(Span<std::string const> vec) noexcept;
-	static Axis parseAxis(std::string_view str) noexcept;
+	static std::string_view keyName(int key, int scancode) noexcept;
 
 	class Impl;
 
   private:
-	Instance(std::unique_ptr<Impl>&& impl) noexcept;
+	Window(std::unique_ptr<Impl>&& impl) noexcept;
 
 	std::unique_ptr<Impl> m_impl;
 
 	friend class Manager;
-	friend Impl& impl(Instance const&);
+	friend Impl& impl(Window const&);
 };
 } // namespace le::window

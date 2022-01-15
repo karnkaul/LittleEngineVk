@@ -1,10 +1,11 @@
 #pragma once
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 #if defined(LEVK_USE_GLFW)
 #include <vulkan/vulkan.h>
 
 #include <GLFW/glfw3.h>
+#include <event_builder.hpp>
 #include <ktl/fixed_any.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/utils/unique.hpp>
@@ -17,7 +18,7 @@ struct Cursor {
 };
 
 #if defined(LEVK_USE_GLFW)
-inline std::unordered_map<GLFWwindow*, not_null<Instance::Impl*>> g_impls;
+inline std::unordered_map<GLFWwindow*, not_null<Window::Impl*>> g_impls;
 #endif
 
 struct GlfwInst {
@@ -48,13 +49,14 @@ struct Manager::Impl {
 #endif
 };
 
-class Instance::Impl {
+class Window::Impl {
   public:
 #if defined(LEVK_USE_GLFW)
 	Impl(not_null<Manager::Impl*> manager, UniqueGlfwWin win);
+	~Impl() noexcept;
 #endif
 
-	EventQueue pollEvents();
+	std::vector<Event> pollEvents();
 	bool show();
 	bool hide();
 	bool visible() const noexcept;
@@ -83,24 +85,28 @@ class Instance::Impl {
 	bool m_maximized{};
 #if defined(LEVK_USE_GLFW)
 	UniqueGlfwWin m_win;
+	EventStorage m_eventStorage;
 #endif
 
   private:
 #if defined(LEVK_USE_GLFW)
+	static void onClose(GLFWwindow* win);
 	static void onFocus(GLFWwindow* win, int entered);
+	static void onCursorEnter(GLFWwindow* win, int entered);
+	static void onMaximize(GLFWwindow* win, int maximized);
+	static void onIconify(GLFWwindow* win, int iconified);
+	static void onPosition(GLFWwindow* win, int x, int y);
 	static void onWindowResize(GLFWwindow* win, int width, int height);
 	static void onFramebufferResize(GLFWwindow* win, int width, int height);
-	static void onIconify(GLFWwindow* win, int iconified);
-	static void onClose(GLFWwindow* win);
+	static void onCursorPos(GLFWwindow* win, f64 x, f64 y);
+	static void onScroll(GLFWwindow* win, f64 dx, f64 dy);
 	static void onKey(GLFWwindow* win, int key, int scancode, int action, int mods);
-	static void onMouse(GLFWwindow* win, f64 x, f64 y);
 	static void onMouseButton(GLFWwindow* win, int key, int action, int mods);
 	static void onText(GLFWwindow* win, u32 codepoint);
-	static void onScroll(GLFWwindow* win, f64 dx, f64 dy);
-	static void onMaximize(GLFWwindow* win, int maximized);
+	static void onFileDrop(GLFWwindow* win, int count, char const** paths);
 #endif
 
-	EventQueue m_events;
+	std::vector<Event> m_events;
 	not_null<Manager::Impl*> m_manager;
 };
 } // namespace le::window

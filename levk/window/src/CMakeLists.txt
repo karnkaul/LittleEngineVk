@@ -1,7 +1,8 @@
 target_sources(${PROJECT_NAME} PRIVATE
+  event_builder.hpp
   glue.cpp
-  instance_impl.cpp
-  instance_impl.hpp
-  instance.cpp
+  impl.cpp
+  impl.hpp
+  window.cpp
   types.cpp
 )

@@ -16,7 +16,7 @@
 
 namespace le {
 namespace window {
-class Instance;
+class Window;
 }
 namespace graphics {
 struct ScreenView;
@@ -49,7 +49,7 @@ class Editor {
 	edi::MenuList m_menu;
 
   private:
-	void init(graphics::RenderContext* context, window::Instance* window);
+	void init(graphics::RenderContext* context, window::Window* window);
 	void deinit() noexcept;
 	bool beginFrame();
 	graphics::ScreenView update(edi::SceneRef scene, Engine const& engine);

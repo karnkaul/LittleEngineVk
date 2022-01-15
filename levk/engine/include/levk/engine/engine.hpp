@@ -7,7 +7,7 @@
 #include <levk/engine/scene/space.hpp>
 #include <levk/graphics/context/bootstrap.hpp>
 #include <levk/graphics/render/context.hpp>
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 namespace le {
 namespace io {
@@ -30,7 +30,7 @@ using Extent2D = graphics::Extent2D;
 
 class Engine {
   public:
-	using Window = window::Instance;
+	using Window = window::Window;
 	using Boot = graphics::Bootstrap;
 	using VSync = graphics::VSync;
 	using VRAM = graphics::VRAM;
@@ -56,7 +56,7 @@ class Engine {
 
 	bool bootReady() const noexcept;
 
-	input::Driver::Out poll(bool consume) noexcept;
+	input::Driver::Out poll(bool consume);
 	void pushReceiver(not_null<input::Receiver*> context);
 	input::Receiver::Store& receiverStore() noexcept;
 	void update(gui::ViewStack& out_stack);

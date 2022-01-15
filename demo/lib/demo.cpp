@@ -52,10 +52,10 @@ using RGBA = graphics::RGBA;
 enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
-static void poll(Flags& out_flags, window::EventQueue const& queue) {
+static void poll(Flags& out_flags, input::EventQueue const& queue) {
 	for (auto const& event : queue) {
-		switch (event.type) {
-		case window::Event::Type::eClose: {
+		switch (event.type()) {
+		case window::Event::Type::eClosed: {
 			out_flags.set(Flag::eClosed);
 			break;
 		}
@@ -582,7 +582,7 @@ class App : public input::Receiver, public SceneRegistry {
 		// 	}
 		// }
 
-		if (m_data.text && m_data.cursor) {
+		if (!m_data.unloaded && m_data.text && m_data.cursor) {
 			m_data.cursor->update(m_eng->inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
 			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
@@ -648,7 +648,8 @@ class App : public input::Receiver, public SceneRegistry {
 		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
 			Renderer::Scene scene;
 			scene.registry = &m_registry;
-			scene.view = ShaderSceneView::make(*m_registry.find<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace());
+			auto const cam = m_registry.find<graphics::Camera>(m_sceneRoot);
+			scene.view = ShaderSceneView::make(cam ? *cam : graphics::Camera(), m_eng->sceneSpace());
 			scene.lights = m_data.dirLights;
 			m_renderer.render(*rp, scene);
 			m_eng->endRenderPass(*rp);

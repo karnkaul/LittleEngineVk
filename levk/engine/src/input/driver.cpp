@@ -1,9 +1,10 @@
+#include <GLFW/glfw3.h>
 #include <ktl/enum_flags/bitflags.hpp>
 #include <levk/core/utils/algo.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/space.hpp>
 #include <levk/engine/render/viewport.hpp>
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 namespace le::input {
 void Driver::KeyQueue::insert(KeyEvent event) noexcept {
@@ -47,34 +48,38 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) {
 	return ret;
 }
 
-bool Driver::operator()(Event const& event, State& out_state) noexcept {
-	switch (event.type) {
-	case Event::Type::eInput: {
-		Event::Input const& input = event.payload.input;
-		if (input.key != Key::eUnknown) {
-			m_keyQueue.insert({input.key, input.action, Mod(input.mods)});
+bool Driver::operator()(Event const& event, State& out_state) {
+	switch (event.type()) {
+	case Event::Type::eKey: {
+		if (auto const& key = event.key(); key.key != GLFW_KEY_UNKNOWN) {
+			m_keyQueue.insert({Key(key.key), Action(key.action), Mod(key.mods)});
 			return true;
 		}
 		return false;
 	}
+	case Event::Type::eMouseButton: {
+		auto const& button = event.mouseButton();
+		m_keyQueue.insert({Key(button.button + int(Key::eMouseButton1)), Action(button.action), Mod(button.mods)});
+		return true;
+	}
 	case Event::Type::eCursor: {
-		if (event.payload.cursor.id == 0) { m_persistent.cursor = event.payload.cursor; }
+		m_persistent.cursor = event.cursor();
 		return true;
 	}
 	case Event::Type::eScroll: {
-		out_state.cursor.scroll = event.payload.cursor;
+		out_state.cursor.scroll = event.scroll();
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.codepoints.has_space()) { m_transient.codepoints.push_back(event.payload.codepoint); }
+		if (m_transient.codepoints.has_space()) { m_transient.codepoints.push_back(event.codepoint()); }
 		return true;
 	}
-	case Event::Type::eFocus: {
-		out_state.focus = event.payload.set ? Focus::eGained : Focus::eLost;
+	case Event::Type::eFocusChange: {
+		out_state.focus = event.focusGained() ? Focus::eGained : Focus::eLost;
 		return true;
 	}
-	case Event::Type::eSuspend: {
-		m_persistent.suspended = event.payload.set;
+	case Event::Type::eIconify: {
+		m_persistent.suspended = event.iconified();
 		return false;
 	}
 	default: return false;

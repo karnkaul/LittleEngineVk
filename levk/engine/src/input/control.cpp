@@ -29,11 +29,11 @@ f32 Range::operator()(State const& state) const noexcept {
 			}
 			case Axis::eLeftTrigger:
 			case Axis::eRightTrigger: {
-				if (pad) { ret += window::triggerToAxis(pad->axis(ax->axis)); }
+				if (pad) { ret += window::triggerToAxis(pad->axis(int(ax->axis))); }
 				break;
 			}
 			default: {
-				if (pad) { ret += pad->axis(ax->axis); }
+				if (pad) { ret += pad->axis(int(ax->axis)); }
 				break;
 			}
 			}

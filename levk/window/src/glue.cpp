@@ -1,9 +1,9 @@
-#include <instance_impl.hpp>
+#include <impl.hpp>
 #include <levk/window/glue.hpp>
 
 #if defined(LEVK_USE_GLFW)
 namespace le::window {
-Span<std::string_view const> instanceExtensions(Instance const&) {
+Span<std::string_view const> instanceExtensions(Window const&) {
 	static std::vector<std::string_view> ret;
 	if (ret.empty()) {
 		u32 glfwExtCount;
@@ -14,15 +14,15 @@ Span<std::string_view const> instanceExtensions(Instance const&) {
 	return ret;
 }
 
-vk::SurfaceKHR makeSurface(vk::Instance vkInst, Instance const& wInst) {
+vk::SurfaceKHR makeSurface(vk::Instance vkInst, Window const& win) {
 	VkSurfaceKHR surface;
-	auto result = glfwCreateWindowSurface(static_cast<VkInstance>(vkInst), glfwPtr(wInst), nullptr, &surface);
+	auto result = glfwCreateWindowSurface(static_cast<VkInstance>(vkInst), glfwPtr(win), nullptr, &surface);
 	if (result == VK_SUCCESS) { return vk::SurfaceKHR(surface); }
 	return {};
 }
 
-Instance::Impl& impl(Instance const& wInst) { return *wInst.m_impl; }
+Window::Impl& impl(Window const& win) { return *win.m_impl; }
 
-GLFWwindow* glfwPtr(Instance const& wInst) { return *impl(wInst).m_win; }
+GLFWwindow* glfwPtr(Window const& win) { return *impl(win).m_win; }
 } // namespace le::window
 #endif

@@ -7,27 +7,25 @@
 namespace le {
 std::string_view window::Joystick::name() const { return joystickName(id); }
 
-f32 window::Gamepad::axis(Axis axis) const {
-	[[maybe_unused]] std::size_t idx = std::size_t(axis);
+f32 window::Gamepad::axis(int axis) const noexcept {
 #if defined(LEVK_USE_GLFW)
-	s32 max = 0;
+	int max{};
 	glfwGetJoystickAxes(id, &max);
-	if (idx < (std::size_t)max && idx < axes.size()) { return axes[idx]; }
+	if (axis < max && axis < (int)axes.size()) { return axes[axis]; }
 #endif
 	return 0.0f;
 }
 
-bool window::Gamepad::pressed(Key button) const {
-	[[maybe_unused]] std::size_t idx = (std::size_t)button - (std::size_t)Key::eGamepadButtonA;
+bool window::Gamepad::pressed(u8 button) const noexcept {
 #if defined(LEVK_USE_GLFW)
-	s32 max = 0;
+	int max{};
 	glfwGetJoystickButtons(id, &max);
-	if (idx < (std::size_t)max && idx < buttons.size()) { return buttons[idx]; }
+	if ((int)button < max && button < buttons.size()) { return buttons[button]; }
 #endif
 	return false;
 }
 
-std::string_view window::toString([[maybe_unused]] s32 key) {
+std::string_view window::toString([[maybe_unused]] int key) {
 	static constexpr std::string_view unknown = "(Unknown)";
 #if defined(LEVK_USE_GLFW)
 	char const* szName = glfwGetKeyName((int)key, 0);

@@ -1,14 +1,14 @@
 #include <levk/core/array_map.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/engine/editor/resizer.hpp>
-#include <levk/window/instance.hpp>
+#include <levk/window/window.hpp>
 
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
 #endif
 
 namespace le::edi {
-using Key = window::Key;
+using Key = input::Key;
 using CursorType = window::CursorType;
 
 namespace {
@@ -46,7 +46,7 @@ f32 clampLeft(f32 left, f32 scale, f32 fbx, f32 offset) noexcept {
 }
 } // namespace
 
-bool Resizer::operator()([[maybe_unused]] window::Instance& out_w, Viewport& out_vp, input::Frame const& frame) {
+bool Resizer::operator()([[maybe_unused]] window::Window& out_w, Viewport& out_vp, input::Frame const& frame) {
 	auto const& size = frame.space.display.window;
 	glm::vec2 const nCursor = {frame.state.cursor.screenPos.x / size.x, frame.state.cursor.screenPos.y / size.y};
 	CursorType toSet = CursorType::eDefault;

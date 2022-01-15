@@ -643,7 +643,7 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU Engine const& eng
 	return {};
 }
 
-void Editor::init(graphics::RenderContext* context, window::Instance* window) {
+void Editor::init(graphics::RenderContext* context, window::Window* window) {
 	if constexpr (levk_imgui) { m_imgui = std::make_unique<DearImGui>(context, window); }
 }
 

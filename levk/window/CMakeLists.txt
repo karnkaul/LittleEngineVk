@@ -22,9 +22,9 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
-  include/levk/window/event_queue.hpp
+  include/levk/window/event.hpp
   include/levk/window/glue.hpp
-  include/levk/window/instance.hpp
+  include/levk/window/window.hpp
   include/levk/window/types.hpp
 )
 add_subdirectory(src)

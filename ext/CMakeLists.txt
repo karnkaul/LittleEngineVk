@@ -1,4 +1,4 @@
-set(optional_exports "")
+set(ext_targets "")
 
 set(PHYSFS_BUILD_STATIC ON)
 set(PHYSFS_BUILD_SHARED OFF)
@@ -18,6 +18,7 @@ target_include_directories(physfs-static SYSTEM INTERFACE
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/physfs/src>"
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+list(APPEND ext_targets physfs-static)
 
 set(GLM_INSTALL ${LEVK_INSTALL})
 add_subdirectory(glm)
@@ -25,6 +26,7 @@ target_compile_options(glm INTERFACE
   $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-Wno-volatile> 
   $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
 )
+list(APPEND ext_targets glm)
 
 if(LEVK_USE_GLFW)
   set(GLFW_VULKAN_STATIC OFF)
@@ -44,10 +46,11 @@ endif()
 add_subdirectory(vma)
 add_subdirectory(stb)
 add_subdirectory(tinyobjloader)
+list(APPEND ext_targets vma stb-image tinyobjloader)
 
 if(LEVK_USE_IMGUI)
   add_subdirectory(dear_imgui)
-  list(APPEND optional_exports dear-imgui)
+  list(APPEND ext_targets dear-imgui)
 endif()
 
 set(SPIRV_CROSS_CLI OFF)
@@ -61,6 +64,11 @@ set(SPIRV_CROSS_ENABLE_TESTS OFF)
 set(SPIRV_CROSS_ENABLE_UTIL OFF)
 set(SPIRV_CROSS_SHARED OFF)
 set(SPIRV_CROSS_STATIC ON)
+if(LEVK_INSTALL)
+  set(SPIRV_CROSS_SKIP_INSTALL OFF)
+else()
+  set(SPIRV_CROSS_SKIP_INSTALL ON)
+endif()
 add_subdirectory(spirv_cross)
 if(LINUX_CLANG OR LINUX_GCC OR WINDOWS_CLANG OR WINDOWS_GCC)
   target_compile_options(spirv-cross-core PRIVATE -w)
@@ -76,7 +84,7 @@ endif()
 add_subdirectory(freetype)
 
 if(LEVK_INSTALL)
-  install(TARGETS vma stb-image tinyobjloader physfs-static glm ${optional_exports} EXPORT levk-ext-targets)
+  install(TARGETS ${ext_targets} EXPORT levk-ext-targets)
   install(EXPORT levk-ext-targets
     FILE levk-ext-targets.cmake
     NAMESPACE levk::

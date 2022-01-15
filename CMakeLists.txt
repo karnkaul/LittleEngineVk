@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
+set(CMAKE_DEBUG_POSTFIX -d)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# don't let OPTION erase above non-cache variables
 set(CMAKE_POLICY_DEFAULT_CMP0076 NEW)	# relative target_sources
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(target_name levk-engine)
-set(LEVK_VERSION 0.0.9.0 CACHE STRING "Application Version" FORCE)
-project(LittleEngineVk VERSION ${LEVK_VERSION})
+# build version
+include(cmake/build_version.cmake)
+
+# project parameters
+project(LittleEngineVk VERSION ${build_version})
 
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
   message(FATAL_ERROR "In-source builds are not supported; choose a subdirectory like `out/*` or `build/*` for CMake output")
@@ -26,13 +29,25 @@ include(CheckPIESupported)
 check_pie_supported()
 include(FetchContent)
 include(cmake/platform.cmake)
-include(cmake/utils.cmake)
+
+# cmake-utils
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+FetchContent_Declare(
+  cmake-utils
+  GIT_REPOSITORY https://github.com/karnkaul/cmake-utils
+  GIT_TAG v1.0.1
+  GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(cmake-utils)
+FetchContent_GetProperties(cmake-utils)
+include("${cmake-utils_SOURCE_DIR}/cmake-utils.cmake")
 
 if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   message(WARNING "Unsupported architecture, must be 64-bit")
 endif()
 
-if(${LEVK_VERSION} VERSION_LESS 1.0)
+if(${build_version} VERSION_LESS 1.0)
   set(LEVK_PRE_RELEASE ON)
 else()
   set(LEVK_PRE_RELEASE OFF)
@@ -64,14 +79,25 @@ if(LEVK_INSTALL)
     message(WARNING "Invalid INSTALL flags")
   endif()
 endif()
+if(GCC_RUNTIME)
+  option(LEVK_DEBUG_STDLIB OFF)
+endif()
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
   option(LEVK_ASAN "Enable ASAN" OFF)
   option(LEVK_UBSAN "Enable UBSAN" OFF)
 endif()
 
+set(non_portable_build OFF)
+if(LEVK_ASAN OR LEVK_UBSAN OR "${LEVK_DEBUG_STDLIB}")
+  set(non_portable_build ON)
+endif()
+if(non_portable_build AND LEVK_INSTALL)
+  message(FATAL_ERROR "Cannot have LEVK_INSTALL set with ASan/UBSan/Debug stdlib/etc")
+endif()
+
 # debug libstdc++
-if(is_root_project AND GCC_RUNTIME AND "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT LEVK_ASAN AND NOT LEVK_UBSAN)
+if(LEVK_DEBUG_STDLIB)
   add_definitions(-D_GLIBCXX_DEBUG)
 endif()
 
@@ -94,9 +120,6 @@ if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
   endif()
 endif()
 
-# interface
-add_subdirectory(cmake/interface)
-
 # header text
 set(build_config ${CMAKE_BUILD_TYPE})
 if(CMAKE_CONFIGURATION_TYPES)
@@ -108,6 +131,9 @@ message(STATUS "[${CMAKE_SYSTEM_PROCESSOR}] [${PLATFORM}] [${CMAKE_GENERATOR}] [
 if(CI_BUILD)
   message(STATUS "== CI Build ==")
 endif()
+
+# dyvk
+add_subdirectory(libs/dyvk)
 
 # ext
 add_subdirectory(ext)
@@ -168,56 +194,40 @@ add_subdirectory(libs/dtasks)
 set(DENS_BUILD_TESTS ON)
 add_subdirectory(libs/dens)
 add_subdirectory(libs/clap)
-add_subdirectory(libs/core)
-add_subdirectory(libs/window)
-add_subdirectory(libs/graphics)
-add_subdirectory(libs/levk_imgui)
-# export clap targets for tools projects to find
-export(EXPORT clap-targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
-  NAMESPACE clap::
-)
+if(CLAP_INSTALL)
+  # export clap targets for tools projects to find
+  export(EXPORT clap-targets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
+    NAMESPACE clap::
+  )
+endif()
 
-# engine
-set(levk_generated "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/build_version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
-file(GLOB_RECURSE levk_includes CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")
-file(GLOB_RECURSE levk_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${levk_includes} ${levk_sources})
-source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${levk_generated})
-add_library(${target_name} ${LEVK_LIBRARY_TYPE} ${levk_includes} ${levk_sources} ${levk_generated})
-add_library(levk::engine ALIAS ${target_name})
-target_compile_definitions(${target_name} PUBLIC $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
-target_include_directories(${target_name} SYSTEM
-  INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/src/generated"
-)
-target_include_directories(${target_name}
-  PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/src/generated"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-target_link_libraries(${target_name}
-  PUBLIC
-    levk::imgui
-    levk::graphics
-    levk::window
-    levk::core
-    djson::djson
-    dtasks::dtasks
-    clap::clap
-    levk::interface
-    dens::dens
+# components
+add_subdirectory(levk/build_interface)
+add_subdirectory(levk/core)
+add_subdirectory(levk/window)
+add_subdirectory(levk/graphics)
+add_subdirectory(levk/engine)
 
-  PRIVATE
-    levk::compile-options
-    stb-image
-    tinyobjloader
-)
-if(LEVK_USE_PCH)
-  target_precompile_headers(${target_name} REUSE_FROM levk-graphics)
+if(LEVK_INSTALL)
+  set(package_name levk)
+  # generate the version file for the config file
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+    VERSION "${build_version}"
+    COMPATIBILITY AnyNewerVersion
+  )
+  # create config file
+  configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+  )
+  # install config files
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+  )
 endif()
 
 # demo

@@ -6,8 +6,7 @@
 	url = https://github.com/karnkaul/dlog
 [submodule "ext/glm"]
 	path = ext/glm
-	url = https://github.com/g-truc/glm
-	shallow = true
+	url = https://github.com/karnkaul/glm
 [submodule "ext/glfw"]
 	path = ext/glfw
 	url = https://github.com/glfw/glfw
@@ -38,9 +37,8 @@
 	url = https://github.com/karnkaul/dens
 [submodule "ext/freetype"]
 	path = ext/freetype
-	url = https://gitlab.freedesktop.org/freetype/freetype.git
-	shallow = true
+	url = https://github.com/karnkaul/freetype/
 [submodule "ext/dyvk"]
-	path = ext/dyvk
+	path = libs/dyvk
 	url = https://github.com/karnkaul/dyvk
 	shallow = true

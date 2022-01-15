@@ -19,17 +19,12 @@ target_include_directories(physfs-static SYSTEM INTERFACE
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+set(GLM_INSTALL ${LEVK_INSTALL})
 add_subdirectory(glm)
 target_compile_options(glm INTERFACE 
   $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-Wno-volatile> 
   $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
 )
-if(LEVK_INSTALL)
-  install(DIRECTORY glm/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h*" PATTERN "*.inl"
-  )
-endif()
 
 if(LEVK_USE_GLFW)
   set(GLFW_VULKAN_STATIC OFF)

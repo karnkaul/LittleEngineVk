@@ -5,10 +5,10 @@
 
 namespace le {
 void GuiSystem::update(dens::registry const& registry) {
-	if (auto eng = Services::find<Engine>()) {
+	if (auto eng = Services::find<Engine::Service>()) {
 		for (auto [_, c] : registry.view<gui::ViewStack>()) {
 			auto& [stack] = c;
-			eng->update(stack);
+			eng->updateViewStack(stack);
 		}
 	}
 }

@@ -65,8 +65,6 @@ class AssetManifest : public utils::VBase {
 	virtual void loadCustom(dts::scheduler*) {}
 	virtual std::size_t unloadCustom() { return 0; }
 
-	not_null<class Engine*> engine();
-
 	std::size_t preload(io::Path const& jsonID);
 	std::size_t add(std::string_view name, Group group);
 	std::size_t addSamplers(Group group);
@@ -91,7 +89,6 @@ class AssetManifest : public utils::VBase {
 	AssetLoadList<Model> m_models;
 	AssetListLoader m_loader;
 	EnumArray<Kind, StageID> m_deps = {};
-	class Engine* m_engine{};
 };
 
 // impl

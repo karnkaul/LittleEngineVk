@@ -25,7 +25,7 @@ Version const ErrList::build = g_buildVersion;
 
 ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), message(std::move(message)), timestamp(time::sysTime()) {
 	logThreadID = dlog::this_thread_id();
-	if (auto engine = Services::find<Engine>()) {
+	if (auto engine = Services::find<Engine::Service>()) {
 		auto const& stats = engine->stats();
 		upTime = stats.upTime;
 		frameCount = stats.frame.count;

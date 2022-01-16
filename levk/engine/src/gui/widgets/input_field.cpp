@@ -61,7 +61,7 @@ bool InputField::block(input::State const& state) {
 void InputField::setActive(bool active) noexcept {
 	m_cursor.setActive(active);
 	if (active) {
-		Services::get<Engine>()->pushReceiver(this);
+		Services::get<Engine::Service>()->pushReceiver(this);
 		reposition();
 		m_cursor.refresh();
 	} else {

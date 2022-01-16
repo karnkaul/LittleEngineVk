@@ -61,16 +61,14 @@ std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexc
 	return ret;
 }
 
-graphics::Device& AssetManifest::device() { return engine()->gfx().boot.device; }
-graphics::VRAM& AssetManifest::vram() { return engine()->gfx().boot.vram; }
-graphics::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
-AssetStore& AssetManifest::store() { return engine()->store(); }
-
-not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::get<Engine>()); }
+graphics::Device& AssetManifest::device() { return Services::get<Engine::Service>()->gfx().boot.device; }
+graphics::VRAM& AssetManifest::vram() { return Services::get<Engine::Service>()->gfx().boot.vram; }
+graphics::RenderContext& AssetManifest::context() { return Services::get<Engine::Service>()->gfx().context; }
+AssetStore& AssetManifest::store() { return Services::get<Engine::Service>()->store(); }
 
 std::size_t AssetManifest::preload(io::Path const& jsonID) {
 	std::size_t ret{};
-	if (auto eng = Services::find<Engine>()) {
+	if (auto eng = Services::find<Engine::Service>()) {
 		dj::json json;
 		auto& resources = eng->store().resources();
 		io::Path uris[] = {jsonID, jsonID + ".manifest"};

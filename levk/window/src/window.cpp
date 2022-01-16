@@ -35,14 +35,13 @@ Manager::Manager(Manager&&) noexcept = default;
 Manager& Manager::operator=(Manager&&) noexcept = default;
 Manager::~Manager() noexcept = default;
 
-std::optional<Window> Manager::make(CreateInfo const& info) {
+std::optional<Window> Manager::makeWindow(CreateInfo const& info) {
 	std::optional<Window> ret;
 #if defined(LEVK_USE_GLFW)
 	if (m_impl) {
 		if (auto win = m_impl->make(info)) {
 			ret = Window(std::make_unique<Window::Impl>(m_impl.get(), std::move(win)));
 			ret->m_impl->m_maximized = info.config.maximized;
-			if (info.options.autoShow) { ret->show(); }
 		}
 	}
 #endif

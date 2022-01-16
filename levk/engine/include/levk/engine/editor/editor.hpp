@@ -52,7 +52,7 @@ class Editor {
 	void init(graphics::RenderContext* context, window::Window* window);
 	void deinit() noexcept;
 	bool beginFrame();
-	graphics::ScreenView update(edi::SceneRef scene, Engine const& engine);
+	graphics::ScreenView update(edi::SceneRef scene);
 	void render(graphics::CommandBuffer const& cb);
 
 	struct {

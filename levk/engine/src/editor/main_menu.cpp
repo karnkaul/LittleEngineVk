@@ -35,7 +35,7 @@ struct Panes {
 Panes g_panes;
 
 void Panes::showStats() const {
-	if (auto eng = Services::find<Engine>()) {
+	if (auto eng = Services::find<Engine::Service>()) {
 		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
 			auto const& s = eng->stats();
 			auto t = Text(CStr<32>("FPS: %u", s.frame.rate));
@@ -97,9 +97,9 @@ MainMenu::MainMenu() {
 	MenuList::Menu assetIndex{"Asset Index", []() { g_panes.flag(Flag::eAssetIndex) = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->editor().showImGuiDemo(); }};
-	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
-	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine::Service>()->editor().showImGuiDemo(); }};
+	MenuList::Menu close{"Close Editor", []() { Services::get<Engine::Service>()->editor().engage(false); }, true};
+	MenuList::Menu quit{"Quit", []() { Services::get<Engine::Service>()->window().close(); }};
 	main.push_front(std::move(quit));
 	main.push_front(std::move(close));
 	main.push_front(std::move(imDemo));

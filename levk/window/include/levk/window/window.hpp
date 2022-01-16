@@ -17,7 +17,7 @@ class Manager {
 
 	static std::optional<Manager> make();
 
-	std::optional<Window> make(CreateInfo const& info);
+	std::optional<Window> makeWindow(CreateInfo const& info);
 
 	std::size_t displayCount() const;
 

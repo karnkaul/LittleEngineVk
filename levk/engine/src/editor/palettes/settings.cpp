@@ -47,7 +47,7 @@ void renderer(graphics::Renderer& rd) {
 
 void Settings::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto eng = Services::get<Engine>();
+	auto eng = Services::get<Engine::Service>();
 	context(eng->gfx().context);
 	renderer(eng->gfx().context.renderer());
 #endif

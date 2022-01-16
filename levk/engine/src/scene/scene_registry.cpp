@@ -66,7 +66,7 @@ Material const* SceneRegistry::defaultMaterial() const {
 void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
 	static input::Frame const s_blank{};
 	if (!frame) {
-		if (auto eng = Services::find<Engine>()) {
+		if (auto eng = Services::find<Engine::Service>()) {
 			frame = &eng->inputFrame();
 		} else {
 			frame = &s_blank;

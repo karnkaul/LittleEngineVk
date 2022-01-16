@@ -365,10 +365,10 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	App(not_null<Engine*> eng)
-		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
-		  m_emitter(&eng->gfx().boot.vram) {
+	App(Engine::Service eng)
+		: m_eng(eng), m_renderer(&eng.gfx().boot.vram),
+		  m_testTex(&eng.gfx().boot.vram, eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
+		  m_emitter(&eng.gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -378,11 +378,11 @@ class App : public input::Receiver, public SceneRegistry {
 		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
+			auto rQuad = m_eng.store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng.gfx().boot.vram));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
-		m_eng->pushReceiver(this);
+		m_eng.pushReceiver(this);
 
 		auto ifreecam = [](edi::Inspect<FreeCam> inspect) { edi::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
 		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
@@ -442,7 +442,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			m_testMat.map_Kd = &m_testTex;
-			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+			if (auto primitive = m_eng.store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
 				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, RenderPipeProvider::make("render_pipelines/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
@@ -452,7 +452,7 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
-			m_eng->store().add("materials/yellow", mat);
+			m_eng.store().add("materials/yellow", mat);
 			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
@@ -476,13 +476,13 @@ class App : public input::Receiver, public SceneRegistry {
 			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 			m_data.dirLights = {l0, l1};
 		}
-		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng->gfx().boot.vram);
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng.gfx().boot.vram);
 	}
 
 	bool block(input::State const& state) override {
-		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
+		if (m_controls.editor(state)) { m_eng.editor().toggle(); }
 		if (m_controls.wireframe(state)) {
-			/*if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
+			/*if (auto lit = m_eng.store().find<PipelineState>("pipelines/lit")) {
 				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
 					lit->fixedState.flags.reset(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 1.0f;
@@ -507,7 +507,7 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
 
-		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
+		if (auto font = m_eng.store().find<graphics::Font>("fonts/vera_serif")) {
 			m_data.text.emplace(&*font);
 			m_data.text->m_colour = colours::yellow;
 			TextMesh::Line line;
@@ -553,10 +553,10 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 
-		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
+		if (auto model = m_eng.store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
 
-		if (auto tex = m_eng->store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
+		if (auto tex = m_eng.store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -564,44 +564,44 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		// if (m_data.tgMesh && m_data.tgCursor) {
 		// 	graphics::Geometry geom;
-		// 	if (m_data.tgCursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
-		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+		// 	if (m_data.tgCursor->update(m_eng.inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
+		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng.inputFrame().state.pressed(input::Key::eEnter)) {
 		// 		m_data.tgCursor->m_flags.set(input::TextCursor::Flag::eActive);
 		// 	}
 		// }
 
 		if (!m_data.unloaded && m_data.text && m_data.cursor) {
-			m_data.cursor->update(m_eng->inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
-			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+			m_data.cursor->update(m_eng.inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
+			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng.inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
 			}
 		}
 
-		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-			auto cmd = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+		if (auto const frame = m_eng.gfx().context.renderer().offScreenImage(); frame && m_eng.gfx().context.renderer().canBlitFrame()) {
+			auto cmd = graphics::InstantCommand(&m_eng.gfx().boot.vram);
 			m_testTex.blit(cmd.cb(), frame->ref());
 		}
 
-		updateSystems(m_tasks, dt, &m_eng->inputFrame());
+		updateSystems(m_tasks, dt, &m_eng.inputFrame());
 		if (!m_data.unloaded) {
 			auto pr_ = Engine::profile("app::tick");
 			// static constexpr u32 max_cp = 128;
 			// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
 			// 	m_thread = ktl::kthread([this] {
-			// 		auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+			// 		auto inst = graphics::InstantCommand(&m_eng.gfx().boot.vram);
 			// 		while (m_built.value < max_cp) { m_atlas.build(inst.cb(), m_built.value++); }
-			// 		// m_eng->store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
+			// 		// m_eng.store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
 			// 	});
 			// }
 			// if (m_data.init && m_built.value < max_cp) {
-			// 	auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+			// 	auto inst = graphics::InstantCommand(&m_eng.gfx().boot.vram);
 			// 	m_atlas.build(inst.cb(), m_built.value++);
 			// }
 			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
-			auto const& state = m_eng->inputFrame().state;
+			auto const& state = m_eng.inputFrame().state;
 			if (pc.active) {
 				auto& transform = m_registry.get<Transform>(m_data.player);
 				pc.tick(state, transform, dt);
@@ -609,7 +609,7 @@ class App : public input::Receiver, public SceneRegistry {
 				cam.face(forward);
 				cam.position = m_registry.get<Transform>(m_data.camera).position();
 			} else {
-				cam.tick(state, dt, &m_eng->window());
+				cam.tick(state, dt, &m_eng.window());
 			}
 			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -633,14 +633,14 @@ class App : public input::Receiver, public SceneRegistry {
 
 	void render() {
 		// draw
-		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
+		if (auto rp = m_eng.beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
 			Renderer::Scene scene;
 			scene.registry = &m_registry;
 			auto const cam = m_registry.find<graphics::Camera>(m_sceneRoot);
-			scene.view = ShaderSceneView::make(cam ? *cam : graphics::Camera(), m_eng->sceneSpace());
+			scene.view = ShaderSceneView::make(cam ? *cam : graphics::Camera(), m_eng.sceneSpace());
 			scene.lights = m_data.dirLights;
 			m_renderer.render(*rp, scene);
-			m_eng->endRenderPass(*rp);
+			m_eng.endRenderPass(*rp);
 		}
 	}
 
@@ -668,7 +668,7 @@ class App : public input::Receiver, public SceneRegistry {
 	Data m_data;
 	scheduler m_tasks;
 	AssetManifest m_manifest;
-	not_null<Engine*> m_eng;
+	Engine::Service m_eng;
 	mutable Renderer m_renderer;
 	Material m_testMat;
 	graphics::Texture m_testTex;
@@ -740,14 +740,16 @@ bool package(io::Path const& binary, bool clean) {
 }
 
 bool run(io::Media const& media) {
-	Engine::CreateInfo eci;
-	eci.winInfo.config.title = "levk demo";
-	eci.winInfo.config.size = {1280, 720};
-	eci.winInfo.options.centreCursor = true;
-	Engine engine(eci, &media);
+	window::CreateInfo winInfo;
+	winInfo.config.title = "levk demo";
+	winInfo.config.size = {1280, 720};
+	winInfo.options.centreCursor = true;
+	auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media)();
+	if (!eng) { return false; }
+	auto& engine = *eng;
 	Flags flags;
 	FlagsInput flagsInput(flags);
-	engine.pushReceiver(&flagsInput);
+	engine.service().pushReceiver(&flagsInput);
 	bool reboot = false;
 	Engine::Boot::CreateInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
@@ -766,12 +768,12 @@ bool run(io::Media const& media) {
 	poll.flags = &flags;
 	do {
 		engine.boot(bootInfo);
-		App app(&engine);
+		App app(engine.service());
 		DeltaTime dt;
 		ktl::kfuture<bool> bf;
 		ktl::kasync async;
-		while (!engine.closing()) {
-			if (!engine.nextFrame()) { continue; }
+		while (!engine.service().closing()) {
+			engine.service().nextFrame();
 			engine.poll(&poll);
 			if (flags.test(Flag::eClosed)) {
 				reboot = false;
@@ -786,7 +788,7 @@ bool run(io::Media const& media) {
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				auto& ctx = engine.gfx().context;
+				auto& ctx = engine.service().gfx().context;
 				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);

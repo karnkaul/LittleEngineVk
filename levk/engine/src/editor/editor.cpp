@@ -618,17 +618,18 @@ Viewport const& Editor::view() const noexcept {
 	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU Engine const& engine) {
+graphics::ScreenView Editor::update(MU edi::SceneRef scene) {
 #if defined(LEVK_EDITOR)
-	if (active() && engaged()) {
+	auto eng = Services::find<Engine::Service>();
+	if (active() && engaged() && eng) {
 		if (!scene.valid() || m_cache.prev != edi::Sudo::registry(scene)) { m_cache = {}; }
 		m_cache.prev = edi::Sudo::registry(scene);
 		edi::Sudo::inspect(scene, m_cache.inspect);
-		edi::displayScale(engine.renderer().renderScale());
-		if (!edi::Resizer::s_block) { m_storage.resizer(engine.window(), m_storage.gameView, engine.inputFrame()); }
+		edi::displayScale(eng->renderer().renderScale());
+		if (!edi::Resizer::s_block) { m_storage.resizer(eng->window(), m_storage.gameView, eng->inputFrame()); }
 		edi::Resizer::s_block = false;
 		m_storage.menu(m_menu);
-		glm::vec2 const& size = engine.inputFrame().space.display.window;
+		glm::vec2 const& size = eng->inputFrame().space.display.window;
 		auto const rect = m_storage.gameView.rect();
 		f32 const offsetY = m_storage.gameView.topLeft.offset.y;
 		f32 const logHeight = size.y - rect.rb.y * size.y - offsetY;
@@ -637,7 +638,7 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU Engine const& eng
 		m_storage.logStats(size, logHeight);
 		m_left.tab->update(m_left.id, leftPanelSize, {0.0f, offsetY}, scene);
 		m_right.tab->update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY}, scene);
-		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * engine.renderer().renderScale()};
+		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
 #endif
 	return {};

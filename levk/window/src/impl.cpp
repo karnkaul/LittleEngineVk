@@ -188,7 +188,7 @@ bool Window::Impl::visible() const noexcept {
 void Window::Impl::close() {
 #if defined(LEVK_USE_GLFW)
 	glfwSetWindowShouldClose(*m_win, 1);
-	m_events.push_back(Event::Builder{}(Event::Type::eClosed, {true}));
+	m_events.push_back(Event::Builder{}(Event::Type::eClosed, Box{true}));
 #endif
 }
 
@@ -373,7 +373,7 @@ void Window::Impl::onClose(GLFWwindow* win) {
 
 void Window::Impl::onFocus(GLFWwindow* win, int entered) {
 	if (auto it = g_impls.find(win); it != g_impls.end()) {
-		it->second->m_events.push_back(Event::Builder{}(Event::Type::eFocusChange, {entered == GLFW_TRUE}));
+		it->second->m_events.push_back(Event::Builder{}(Event::Type::eFocusChange, Box{entered == GLFW_TRUE}));
 		log(lvl::info, LC_LibUser, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
 }
@@ -394,7 +394,7 @@ void Window::Impl::onMaximize(GLFWwindow* win, int maximized) {
 
 void Window::Impl::onIconify(GLFWwindow* win, int iconified) {
 	if (auto it = g_impls.find(win); it != g_impls.end()) {
-		it->second->m_events.push_back(Event::Builder{}(Event::Type::eIconify, {iconified == GLFW_TRUE}));
+		it->second->m_events.push_back(Event::Builder{}(Event::Type::eIconify, Box{iconified == GLFW_TRUE}));
 		log(lvl::info, LC_LibUser, "[{}] Window {}", g_name, iconified != 0 ? "iconified" : "resumed");
 	}
 }

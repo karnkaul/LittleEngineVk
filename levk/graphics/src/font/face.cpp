@@ -30,14 +30,14 @@ struct FontFace::Impl {
 	Height height;
 };
 
-FontFace::FontFace(not_null<Device*> device) : m_impl(std::make_unique<Impl>()), m_device(device) {}
+FontFace::FontFace(not_null<Device*> device) : m_device(device) {}
 
 FontFace::FontFace(FontFace&&) noexcept = default;
 FontFace& FontFace::operator=(FontFace&&) noexcept = default;
 FontFace::~FontFace() noexcept = default;
 
 bool FontFace::load(Span<std::byte const> ttf, Height height) noexcept {
-	m_impl->face = FTFace::make(*m_device->impl().ftLib, ttf);
+	m_impl->face = FTFace::make(*m_device->m_impl->ftLib, ttf);
 	if (m_impl->face) {
 		m_impl->height = height;
 		m_impl->face->setPixelSize({0U, height});

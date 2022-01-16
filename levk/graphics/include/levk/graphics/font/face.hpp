@@ -1,4 +1,5 @@
 #pragma once
+#include <ktl/fixed_pimpl.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/span.hpp>
 #include <levk/graphics/bitmap.hpp>
@@ -39,8 +40,7 @@ class FontFace {
 
   private:
 	struct Impl;
-
-	std::unique_ptr<Impl> m_impl;
+	ktl::fixed_pimpl<Impl, 128> m_impl;
 	not_null<Device*> m_device;
 };
 } // namespace le::graphics

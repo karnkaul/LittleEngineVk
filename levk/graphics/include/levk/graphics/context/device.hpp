@@ -1,5 +1,6 @@
 #pragma once
 #include <ktl/async/kfunction.hpp>
+#include <ktl/fixed_pimpl.hpp>
 #include <levk/core/log.hpp>
 #include <levk/graphics/context/defer_queue.hpp>
 #include <levk/graphics/context/physical_device.hpp>
@@ -85,14 +86,11 @@ class Device final : public Pinned {
 
 	LayoutState m_layouts;
 
-	// for internal use
-	struct Impl;
-	Impl& impl() const noexcept;
-
   private:
-	Device() = default;
+	struct Impl;
+	Device(Impl&&) noexcept;
 
-	std::unique_ptr<Impl> m_impl;
+	ktl::fixed_pimpl<Impl, 16> m_impl;
 	MakeSurface m_makeSurface;
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;
@@ -106,6 +104,8 @@ class Device final : public Pinned {
 		ktl::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
 	} m_metadata;
+
+	friend class FontFace;
 };
 
 struct Device::CreateInfo {

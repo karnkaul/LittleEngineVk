@@ -177,17 +177,19 @@ ktl::fixed_vector<PhysicalDevice, 8> Device::physicalDevices() {
 	return {};
 }
 
+Device::Device(Impl&& impl) noexcept : m_impl(std::move(impl)) {}
+
 std::unique_ptr<Device> Device::make(CreateInfo const& info, Device::MakeSurface&& makeSurface) {
 	if (!makeSurface) {
 		logE(LC_LibUser, "[{}] Invalid MakeSurface instance", g_name);
 		return {};
 	}
-	auto ftLib = FTUnique<FTLib>(FTLib::make());
-	if (!ftLib) {
+	Impl impl;
+	impl.ftLib = FTUnique<FTLib>(FTLib::make());
+	if (!impl.ftLib) {
 		logE(LC_LibUser, "[{}] Failed to initialize Freetype", g_name);
 		return {};
 	}
-	auto m_impl = std::make_unique<Impl>();
 	auto instance = makeInstance(info);
 	vk::UniqueSurfaceKHR surface;
 	{
@@ -235,7 +237,7 @@ std::unique_ptr<Device> Device::make(CreateInfo const& info, Device::MakeSurface
 		logE(LC_LibUser, "[{}] Vulkan surface does not support presentation", g_name);
 		return {};
 	}
-	auto ret = std::unique_ptr<Device>(new Device());
+	auto ret = std::unique_ptr<Device>(new Device(std::move(impl)));
 	if (!ret->m_queues.setup(*device, queueSelect)) {
 		logE(LC_LibUser, "[{}] Failed to setup Vulkan queues!", g_name);
 		return {};
@@ -243,8 +245,6 @@ std::unique_ptr<Device> Device::make(CreateInfo const& info, Device::MakeSurface
 
 	g_validationLevel = validationLevel;
 	DataStore::getOrSet<::le::utils::SysInfo>("sys_info").gpuName = std::string(picked.name());
-	m_impl->ftLib = std::move(ftLib);
-	ret->m_impl = std::move(m_impl);
 	ret->m_makeSurface = std::move(makeSurface);
 	ret->m_instance = std::move(instance.instance);
 	ret->m_messenger = std::move(instance.messenger);
@@ -422,9 +422,4 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 void Device::defer(DeferQueue::Callback&& callback, Buffering defer) { m_deferred.defer(std::move(callback), defer); }
 
 void Device::decrementDeferred() { m_deferred.decrement(); }
-
-Device::Impl& Device::impl() const noexcept {
-	EXPECT(m_impl != nullptr);
-	return *m_impl;
-}
 } // namespace le::graphics

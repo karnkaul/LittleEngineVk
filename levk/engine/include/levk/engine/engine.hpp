@@ -5,14 +5,22 @@
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/scene/space.hpp>
-#include <levk/graphics/context/bootstrap.hpp>
-#include <levk/graphics/render/context.hpp>
+#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/render/render_pass.hpp>
+#include <levk/graphics/render/vsync.hpp>
+#include <levk/graphics/utils/extent2d.hpp>
 #include <levk/window/window.hpp>
 
 namespace le {
 namespace io {
 class Media;
 }
+
+namespace graphics {
+class RenderContext;
+class Renderer;
+} // namespace graphics
 
 namespace gui {
 class ViewStack;
@@ -31,20 +39,20 @@ using Extent2D = graphics::Extent2D;
 class Engine {
   public:
 	using Window = window::Window;
-	using Boot = graphics::Bootstrap;
-	using VSync = graphics::VSync;
+	using Device = graphics::Device;
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
 	using Context = graphics::RenderContext;
 	using Renderer = graphics::Renderer;
 	using ClearDepth = graphics::ClearDepth;
 	using RenderPass = graphics::RenderPass;
+	using VSync = graphics::VSync;
 	using Stats = utils::EngineStats;
 	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
 
-	struct GFX;
 	struct CustomDevice;
 	struct CreateInfo;
+	struct BootInfo;
 	class Builder;
 	class Service;
 
@@ -61,7 +69,7 @@ class Engine {
 
 	void poll(Opt<input::EventParser> custom = {});
 
-	void boot(Boot::CreateInfo info, std::optional<VSync> vsync = std::nullopt);
+	bool boot(BootInfo info);
 	bool unboot() noexcept;
 	bool booted() const noexcept;
 
@@ -70,8 +78,6 @@ class Engine {
   private:
 	void addDefaultAssets();
 	void saveConfig() const;
-
-	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	struct Impl;
 	Engine(std::unique_ptr<Impl>&& impl) noexcept;
@@ -87,6 +93,12 @@ struct Engine::CreateInfo {
 	window::CreateInfo winInfo;
 	std::optional<io::Path> logFile = "log.txt";
 	LogChannel logChannels = log_channels_v;
+};
+
+struct Engine::BootInfo {
+	Device::CreateInfo device;
+	VRAM::CreateInfo vram;
+	std::optional<VSync> vsync;
 };
 
 class Engine::Builder {
@@ -108,13 +120,6 @@ class Engine::Builder {
 	io::Media const* m_media{};
 };
 
-struct Engine::GFX {
-	Boot boot;
-	Context context;
-
-	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync);
-};
-
 class Engine::Service {
   public:
 	void pushReceiver(not_null<input::Receiver*> context) const;
@@ -128,7 +133,9 @@ class Engine::Service {
 
 	window::Manager& windowManager() const noexcept;
 	Editor& editor() const noexcept;
-	GFX& gfx() const;
+	Device& device() const noexcept;
+	VRAM& vram() const noexcept;
+	Context& context() const noexcept;
 	Renderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept;
 	AssetStore& store() const noexcept;

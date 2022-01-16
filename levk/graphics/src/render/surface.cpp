@@ -77,7 +77,9 @@ Surface::Surface(not_null<VRAM*> vram, Extent2D fbSize, std::optional<VSync> vsy
 	makeSwapchain(fbSize, vsync);
 }
 
-Surface::~Surface() { m_vram->m_device->waitIdle(); }
+Surface::~Surface() {
+	if (m_surface) { m_vram->m_device->waitIdle(); }
+}
 
 bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	auto retired = std::exchange(m_storage.swapchain, Swapchain());

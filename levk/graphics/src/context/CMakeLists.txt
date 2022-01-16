@@ -1,5 +1,4 @@
 target_sources(${PROJECT_NAME} PRIVATE
-  bootstrap.cpp
   defer_queue.cpp
   device_impl.hpp
   device.cpp

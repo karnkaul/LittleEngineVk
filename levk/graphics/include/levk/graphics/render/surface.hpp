@@ -5,13 +5,11 @@
 #include <levk/core/span.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/framebuffer.hpp>
+#include <levk/graphics/render/vsync.hpp>
 #include <optional>
 
 namespace le::graphics {
 class VRAM;
-
-enum class VSync : u8 { eOn, eAdaptive, eOff, eCOUNT_ };
-constexpr EnumArray<VSync, std::string_view> vSyncNames = {"Vsync On", "Vsync Adaptive", "Vsync Off"};
 
 class Surface {
   public:
@@ -35,6 +33,8 @@ class Surface {
 	using VSyncs = ktl::enum_flags<VSync, u8>;
 
 	Surface(not_null<VRAM*> vram, Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
+	Surface(Surface&&) = default;
+	Surface& operator=(Surface&&) = default;
 	~Surface();
 
 	static constexpr bool srgb(vk::Format format) noexcept;

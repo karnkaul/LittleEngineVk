@@ -130,11 +130,16 @@ struct VRAM::ImageCopier {
 	}
 };
 
-VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
+std::unique_ptr<VRAM> VRAM::make(not_null<Device*> device, CreateInfo const& info) { return std::unique_ptr<VRAM>(new VRAM(device, info)); }
+
+VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& info) : Memory(device), m_device(device), m_transfer(this, info) {
 	logI(LC_LibUser, "[{}] VRAM constructed", g_name);
 }
 
-VRAM::~VRAM() { logI(LC_LibUser, "[{}] VRAM destroyed", g_name); }
+VRAM::~VRAM() {
+	shutdown();
+	logI(LC_LibUser, "[{}] VRAM destroyed", g_name);
+}
 
 Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible) {
 	Buffer::CreateInfo bufferInfo;

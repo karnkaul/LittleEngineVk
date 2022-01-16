@@ -20,13 +20,13 @@ class Device final : public Pinned {
 	struct Deleter;
 
 	enum class QSelect { eOptimal, eSingleFamily, eSingleQueue };
-	inline static constexpr std::array<std::string_view, 2> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+	static constexpr std::string_view requiredExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
 
 	struct CreateInfo;
 
 	static ktl::fixed_vector<PhysicalDevice, 8> physicalDevices();
 
-	Device(CreateInfo const& info, MakeSurface&& makeSurface);
+	static std::unique_ptr<Device> make(CreateInfo const& info, MakeSurface&& makeSurface);
 	~Device();
 
 	static constexpr vk::BufferUsageFlagBits bufferUsage(vk::DescriptorType type) noexcept;
@@ -80,8 +80,8 @@ class Device final : public Pinned {
 	Queues const& queues() const noexcept { return m_queues; }
 	vk::Instance instance() const noexcept { return *m_instance; }
 	vk::Device device() const noexcept { return *m_device; }
-	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
-	f32 maxAnisotropy() const noexcept { return m_metadata.anisotropy; }
+	TPair<f32> lineWidthLimit() const noexcept { return {m_metadata.limits.lineWidthRange[0], m_metadata.limits.lineWidthRange[1]}; }
+	f32 maxAnisotropy() const noexcept { return m_metadata.limits.maxSamplerAnisotropy; }
 
 	LayoutState m_layouts;
 
@@ -90,6 +90,8 @@ class Device final : public Pinned {
 	Impl& impl() const noexcept;
 
   private:
+	Device() = default;
+
 	std::unique_ptr<Impl> m_impl;
 	MakeSurface m_makeSurface;
 	vk::UniqueInstance m_instance;
@@ -103,8 +105,6 @@ class Device final : public Pinned {
 		std::vector<char const*> extensions;
 		ktl::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
-		TPair<f32> lineWidth{};
-		f32 anisotropy{};
 	} m_metadata;
 };
 

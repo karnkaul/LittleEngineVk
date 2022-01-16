@@ -9,6 +9,7 @@
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
+#include <levk/graphics/render/context.hpp>
 #endif
 
 namespace le::edi {
@@ -51,7 +52,7 @@ void Panes::showStats() const {
 			t = Text(CStr<32>("Swapchain: %ux%u", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
 			t = Text(CStr<32>("Renderer: %ux%u", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
 			Styler st(Style::eSeparator);
-			auto& renderer = eng->gfx().context.renderer();
+			auto& renderer = eng->context().renderer();
 			f32 rs = renderer.renderScale();
 			TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});
 			renderer.renderScale(rs);

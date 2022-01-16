@@ -45,6 +45,7 @@
 #include <levk/engine/ecs/components/spring_arm.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>
 #include <levk/engine/render/shader_data.hpp>
+#include <levk/graphics/render/context.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -366,9 +367,8 @@ class App : public input::Receiver, public SceneRegistry {
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(Engine::Service eng)
-		: m_eng(eng), m_renderer(&eng.gfx().boot.vram),
-		  m_testTex(&eng.gfx().boot.vram, eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
-		  m_emitter(&eng.gfx().boot.vram) {
+		: m_eng(eng), m_renderer(&eng.vram()),
+		  m_testTex(&eng.vram(), eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}), m_emitter(&eng.vram()) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -378,7 +378,7 @@ class App : public input::Receiver, public SceneRegistry {
 		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = m_eng.store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng.gfx().boot.vram));
+			auto rQuad = m_eng.store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng.vram()));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
@@ -476,7 +476,7 @@ class App : public input::Receiver, public SceneRegistry {
 			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 			m_data.dirLights = {l0, l1};
 		}
-		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng.gfx().boot.vram);
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng.vram());
 	}
 
 	bool block(input::State const& state) override {
@@ -577,8 +577,8 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 
-		if (auto const frame = m_eng.gfx().context.renderer().offScreenImage(); frame && m_eng.gfx().context.renderer().canBlitFrame()) {
-			auto cmd = graphics::InstantCommand(&m_eng.gfx().boot.vram);
+		if (auto const frame = m_eng.context().renderer().offScreenImage(); frame && m_eng.context().renderer().canBlitFrame()) {
+			auto cmd = graphics::InstantCommand(&m_eng.vram());
 			m_testTex.blit(cmd.cb(), frame->ref());
 		}
 
@@ -588,13 +588,13 @@ class App : public input::Receiver, public SceneRegistry {
 			// static constexpr u32 max_cp = 128;
 			// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
 			// 	m_thread = ktl::kthread([this] {
-			// 		auto inst = graphics::InstantCommand(&m_eng.gfx().boot.vram);
+			// 		auto inst = graphics::InstantCommand(&m_eng.vram());
 			// 		while (m_built.value < max_cp) { m_atlas.build(inst.cb(), m_built.value++); }
 			// 		// m_eng.store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
 			// 	});
 			// }
 			// if (m_data.init && m_built.value < max_cp) {
-			// 	auto inst = graphics::InstantCommand(&m_eng.gfx().boot.vram);
+			// 	auto inst = graphics::InstantCommand(&m_eng.vram());
 			// 	m_atlas.build(inst.cb(), m_built.value++);
 			// }
 			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
@@ -751,7 +751,7 @@ bool run(io::Media const& media) {
 	FlagsInput flagsInput(flags);
 	engine.service().pushReceiver(&flagsInput);
 	bool reboot = false;
-	Engine::Boot::CreateInfo bootInfo;
+	Engine::BootInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
 	bootInfo.device.validationLogLevel = LogLevel::info;
 	struct Poll : input::EventParser {
@@ -788,7 +788,7 @@ bool run(io::Media const& media) {
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				auto& ctx = engine.service().gfx().context;
+				auto& ctx = engine.service().context();
 				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);

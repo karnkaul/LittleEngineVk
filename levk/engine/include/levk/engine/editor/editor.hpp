@@ -49,7 +49,7 @@ class Editor {
 	edi::MenuList m_menu;
 
   private:
-	void init(graphics::RenderContext* context, window::Window* window);
+	void init(graphics::RenderContext& context, window::Window const& window);
 	void deinit() noexcept;
 	bool beginFrame();
 	graphics::ScreenView update(edi::SceneRef scene);

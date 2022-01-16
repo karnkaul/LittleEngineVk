@@ -21,6 +21,14 @@
 
 namespace le {
 namespace {
+struct GFX {
+	std::unique_ptr<graphics::Device> device;
+	std::unique_ptr<graphics::VRAM> vram;
+	graphics::RenderContext context;
+};
+
+ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
+
 template <typename T>
 void profilerNext(T& out_profiler, Time_s total) {
 	if constexpr (!std::is_same_v<T, utils::NullProfileDB>) { out_profiler.next(total); }
@@ -49,7 +57,7 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 	return original.save(path.generic_string(), opts);
 }
 
-graphics::Bootstrap::MakeSurface makeSurface(window::Window const& winst) {
+graphics::Device::MakeSurface makeSurface(window::Window const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
 
@@ -58,6 +66,22 @@ graphics::RenderContext::GetSpirV getShader(AssetStore const& store) {
 		ENSURE(store.exists<graphics::SpirV>(uri), "Shader doesn't exist");
 		return *store.find<graphics::SpirV>(uri);
 	};
+}
+
+std::optional<GFX> makeGFX(Engine::BootInfo const& info, window::Window const& window, AssetStore const& store) {
+	auto device = graphics::Device::make(info.device, makeSurface(window));
+	if (!device) {
+		logW("[Engine] Failed to create graphics Device");
+		return std::nullopt;
+	}
+	auto vram = graphics::VRAM::make(device.get(), info.vram);
+	if (!vram) {
+		logW("[Engine] Failed to create graphics VRAM");
+		return std::nullopt;
+	}
+	auto vr = vram.get();
+	graphics::RenderContext rc(vr, getShader(store), info.vsync, window.framebufferSize());
+	return std::optional<GFX>(GFX{std::move(device), std::move(vram), std::move(rc)});
 }
 } // namespace
 
@@ -82,9 +106,6 @@ struct Engine::Impl {
 
 	Impl(std::optional<io::Path> logPath, LogChannel active) : io(logPath.value_or("levk-log.txt"), active), service(this) {}
 };
-
-Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync)
-	: boot(bci, makeSurface(*winst)), context(&boot.vram, getShader(store), vsync, winst->framebufferSize()) {}
 
 Version Engine::version() noexcept { return g_engineVersion; }
 
@@ -120,18 +141,21 @@ Engine::~Engine() noexcept {
 	}
 }
 
-void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
+bool Engine::boot(BootInfo info) {
+	EXPECT(m_impl && m_impl->win);
 	unboot();
 	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
 	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
-	m_impl->gfx.emplace(&*m_impl->win, info, m_impl->store, vsync);
+	m_impl->gfx = makeGFX(info, *m_impl->win, m_impl->store);
+	if (!m_impl->gfx) { return false; }
 	auto const& surface = m_impl->gfx->context.surface();
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
-	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->boot.device.physicalDevice().supportsLazyAllocation());
-	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	m_impl->editor.init(&m_impl->gfx->context, &*m_impl->win);
+	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->device->physicalDevice().supportsLazyAllocation());
+	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, m_impl->gfx->vram.get(), &m_impl->store, &m_impl->profiler);
+	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 	addDefaultAssets();
 	m_impl->win->show();
+	return true;
 }
 
 bool Engine::unboot() noexcept {
@@ -140,7 +164,7 @@ bool Engine::unboot() noexcept {
 		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_impl->editor.deinit();
-		m_impl->gfx->boot.vram.shutdown();
+		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
 		return true;
@@ -174,23 +198,24 @@ void Engine::saveConfig() const {
 void Engine::addDefaultAssets() {
 	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
-	auto& boot = m_impl->gfx->boot;
-	auto sampler = m_impl->store.add("samplers/default", graphics::Sampler(&boot.device, {vk::Filter::eLinear, vk::Filter::eLinear}));
+	auto device = m_impl->gfx->device.get();
+	auto vram = m_impl->gfx->vram.get();
+	auto sampler = m_impl->store.add("samplers/default", graphics::Sampler(device, {vk::Filter::eLinear, vk::Filter::eLinear}));
 	{
 		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
 		si.maxLod = 0.0f;
-		m_impl->store.add("samplers/no_mip_maps", graphics::Sampler(&boot.device, si));
+		m_impl->store.add("samplers/no_mip_maps", graphics::Sampler(device, si));
 	}
 	{
 		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
 		si.mipmapMode = vk::SamplerMipmapMode::eLinear;
 		si.addressModeU = si.addressModeV = si.addressModeW = vk::SamplerAddressMode::eClampToBorder;
 		si.borderColor = vk::BorderColor::eIntOpaqueBlack;
-		m_impl->store.add("samplers/font", graphics::Sampler(&boot.device, si));
+		m_impl->store.add("samplers/font", graphics::Sampler(device, si));
 	}
 	/*Textures*/ {
 		using Tex = graphics::Texture;
-		auto v = &boot.vram;
+		auto v = vram;
 		vk::Sampler s = sampler->sampler();
 		m_impl->store.add("textures/red", Tex(v, s, colours::red, {1, 1}));
 		m_impl->store.add("textures/black", Tex(v, s, colours::black, {1, 1}));
@@ -202,11 +227,11 @@ void Engine::addDefaultAssets() {
 		m_impl->store.add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
-		auto cube = m_impl->store.add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(&boot.vram));
+		auto cube = m_impl->store.add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(vram));
 		cube->construct(graphics::makeCube());
-		auto cone = m_impl->store.add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(&boot.vram));
+		auto cone = m_impl->store.add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(vram));
 		cone->construct(graphics::makeCone());
-		auto wf_cube = m_impl->store.add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(&boot.vram));
+		auto wf_cube = m_impl->store.add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 	/* materials */ { m_impl->store.add("materials/default", Material{}); }
@@ -232,17 +257,17 @@ std::optional<Engine> Engine::Builder::operator()() const {
 	impl->wm = std::move(wm);
 	if (m_media) { impl->store.resources().media(m_media); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
-	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
+	logI(LC_EndUser, "Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	auto winInfo = m_windowInfo;
 	winInfo.options.autoShow = false;
 	if (auto config = load(m_configPath)) {
-		logI("[Engine] Config loaded from {}", m_configPath.generic_string());
+		logI(LC_LibUser, "[Engine] Config loaded from {}", m_configPath.generic_string());
 		if (config->win.size.x > 0 && config->win.size.y > 0) { winInfo.config.size = config->win.size; }
 		winInfo.config.position = config->win.position;
 	}
 	impl->win = impl->wm->makeWindow(winInfo);
 	if (!impl->win) {
-		logE("[Engine] Failed to create window");
+		logE(LC_EndUser, "[Engine] Failed to create window");
 		return std::nullopt;
 	}
 	impl->errorHandler.deleteFile();
@@ -255,7 +280,7 @@ std::optional<Engine> Engine::Builder::operator()() const {
 void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 	m_impl->editor.deinit();
 	m_impl->gfx->context.setRenderer(std::move(renderer));
-	m_impl->editor.init(&m_impl->gfx->context, &*m_impl->win);
+	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 }
 
 void Engine::Service::nextFrame() const {
@@ -283,11 +308,10 @@ void Engine::Service::updateViewStack(gui::ViewStack& out_stack) const { out_sta
 
 window::Manager& Engine::Service::windowManager() const noexcept { return *m_impl->wm; }
 Editor& Engine::Service::editor() const noexcept { return m_impl->editor; }
-Engine::GFX& Engine::Service::gfx() const {
-	ENSURE(m_impl->gfx.has_value(), "Not booted");
-	return *m_impl->gfx;
-}
-Engine::Renderer& Engine::Service::renderer() const { return gfx().context.renderer(); }
+Engine::Device& Engine::Service::device() const noexcept { return *m_impl->gfx->device; }
+Engine::VRAM& Engine::Service::vram() const noexcept { return *m_impl->gfx->vram; }
+Engine::Context& Engine::Service::context() const noexcept { return m_impl->gfx->context; }
+Engine::Renderer& Engine::Service::renderer() const { return m_impl->gfx->context.renderer(); }
 Engine::Window& Engine::Service::window() const {
 	ENSURE(m_impl->win.has_value(), "Not booted");
 	return *m_impl->win;
@@ -307,8 +331,8 @@ Engine::Stats const& Engine::Service::stats() const noexcept { return m_impl->st
 
 void Engine::Service::updateStats() const {
 	m_impl->stats.update();
-	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eBuffer);
-	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eImage);
+	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->vram->bytes(graphics::Memory::Type::eBuffer);
+	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->vram->bytes(graphics::Memory::Type::eImage);
 	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	m_impl->stats.stats.gfx.triCount = graphics::MeshPrimitive::s_trisDrawn.load();
 	m_impl->stats.stats.gfx.extents.window = m_impl->win->windowSize();

@@ -61,5 +61,6 @@ struct Queues::Info {
 struct Queues::Select {
 	ktl::fixed_vector<vk::DeviceQueueCreateInfo, 2> dqci;
 	ktl::fixed_vector<Info, 2> info;
+	std::size_t primary{};
 };
 } // namespace le::graphics

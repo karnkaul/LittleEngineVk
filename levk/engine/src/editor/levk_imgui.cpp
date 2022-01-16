@@ -13,6 +13,7 @@
 #include <levk/core/utils/error.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/render/context.hpp>
+#include <levk/graphics/utils/instant_command.hpp>
 #include <levk/window/glue.hpp>
 #endif
 
@@ -107,58 +108,47 @@ void fixStyle() {
 } // namespace
 #endif
 
-DearImGui::DearImGui() = default;
-
-DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window const*> window, MU std::size_t descriptorCount) {
+bool DearImGui::init(MU RenderContext& context, MU Window const& window, MU std::size_t descriptorCount) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
-	m_device = context->vram().m_device;
+	m_device = context.vram().m_device;
 	static vk::Instance s_inst;
 	static vk::DynamicLoader const s_dl;
 	s_inst = m_device->instance();
 	auto const loader = [](char const* fn, void*) { return s_dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr")(s_inst, fn); };
-	ImGui_ImplVulkan_LoadFunctions(loader);
+	if (!ImGui_ImplVulkan_LoadFunctions(loader)) {
+		logE(LC_LibUser, "[Dear ImGui] Failed to load Vulkan functions");
+		return false;
+	}
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	if (context->colourCorrection() == graphics::ColourCorrection::eAuto) { fixStyle(); }
+	if (context.colourCorrection() == graphics::ColourCorrection::eAuto) { fixStyle(); }
 	ImGui::GetStyle().WindowRounding = 0.0f;
-	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
+	ImGui_ImplGlfw_InitForVulkan(glfwPtr(window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = m_device->queues().graphics();
-	m_pool = m_pool.make(makePool(*m_device, (u32)descriptorCount), m_device);
+	auto descPool = m_pool.make(makePool(*m_device, (u32)descriptorCount), m_device);
 	initInfo.Instance = m_device->instance();
 	initInfo.Device = m_device->device();
 	initInfo.PhysicalDevice = m_device->physicalDevice().device;
 	initInfo.Queue = queue.queue();
 	initInfo.QueueFamily = queue.family();
-	initInfo.MinImageCount = context->surface().minImageCount();
-	initInfo.ImageCount = context->surface().imageCount();
+	initInfo.MinImageCount = context.surface().minImageCount();
+	initInfo.ImageCount = context.surface().imageCount();
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(m_pool.get());
-	if (!ImGui_ImplVulkan_Init(&initInfo, context->renderer().mainRenderPass())) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
-	vk::CommandPoolCreateInfo poolInfo;
-	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = queue.family();
-	auto pool = m_device->device().createCommandPool(poolInfo);
-	vk::CommandBufferAllocateInfo commandBufferInfo;
-	commandBufferInfo.commandBufferCount = 1;
-	commandBufferInfo.commandPool = pool;
-	auto commandBuffer = m_device->device().allocateCommandBuffers(commandBufferInfo).front();
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	commandBuffer.begin(beginInfo);
-	ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-	commandBuffer.end();
-	vk::SubmitInfo endInfo;
-	endInfo.commandBufferCount = 1;
-	endInfo.pCommandBuffers = &commandBuffer;
-	auto done = m_device->makeFence(false);
-	queue.submit(endInfo, done);
-	m_device->waitFor(done);
-	ImGui_ImplVulkan_DestroyFontUploadObjects();
-	m_device->destroy(pool, done);
+	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(descPool.get());
+	if (!ImGui_ImplVulkan_Init(&initInfo, context.renderer().mainRenderPass())) {
+		logE(LC_LibUser, "[Dear ImGui] ImGui_ImplVulkan_Init failed");
+		return false;
+	}
+	auto cmd = graphics::BlockingCommand(&context.vram());
+	ImGui_ImplVulkan_CreateFontsTexture(cmd.cb().m_cb);
 	m_del = m_del.make(m_device);
+	m_pool = std::move(descPool);
 	logD(LC_LibUser, "[DearImGui] constructed");
+	return true;
+#else
+	return false;
 #endif
 }
 

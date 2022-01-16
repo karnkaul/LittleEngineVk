@@ -3,6 +3,7 @@
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/palettes/settings.hpp>
 #include <levk/engine/engine.hpp>
+#include <levk/graphics/render/context.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
@@ -48,8 +49,8 @@ void renderer(graphics::Renderer& rd) {
 void Settings::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto eng = Services::get<Engine::Service>();
-	context(eng->gfx().context);
-	renderer(eng->gfx().context.renderer());
+	context(eng->context());
+	renderer(eng->context().renderer());
 #endif
 }
 } // namespace le::edi

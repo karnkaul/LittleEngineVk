@@ -35,12 +35,14 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/render/pipeline_flags.hpp
   include/levk/graphics/render/pipeline_spec.hpp
   include/levk/graphics/render/pipeline.hpp
+  include/levk/graphics/render/render_pass.hpp
   include/levk/graphics/render/renderer.hpp
   include/levk/graphics/render/rgba.hpp
   include/levk/graphics/render/shader_buffer.hpp
   include/levk/graphics/render/surface.hpp
   include/levk/graphics/render/framebuffer.hpp
   include/levk/graphics/render/vertex_input.hpp
+  include/levk/graphics/render/vsync.hpp
   
   include/levk/graphics/utils/command_pool.hpp
   include/levk/graphics/utils/defer.hpp

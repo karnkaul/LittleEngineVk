@@ -21,6 +21,7 @@ class VRAM final : public Memory {
 	using Memory::blit;
 	using Memory::copy;
 	using Images = ktl::fixed_vector<utils::STBImg, 6>;
+	using CreateInfo = Transfer::CreateInfo;
 
 	struct Scratch {
 		std::optional<Buffer> buffer;
@@ -37,7 +38,7 @@ class VRAM final : public Memory {
 
 	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
 
-	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
+	static std::unique_ptr<VRAM> make(not_null<Device*> device, CreateInfo const& info = {});
 	~VRAM();
 
 	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible);
@@ -66,6 +67,8 @@ class VRAM final : public Memory {
 	not_null<Device*> m_device;
 
   private:
+	VRAM(not_null<Device*> device, CreateInfo const& info = {});
+
 	template <typename T>
 	struct ImageCopier;
 

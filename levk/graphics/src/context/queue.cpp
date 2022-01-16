@@ -1,4 +1,5 @@
 #include <levk/core/log_channel.hpp>
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/error.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/common.hpp>
@@ -61,12 +62,12 @@ Queues::Select Queues::select(PhysicalDevice const& device, vk::SurfaceKHR surfa
 	Select ret;
 	u32 family{};
 	static f32 const priority = 1.0f;
-	bool gptFound = false;
-	for (vk::QueueFamilyProperties const& props : device.queueFamilies) {
+	std::optional<std::size_t> primary;
+	for (auto const& [props, idx] : utils::enumerate(device.queueFamilies)) {
 		bool const presentable = device.surfaceSupport(family, surface);
 		if ((ret.info.empty() || !ret.info.front().qcaps.test(QType::eGraphics)) && props.queueFlags & vQFB::eGraphics && presentable) {
 			QCaps caps = QType::eGraphics;
-			gptFound = true;
+			primary = idx;
 			if (props.queueFlags & vQFB::eCompute) {
 				caps |= QType::eCompute;
 				ret.info.push_back({family, caps});
@@ -84,7 +85,8 @@ Queues::Select Queues::select(PhysicalDevice const& device, vk::SurfaceKHR surfa
 		}
 		++family;
 	}
-	EXPECT(gptFound);
+	EXPECT(primary.has_value());
+	ret.primary = *primary;
 	return ret;
 }
 } // namespace le::graphics

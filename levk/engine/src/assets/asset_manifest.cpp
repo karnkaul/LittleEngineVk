@@ -5,7 +5,6 @@
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/skybox.hpp>
-#include <levk/graphics/context/bootstrap.hpp>
 
 namespace le {
 std::size_t AssetManifest::preload(dj::json const& root) {
@@ -61,9 +60,9 @@ std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexc
 	return ret;
 }
 
-graphics::Device& AssetManifest::device() { return Services::get<Engine::Service>()->gfx().boot.device; }
-graphics::VRAM& AssetManifest::vram() { return Services::get<Engine::Service>()->gfx().boot.vram; }
-graphics::RenderContext& AssetManifest::context() { return Services::get<Engine::Service>()->gfx().context; }
+graphics::Device& AssetManifest::device() { return Services::get<Engine::Service>()->device(); }
+graphics::VRAM& AssetManifest::vram() { return Services::get<Engine::Service>()->vram(); }
+graphics::RenderContext& AssetManifest::context() { return Services::get<Engine::Service>()->context(); }
 AssetStore& AssetManifest::store() { return Services::get<Engine::Service>()->store(); }
 
 std::size_t AssetManifest::preload(io::Path const& jsonID) {

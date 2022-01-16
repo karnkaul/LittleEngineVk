@@ -20,7 +20,7 @@ namespace le::graphics {
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
 
-class RenderContext : public NoCopy {
+class RenderContext {
   public:
 	using Acquire = Surface::Acquire;
 	using Attachment = Renderer::Attachment;

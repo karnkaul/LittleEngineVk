@@ -14,7 +14,6 @@
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/engine/render/skybox.hpp>
 #include <levk/engine/scene/asset_provider.hpp>
-#include <levk/graphics/context/bootstrap.hpp>
 #include <levk/graphics/geometry.hpp>
 #include <levk/graphics/render/renderer.hpp>
 
@@ -644,8 +643,11 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene) {
 	return {};
 }
 
-void Editor::init(graphics::RenderContext* context, window::Window* window) {
-	if constexpr (levk_imgui) { m_imgui = std::make_unique<DearImGui>(context, window); }
+void Editor::init(graphics::RenderContext& context, window::Window const& window) {
+	if constexpr (levk_imgui) {
+		if (!m_imgui) { m_imgui = std::make_unique<DearImGui>(); }
+		if (!m_imgui->init(context, window)) { logW(LC_LibUser, "[Editor] Failed to initialize Dear ImGui"); }
+	}
 }
 
 void Editor::deinit() noexcept {

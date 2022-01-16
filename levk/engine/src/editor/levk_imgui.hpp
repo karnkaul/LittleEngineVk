@@ -28,8 +28,7 @@ class DearImGui final {
 
 	using Window = window::Window;
 
-	DearImGui();
-	DearImGui(not_null<graphics::RenderContext*> context, not_null<Window const*> window, std::size_t descriptorCount = 1000);
+	bool init(graphics::RenderContext& context, Window const& window, std::size_t descriptorCount = 1000);
 
 	bool beginFrame();
 	bool endFrame();

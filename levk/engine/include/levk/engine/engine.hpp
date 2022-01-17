@@ -34,6 +34,8 @@ namespace utils {
 struct EngineStats;
 }
 
+class SceneManager;
+
 using Extent2D = graphics::Extent2D;
 
 class Engine {
@@ -58,7 +60,6 @@ class Engine {
 
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
-	static bool drawImgui(graphics::CommandBuffer cb);
 	static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
 
 	Engine(Engine&&) noexcept;
@@ -128,7 +129,7 @@ class Engine::Service {
 
 	void nextFrame() const;
 	std::optional<RenderPass> beginRenderPass(RGBA clear, ClearDepth depth = {1.0f, 0}) const { return beginRenderPass({}, clear, depth); }
-	std::optional<RenderPass> beginRenderPass(Opt<SceneRegistry> scene, RGBA clear, ClearDepth depth = {1.0f, 0}) const;
+	std::optional<RenderPass> beginRenderPass(Opt<SceneManager> sceneManager, RGBA clear, ClearDepth depth = {1.0f, 0}) const;
 	bool endRenderPass(RenderPass& out_rp) const;
 
 	window::Manager& windowManager() const noexcept;

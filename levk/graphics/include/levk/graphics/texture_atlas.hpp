@@ -13,7 +13,7 @@ class TextureAtlas {
 
 	TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info);
 
-	Result add(ID id, Bitmap const& bitmap, CommandBuffer const& cb);
+	[[nodiscard]] Result add(ID id, Bitmap const& bitmap, CommandBuffer const& cb);
 	bool setUV(ID id, Span<Vertex> quad) const noexcept;
 	Texture const& texture() const noexcept { return m_texture; }
 

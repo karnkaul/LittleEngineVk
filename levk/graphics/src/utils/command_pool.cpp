@@ -59,15 +59,14 @@ vk::Result CommandPool::release(CommandBuffer&& cb, bool block) {
 	EXPECT(!std::any_of(m_cbs.begin(), m_cbs.end(), [c = cb.m_cb](Cmd const& cmd) { return cmd.cb == c; }));
 	cb.end();
 	Cmd cmd{cb.m_cb, m_fencePool.next()};
-	vk::SubmitInfo si(0U, nullptr, {}, 1U, &cb.m_cb);
-	auto const& queue = m_qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
-	auto const ret = queue.submit(si, cmd.fence);
-	m_cbs.push_back(std::move(cmd));
+	vk::SubmitInfo const si(0U, nullptr, {}, 1U, &cb.m_cb);
+	auto const ret = m_device->queues().submit(si, cmd.fence, m_qtype);
 	if (ret == vk::Result::eSuccess) {
 		if (block) { m_device->waitFor(cmd.fence); }
 	} else {
 		m_device->resetFence(cmd.fence, false);
 	}
+	m_cbs.push_back(std::move(cmd));
 	return ret;
 }
 } // namespace le::graphics

@@ -83,15 +83,13 @@ std::size_t Transfer::update() {
 		return false;
 	};
 	std::scoped_lock lock(m_sync.mutex);
-	utils::erase_if(m_batches.submitted, removeDone);
+	std::erase_if(m_batches.submitted, removeDone);
 	if (!m_batches.active.entries.empty()) {
 		std::vector<vk::CommandBuffer> commands;
 		commands.reserve(m_batches.active.entries.size());
 		m_batches.active.done = nextFence();
 		for (auto& [stage, _] : m_batches.active.entries) { commands.push_back(stage.command); }
-		vk::SubmitInfo submitInfo;
-		submitInfo.commandBufferCount = (u32)commands.size();
-		submitInfo.pCommandBuffers = commands.data();
+		vk::SubmitInfo const submitInfo(0U, nullptr, nullptr, (u32)commands.size(), commands.data());
 		m_memory->m_device->queues().transfer().submit(submitInfo, m_batches.active.done);
 		m_batches.submitted.push_back(std::move(m_batches.active));
 	}

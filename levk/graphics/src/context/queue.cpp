@@ -23,9 +23,12 @@ vk::CommandPool Queue::makeCommandPool(vk::Device device, vk::CommandPoolCreateF
 	return {};
 }
 
-vk::Result Queue::present(vk::PresentInfoKHR const& info) const { return valid() ? ktl::klock(m_queue)->presentKHR(&info) : vk::Result::eErrorDeviceLost; }
+vk::Result Queue::present(vk::PresentInfoKHR const& info) const {
+	EXPECT(m_qcaps.test(QType::eGraphics));
+	return valid() ? ktl::klock(m_queue)->presentKHR(&info) : vk::Result::eErrorDeviceLost;
+}
 
-vk::Result Queue::submit(vAP<vk::SubmitInfo> infos, vk::Fence signal) const {
+vk::Result Queue::submit(Span<vk::SubmitInfo const> infos, vk::Fence signal) const {
 	if (valid()) { return ktl::klock(m_queue)->submit(infos.size(), infos.data(), signal); }
 	return vk::Result::eErrorDeviceLost;
 }
@@ -56,6 +59,20 @@ Queue const* Queues::compute() const noexcept {
 	if (m_secondary.capabilities().test(QType::eCompute)) { return &m_secondary; }
 	return {};
 }
+
+vk::Result Queues::submit(Span<vk::SubmitInfo const> infos, vk::Fence signal, QType qtype) const {
+	switch (qtype) {
+	case QType::eGraphics: return graphics().submit(infos, signal);
+	case QType::eCompute: {
+		if (auto queue = compute()) { return queue->submit(infos, signal); }
+		break;
+	}
+	default: break;
+	}
+	return vk::Result::eNotReady;
+}
+
+vk::Result Queues::present(vk::PresentInfoKHR const& info) const { return graphics().present(info); }
 
 Queues::Select Queues::select(PhysicalDevice const& device, vk::SurfaceKHR surface) {
 	using vQFB = vk::QueueFlagBits;

@@ -20,7 +20,7 @@ class Queue : public Pinned {
 
 	vk::CommandPool makeCommandPool(vk::Device device, vk::CommandPoolCreateFlags flags) const;
 
-	vk::Result submit(vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal) const;
+	vk::Result submit(Span<vk::SubmitInfo const> infos, vk::Fence signal) const;
 	vk::Result present(vk::PresentInfoKHR const& info) const;
 
   private:
@@ -47,6 +47,9 @@ class Queues : public Pinned {
 	Queue const& graphics() const noexcept { return primary(); }
 	Queue const& transfer() const noexcept { return primary(); }
 	Queue const* compute() const noexcept;
+
+	vk::Result submit(Span<vk::SubmitInfo const> infos, vk::Fence signal, QType type = QType::eGraphics) const;
+	vk::Result present(vk::PresentInfoKHR const& info) const;
 
   private:
 	Queue m_primary;

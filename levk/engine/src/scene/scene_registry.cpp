@@ -63,16 +63,8 @@ Material const* SceneRegistry::defaultMaterial() const {
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
-	static input::Frame const s_blank{};
-	if (!frame) {
-		if (auto eng = Services::find<Engine::Service>()) {
-			frame = &eng->inputFrame();
-		} else {
-			frame = &s_blank;
-		}
-	}
-	m_systemGroupRoot.update(m_registry, SystemData{scheduler, *frame, dt});
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const& frame) {
+	m_systemGroupRoot.update(m_registry, SystemData{scheduler, frame, dt});
 }
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }

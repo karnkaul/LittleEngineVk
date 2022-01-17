@@ -42,10 +42,10 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Archetypal entity-component framework
   - JSON parser, de/serializer
   - Formatted logger
+- CMake install and `find_package` support
 
 ### Limitations
 
-- No CMake install stage / `find_package` support (as yet)
 - No dynamic library support on Windows
 - Single render pass
 
@@ -66,16 +66,15 @@ LittleEngineVk (`levk-engine`) is a library intended to be built from source and
 
 #### Building `levk-demo`
 
-- Clone this repo (manually initializing git submodules is not required, it will be done by the CMake script)
+- Clone this repo (manually initializing git submodules is not required, it will be done during CMake configuration)
 - Use CMake and a generator of your choice to configure an out-of-source build (`build` and `out` are ignored in git)
 - If using CMake 3.20+ / Visual Studio in CMake mode / CMake Tools with VSCode, `cmake/CMakePresets.json` can be copied/symlinked to the project root for convenience
   - Use `cmake --preset <name>` to configure and `cmake --build --preset <name>` to build on the command line
   - VS CMake and VSCode CMake Tools should pick up the presets by themselves
   - The presets are not checked into the repo root since some IDEs/editors force its usage if present there
 - For other scenarios, use CMake GUI or the command line to configure and generate a build
-  - Command line: `cmake -S . -B out`
-  - If using an IDE generator, open the project/solution in the IDE and build/debug as usual
-  - Build on the command line via `cmake --build out`
+  - Command line: `cmake -S . -B out && cmake --build out`
+  - If using an IDE generator, use CMake GUI to configure and generate a build, then open the project/solution in the IDE and build/debug as usual
 
 ### External Dependencies
 

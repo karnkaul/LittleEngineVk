@@ -11,6 +11,7 @@
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/render/layer.hpp>
+#include <levk/engine/scene/scene_manager.hpp>
 #include <levk/engine/scene/scene_registry.hpp>
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
@@ -117,16 +118,6 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	}
 	dlog::set_channels(channels);
 	return s_devices;
-}
-
-bool Engine::drawImgui(graphics::CommandBuffer cb) {
-	if constexpr (levk_editor) {
-		if (auto eng = Services::find<Service>()) {
-			eng->m_impl->editor.render(cb);
-			return true;
-		}
-	}
-	return false;
 }
 
 Engine::Engine(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}
@@ -289,19 +280,22 @@ void Engine::Service::nextFrame() const {
 	updateStats();
 }
 
-std::optional<graphics::RenderPass> Engine::Service::beginRenderPass(Opt<SceneRegistry> scene, RGBA clear, ClearDepth depth) const {
+std::optional<graphics::RenderPass> Engine::Service::beginRenderPass(Opt<SceneManager> sceneManager, RGBA clear, ClearDepth depth) const {
 	graphics::RenderBegin rb;
 	rb.clear = clear;
 	rb.depth = depth;
 	if constexpr (levk_editor) {
 		[[maybe_unused]] bool const imgui_begun = m_impl->editor.beginFrame();
 		EXPECT(imgui_begun);
-		rb.view = m_impl->view = m_impl->editor.update(scene ? scene->ediScene() : edi::SceneRef());
+		rb.view = m_impl->view = m_impl->editor.update(sceneManager ? sceneManager->sceneRef() : edi::SceneRef());
 	}
 	return m_impl->gfx->context.beginMainPass(rb, m_impl->win->framebufferSize());
 }
 
-bool Engine::Service::endRenderPass(RenderPass& out_rp) const { return m_impl->gfx->context.endMainPass(out_rp, m_impl->win->framebufferSize()); }
+bool Engine::Service::endRenderPass(RenderPass& out_rp) const {
+	if constexpr (levk_editor) { m_impl->editor.render(out_rp.commandBuffers().front()); }
+	return m_impl->gfx->context.endMainPass(out_rp, m_impl->win->framebufferSize());
+}
 
 void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
 void Engine::Service::updateViewStack(gui::ViewStack& out_stack) const { out_stack.update(m_impl->inputFrame); }

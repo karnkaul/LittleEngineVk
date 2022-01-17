@@ -43,10 +43,10 @@ class Texture {
 
 	bool changeSampler(vk::Sampler sampler);
 	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
-	Result resizeBlit(CommandBuffer cb, Extent2D extent);
-	Result resizeCopy(CommandBuffer cb, Extent2D extent);
+	[[nodiscard]] Result resizeBlit(CommandBuffer cb, Extent2D extent);
+	[[nodiscard]] Result resizeCopy(CommandBuffer cb, Extent2D extent);
 	bool blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter = BlitFilter::eLinear);
-	Result copy(CommandBuffer cb, ImageRef const& src, bool allowResize);
+	[[nodiscard]] Result copy(CommandBuffer cb, ImageRef const& src, bool allowResize);
 
 	bool busy() const { return m_transfer.busy(); }
 	bool ready() const { return m_transfer.ready(); }

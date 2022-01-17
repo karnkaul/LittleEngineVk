@@ -1,5 +1,5 @@
+#include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
-#include <levk/engine/engine.hpp>
 #include <levk/engine/render/list_renderer.hpp>
 #include <levk/engine/scene/draw_list_gen.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
@@ -58,7 +58,6 @@ void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {
 		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list, cb);
 	}
 	for (auto pipe : pipes) { pipe->swap(); }
-	Engine::drawImgui(cb);
 }
 
 void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const {

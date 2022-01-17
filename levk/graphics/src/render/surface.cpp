@@ -140,15 +140,8 @@ std::optional<Surface::Acquire> Surface::acquireNextImage(Extent2D fbSize, vk::S
 
 vk::Result Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const {
 	static constexpr vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eTopOfPipe;
-	vk::SubmitInfo submitInfo;
-	submitInfo.pWaitDstStageMask = &waitStages;
-	submitInfo.commandBufferCount = (u32)cbs.size();
-	submitInfo.pCommandBuffers = cbs.data();
-	submitInfo.waitSemaphoreCount = 1U;
-	submitInfo.pWaitSemaphores = &sync.wait;
-	submitInfo.signalSemaphoreCount = 1U;
-	submitInfo.pSignalSemaphores = &sync.ssignal;
-	return m_vram->m_device->queues().graphics().submit(submitInfo, sync.fsignal);
+	vk::SubmitInfo const submitInfo(1U, &sync.wait, &waitStages, (u32)cbs.size(), cbs.data(), 1U, &sync.ssignal);
+	return m_vram->m_device->queues().submit(submitInfo, sync.fsignal);
 }
 
 vk::Result Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
@@ -158,7 +151,7 @@ vk::Result Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wai
 	info.swapchainCount = 1;
 	info.pSwapchains = &*m_storage.swapchain.swapchain;
 	info.pImageIndices = &acquired.index;
-	auto const ret = m_vram->m_device->queues().graphics().present(info);
+	auto const ret = m_vram->m_device->queues().present(info);
 	if (outOfDate(ret)) { makeSwapchain(fbSize, format().vsync); }
 	return ret;
 }

@@ -7,7 +7,9 @@
 #include <levk/graphics/texture.hpp>
 
 namespace le {
-Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cubemap(cubemap) { ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap"); }
+Skybox::Skybox(not_null<graphics::Texture const*> cubemap) : m_cubemap(cubemap) {
+	ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap");
+}
 
 MeshView Skybox::mesh() const {
 	if (auto store = Services::find<AssetStore>()) {

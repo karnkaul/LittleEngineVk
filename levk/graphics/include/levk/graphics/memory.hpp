@@ -1,9 +1,9 @@
 #pragma once
 #include <vk_mem_alloc.h>
 #include <ktl/either.hpp>
+#include <levk/core/bitmap.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/std_types.hpp>
-#include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/image_ref.hpp>
 #include <levk/graphics/qtype.hpp>
 #include <levk/graphics/utils/defer.hpp>

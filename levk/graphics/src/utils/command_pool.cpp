@@ -1,5 +1,5 @@
 #include <levk/core/utils/expect.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/utils/command_pool.hpp>
 
 namespace le::graphics {

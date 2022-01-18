@@ -502,6 +502,11 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
 
+		// if (auto smiley = engine().store().resources().find("textures/awesomeface.png")) {
+		// 	auto const bitmap = graphics::utils::STBImg(smiley->bytes());
+		// 	if (bitmap.extent.x > 0 && bitmap.extent.y > 0) { engine().window().setIcon(bitmap); }
+		// }
+
 		if (auto font = engine().store().find<graphics::Font>("fonts/vera_serif")) {
 			m_data.text.emplace(&*font);
 			m_data.text->m_colour = colours::yellow;
@@ -727,7 +732,7 @@ bool run(io::Media const& media) {
 	winInfo.config.title = "levk demo";
 	winInfo.config.size = {1280, 720};
 	winInfo.options.centreCursor = true;
-	auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media)();
+	auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media).addIcon("textures/awesomeface.png")();
 	if (!eng) { return false; }
 	auto& engine = *eng;
 	Flags flags;

@@ -4,9 +4,9 @@
 #include <levk/core/maths.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/defer_queue.hpp>
-#include <levk/graphics/context/device.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/defer_queue.hpp>
+#include <levk/graphics/device/device.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/render/context.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <map>
@@ -98,7 +98,7 @@ void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 	m_renderer = std::move(renderer);
 }
 
-void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
+void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn.get()); }
 
 std::optional<RenderPass> RenderContext::beginMainPass(RenderBegin const& rb, Extent2D fbSize) {
 	m_vram->m_device->decrementDeferred();

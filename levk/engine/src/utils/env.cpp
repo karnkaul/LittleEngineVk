@@ -5,7 +5,7 @@
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/env.hpp>
-#include <levk/graphics/context/physical_device.hpp>
+#include <levk/graphics/device/physical_device.hpp>
 #include <levk/graphics/render/surface.hpp>
 #include <iostream>
 #include <sstream>
@@ -118,7 +118,7 @@ clap::parse_result env::init(int argc, char const* const argv[]) {
 	clap::program_spec spec;
 	spec.parser = &parser;
 	spec.doc = "LittleEngineVk command line arguments parser";
-	spec.version = Engine::version().toString(false);
+	spec.version = Engine::buildVersion().toString(false);
 	spec.cmds = cmds;
 	return clap::parse_args(spec, argc, argv);
 }

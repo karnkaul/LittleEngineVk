@@ -1,5 +1,6 @@
 target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/array_map.hpp
+  include/levk/core/bitmap.hpp
   include/levk/core/codepoint.hpp
   include/levk/core/colour.hpp
   include/levk/core/erased_ptr.hpp

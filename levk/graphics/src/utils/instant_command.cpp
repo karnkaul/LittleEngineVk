@@ -1,6 +1,6 @@
 #include <levk/core/log_channel.hpp>
 #include <levk/core/utils/expect.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/utils/instant_command.hpp>
 
 namespace le::graphics {

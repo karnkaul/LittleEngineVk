@@ -3,7 +3,7 @@
 #include <levk/core/span.hpp>
 #include <levk/core/std_types.hpp>
 
-namespace le::graphics {
+namespace le {
 using Extent2D = glm::uvec2;
 
 template <typename T>
@@ -25,4 +25,4 @@ using Cubemap = TBitmap<CubeBytes>;
 using BmpView = Span<u8 const>;
 
 using ImageData = Span<std::byte const>;
-} // namespace le::graphics
+} // namespace le

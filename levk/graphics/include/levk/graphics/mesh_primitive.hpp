@@ -1,6 +1,6 @@
 #pragma once
 #include <levk/core/ref.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/geometry.hpp>
 
 namespace le::graphics {

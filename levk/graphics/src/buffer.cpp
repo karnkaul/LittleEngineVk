@@ -1,6 +1,6 @@
 #include <levk/core/log_channel.hpp>
 #include <levk/graphics/buffer.hpp>
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 
 namespace le::graphics {
 Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {

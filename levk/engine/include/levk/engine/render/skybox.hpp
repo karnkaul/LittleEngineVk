@@ -8,15 +8,13 @@ namespace graphics {
 class Texture;
 }
 
-using Cubemap = graphics::Texture;
-
 class Skybox {
   public:
-	Skybox(not_null<Cubemap const*> cubemap);
+	Skybox(not_null<graphics::Texture const*> cubemap);
 
 	MeshView mesh() const;
 
 	mutable Material m_material;
-	not_null<Cubemap const*> m_cubemap;
+	not_null<graphics::Texture const*> m_cubemap;
 };
 } // namespace le

@@ -2,9 +2,11 @@
 #include <ktl/async/kfunction.hpp>
 #include <ktl/fixed_pimpl.hpp>
 #include <levk/core/log.hpp>
-#include <levk/graphics/context/defer_queue.hpp>
-#include <levk/graphics/context/physical_device.hpp>
-#include <levk/graphics/context/queue.hpp>
+#include <levk/core/time.hpp>
+#include <levk/core/version.hpp>
+#include <levk/graphics/device/defer_queue.hpp>
+#include <levk/graphics/device/physical_device.hpp>
+#include <levk/graphics/device/queue.hpp>
 #include <levk/graphics/utils/layout_state.hpp>
 
 namespace le::graphics {
@@ -22,6 +24,7 @@ class Device final : public Pinned {
 
 	enum class QSelect { eOptimal, eSingleFamily, eSingleQueue };
 	static constexpr std::string_view requiredExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+	static constexpr stdch::nanoseconds fenceWait = 1s;
 
 	struct CreateInfo;
 
@@ -40,10 +43,9 @@ class Device final : public Pinned {
 	vk::Fence makeFence(bool signalled) const;
 	void resetOrMakeFence(vk::Fence& out_fence, bool signalled) const;
 	bool isBusy(vk::Fence fence) const;
-	void waitFor(vk::Fence fence) const;
-	void waitAll(vAP<vk::Fence> fences) const;
+	void waitFor(Span<vk::Fence const> fences, stdch::nanoseconds wait = fenceWait) const;
 	void resetFence(vk::Fence fence, bool wait) const;
-	void resetAll(vAP<vk::Fence> fences) const;
+	void resetAll(Span<vk::Fence const> fences) const;
 	void resetCommandPool(vk::CommandPool pool) const;
 
 	bool signalled(Span<vk::Fence const> fences) const;
@@ -113,6 +115,10 @@ struct Device::CreateInfo {
 		Span<std::string_view const> extensions;
 		Validation validation = Validation::eOff;
 	} instance;
+	struct {
+		std::string_view name;
+		Version version;
+	} app;
 
 	Span<std::string_view const> extensions = requiredExtensions;
 	std::string_view customDeviceName;

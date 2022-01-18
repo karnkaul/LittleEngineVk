@@ -1,4 +1,4 @@
-project(levk-core)
+project(levk-core VERSION ${build_version})
 
 # Library
 add_library(${PROJECT_NAME})
@@ -10,9 +10,11 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC KTL_FIXED_ANY_THROW)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     src
+    "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
@@ -29,6 +31,10 @@ target_link_libraries(${PROJECT_NAME}
 include(core_includes.cmake)
 add_subdirectory(src)
 target_source_group(TARGET ${PROJECT_NAME})
+
+set(version_file "${CMAKE_CURRENT_BINARY_DIR}/include/levk/core/build_version.hpp")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/build_version.hpp.in" "${version_file}")
+source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${version_file})
 
 # PCH
 if(LEVK_USE_PCH)
@@ -47,7 +53,7 @@ if(LEVK_INSTALL)
     NAMESPACE levk::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/levk
   )
-  install(DIRECTORY include/
+  install(DIRECTORY include/ DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.hpp"
   )

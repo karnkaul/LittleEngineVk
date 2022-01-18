@@ -1,6 +1,6 @@
 #include <levk/core/log_channel.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 #include <levk/graphics/memory.hpp>
 
 namespace le::graphics {

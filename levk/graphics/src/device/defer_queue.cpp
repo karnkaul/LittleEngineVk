@@ -1,7 +1,7 @@
 #include <levk/core/ref.hpp>
 #include <levk/core/span.hpp>
 #include <levk/core/utils/algo.hpp>
-#include <levk/graphics/context/defer_queue.hpp>
+#include <levk/graphics/device/defer_queue.hpp>
 #include <algorithm>
 
 namespace le::graphics {

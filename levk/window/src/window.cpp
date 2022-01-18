@@ -78,12 +78,13 @@ void Window::cursorMode(CursorMode mode) { m_impl->cursorMode(mode); }
 glm::vec2 Window::cursorPosition() const noexcept { return m_impl->cursorPosition(); }
 glm::uvec2 Window::windowSize() const noexcept { return m_impl->windowSize(); }
 glm::uvec2 Window::framebufferSize() const noexcept { return m_impl->framebufferSize(); }
-bool Window::importControllerDB(std::string_view db) const { return m_impl->importControllerDB(db); }
-ktl::fixed_vector<Gamepad, 8> Window::activeGamepads() const { return m_impl->activeGamepads(); }
-Joystick Window::joyState(s32 id) const { return m_impl->joyState(id); }
-Gamepad Window::gamepadState(s32 id) const { return m_impl->gamepadState(id); }
-std::size_t Window::joystickAxesCount(s32 id) const { return m_impl->joystickAxesCount(id); }
-std::size_t Window::joysticKButtonsCount(s32 id) const { return m_impl->joysticKButtonsCount(id); }
+bool Window::importControllerDB(std::string_view db) noexcept { return m_impl->importControllerDB(db); }
+void Window::setIcon(Span<TBitmap<BmpView> const> bitmaps) { m_impl->setIcon(bitmaps); }
+ktl::fixed_vector<Gamepad, 8> Window::activeGamepads() const noexcept { return m_impl->activeGamepads(); }
+Joystick Window::joyState(s32 id) const noexcept { return m_impl->joyState(id); }
+Gamepad Window::gamepadState(s32 id) const noexcept { return m_impl->gamepadState(id); }
+std::size_t Window::joystickAxesCount(s32 id) const noexcept { return m_impl->joystickAxesCount(id); }
+std::size_t Window::joysticKButtonsCount(s32 id) const noexcept { return m_impl->joysticKButtonsCount(id); }
 
 std::string_view Window::keyName(int key, int scancode) noexcept {
 	std::string_view ret = "(Unknown)";

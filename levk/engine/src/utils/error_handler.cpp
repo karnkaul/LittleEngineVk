@@ -1,9 +1,9 @@
 #include <fmt/format.h>
 #include <dumb_json/json.hpp>
+#include <levk/core/build_version.hpp>
 #include <levk/core/io/fs_media.hpp>
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
-#include <levk/engine/build_version.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
@@ -20,8 +20,6 @@ void add(dj::json& root, std::string const& key, T value) {
 	root.insert(key, std::move(property));
 }
 } // namespace
-
-Version const ErrList::build = g_buildVersion;
 
 ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), message(std::move(message)), timestamp(time::sysTime()) {
 	logThreadID = dlog::this_thread_id();
@@ -85,6 +83,6 @@ dj::json Jsonify<ErrInfo>::operator()(utils::ErrInfo const& info) const {
 }
 
 dj::json Jsonify<ErrList>::operator()(utils::ErrList const& list) const {
-	return build("build", list.build.toString(true), "system", list.sysInfo, "errors", *ktl::klock(list.errors));
+	return build("build", g_buildVersion.toString(true), "system", list.sysInfo, "errors", *ktl::klock(list.errors));
 }
 } // namespace le::io

@@ -1,7 +1,7 @@
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 #include <levk/graphics/render/renderer.hpp>
 #include <levk/graphics/texture.hpp>
 #include <levk/graphics/utils/utils.hpp>

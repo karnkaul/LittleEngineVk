@@ -27,8 +27,8 @@ struct AssetLoader<graphics::SpirV> {
 template <>
 struct AssetLoadData<graphics::Texture> {
 	ktl::fixed_vector<io::Path, 6> imageURIs;
-	graphics::Bitmap bitmap;
-	graphics::Cubemap cubemap;
+	Bitmap bitmap;
+	Cubemap cubemap;
 	io::Path prefix;
 	std::string ext;
 	std::optional<vk::Format> forceFormat;
@@ -41,8 +41,8 @@ struct AssetLoadData<graphics::Texture> {
 
 template <>
 struct AssetLoader<graphics::Texture> {
-	using Cube = std::array<graphics::ImageData, 6>;
-	using Data = std::variant<graphics::Bitmap, graphics::ImageData, graphics::Cubemap, Cube>;
+	using Cube = std::array<ImageData, 6>;
+	using Data = std::variant<Bitmap, ImageData, Cubemap, Cube>;
 
 	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;

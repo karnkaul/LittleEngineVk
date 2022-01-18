@@ -1,6 +1,6 @@
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
-#include <levk/graphics/context/physical_device.hpp>
+#include <levk/graphics/device/device.hpp>
+#include <levk/graphics/device/physical_device.hpp>
 #include <sstream>
 
 namespace le::graphics {

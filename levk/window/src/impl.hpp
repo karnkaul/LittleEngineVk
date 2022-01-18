@@ -74,12 +74,14 @@ class Window::Impl {
 	glm::vec2 cursorPosition() const noexcept;
 	glm::uvec2 windowSize() const noexcept;
 	glm::uvec2 framebufferSize() const noexcept;
-	bool importControllerDB(std::string_view db) const;
-	ktl::fixed_vector<Gamepad, 8> activeGamepads() const;
-	Joystick joyState(s32 id) const;
-	Gamepad gamepadState(s32 id) const;
-	std::size_t joystickAxesCount(s32 id) const;
-	std::size_t joysticKButtonsCount(s32 id) const;
+
+	bool importControllerDB(std::string_view db) const noexcept;
+	void setIcon(Span<TBitmap<BmpView> const> bitmaps);
+	ktl::fixed_vector<Gamepad, 8> activeGamepads() const noexcept;
+	Joystick joyState(s32 id) const noexcept;
+	Gamepad gamepadState(s32 id) const noexcept;
+	std::size_t joystickAxesCount(s32 id) const noexcept;
+	std::size_t joysticKButtonsCount(s32 id) const noexcept;
 
 	Cursor m_active;
 	bool m_maximized{};

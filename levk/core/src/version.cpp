@@ -12,17 +12,26 @@ u32 parse(Span<std::string_view const> const& vec, std::size_t idx) noexcept { r
 
 Version::Version(std::string_view serialised) noexcept {
 	auto const tokens = utils::tokenise<4>(serialised, '.');
-	major_ = parse(tokens, 0);
-	minor_ = parse(tokens, 1);
-	patch_ = parse(tokens, 2);
-	tweak_ = parse(tokens, 3);
+	m_major = parse(tokens, 0);
+	m_minor = parse(tokens, 1);
+	m_patch = parse(tokens, 2);
+	m_tweak = parse(tokens, 3);
 }
 
 std::string Version::toString(bool full) const {
 	std::stringstream ret;
-	ret << major_ << "." << minor_;
-	if (tweak_ > 0 || patch_ > 0 || full) { ret << "." << patch_; }
-	if (tweak_ > 0 || full) { ret << "." << tweak_; }
+	ret << m_major << "." << m_minor;
+	if (m_tweak > 0 || m_patch > 0 || full) { ret << "." << m_patch; }
+	if (m_tweak > 0 || full) { ret << "." << m_tweak; }
 	return ret.str();
+}
+
+std::string BuildVersion::toString(bool full) const {
+	auto ret = version.toString(full);
+	if (full) {
+		ret += '-';
+		ret += commitHash;
+	}
+	return ret;
 }
 } // namespace le

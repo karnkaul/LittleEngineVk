@@ -1,6 +1,6 @@
 #include <levk/core/utils/expect.hpp>
-#include <levk/graphics/context/device.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/device.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/render/renderer.hpp>
 #include <levk/graphics/utils/utils.hpp>
 

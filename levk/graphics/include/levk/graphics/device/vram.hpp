@@ -1,7 +1,7 @@
 #pragma once
-#include <levk/graphics/bitmap.hpp>
+#include <levk/core/bitmap.hpp>
 #include <levk/graphics/buffer.hpp>
-#include <levk/graphics/context/transfer.hpp>
+#include <levk/graphics/device/transfer.hpp>
 #include <levk/graphics/image.hpp>
 #include <levk/graphics/image_ref.hpp>
 #include <levk/graphics/utils/command_pool.hpp>

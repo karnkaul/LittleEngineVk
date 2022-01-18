@@ -16,6 +16,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   ft/ft.hpp
 )
 
-add_subdirectory(context)
+add_subdirectory(device)
 add_subdirectory(render)
 add_subdirectory(utils)

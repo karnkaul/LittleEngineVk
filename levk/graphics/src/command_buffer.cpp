@@ -1,6 +1,6 @@
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 #include <levk/graphics/memory.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 

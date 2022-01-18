@@ -5,8 +5,8 @@
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/scene/space.hpp>
-#include <levk/graphics/context/device.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/device.hpp>
+#include <levk/graphics/device/vram.hpp>
 #include <levk/graphics/render/render_pass.hpp>
 #include <levk/graphics/render/vsync.hpp>
 #include <levk/graphics/utils/extent2d.hpp>
@@ -58,7 +58,7 @@ class Engine {
 	class Builder;
 	class Service;
 
-	static Version version() noexcept;
+	static BuildVersion buildVersion() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
 	static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
 
@@ -110,12 +110,14 @@ class Engine::Builder {
 	Builder& logChannels(LogChannel const lc) noexcept { return (m_logChannels = lc, *this); }
 	Builder& media(not_null<io::Media const*> m) noexcept { return (m_media = m, *this); }
 	Builder& configFile(io::Path path) noexcept { return (m_configPath = std::move(path), *this); }
+	Builder& addIcon(io::Path uri) noexcept { return (m_iconURIs.push_back(std::move(uri)), *this); }
 
-	std::optional<Engine> operator()() const;
+	std::optional<Engine> operator()();
 
   private:
 	window::CreateInfo m_windowInfo;
 	std::optional<io::Path> m_logFile = "log.txt";
+	std::vector<io::Path> m_iconURIs;
 	io::Path m_configPath = "levk_config.json";
 	LogChannel m_logChannels = log_channels_v;
 	io::Media const* m_media{};

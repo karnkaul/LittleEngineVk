@@ -1,8 +1,8 @@
 #pragma once
 #include <ktl/fixed_pimpl.hpp>
+#include <levk/core/bitmap.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/span.hpp>
-#include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/font/glyph.hpp>
 #include <memory>
 

@@ -1,10 +1,10 @@
+#include <levk/core/build_version.hpp>
 #include <levk/core/io.hpp>
 #include <levk/core/io/zip_media.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
-#include <levk/engine/build_version.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/gui/view.hpp>
@@ -108,7 +108,7 @@ struct Engine::Impl {
 	Impl(std::optional<io::Path> logPath, LogChannel active) : io(logPath.value_or("levk-log.txt"), active), service(this) {}
 };
 
-Version Engine::version() noexcept { return g_engineVersion; }
+BuildVersion Engine::buildVersion() noexcept { return g_buildVersion; }
 
 Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	auto const channels = dlog::channels();
@@ -238,7 +238,7 @@ void Engine::addDefaultAssets() {
 	}
 }
 
-std::optional<Engine> Engine::Builder::operator()() const {
+std::optional<Engine> Engine::Builder::operator()() {
 	auto impl = std::make_unique<Impl>(std::move(m_logFile), m_logChannels);
 	auto wm = window::Manager::make();
 	if (!wm) {
@@ -247,7 +247,7 @@ std::optional<Engine> Engine::Builder::operator()() const {
 	}
 	impl->wm = std::move(wm);
 	if (m_media) { impl->store.resources().media(m_media); }
-	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
+	logI("LittleEngineVk v{} | {}", buildVersion().toString(levk_debug), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI(LC_EndUser, "Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	auto winInfo = m_windowInfo;
 	winInfo.options.autoShow = false;
@@ -264,6 +264,15 @@ std::optional<Engine> Engine::Builder::operator()() const {
 	impl->errorHandler.deleteFile();
 	impl->configPath = std::move(m_configPath);
 	if (!impl->errorHandler.activeHandler()) { impl->errorHandler.setActive(); }
+	std::vector<graphics::utils::STBImg> icons;
+	icons.reserve(m_iconURIs.size());
+	for (io::Path& uri : m_iconURIs) {
+		if (auto bytes = impl->store.resources().load(std::move(uri), Resource::Type::eBinary)) { icons.push_back(graphics::utils::STBImg(bytes->bytes())); }
+	}
+	if (!icons.empty()) {
+		std::vector<TBitmap<BmpView>> const views = {icons.begin(), icons.end()};
+		impl->win->setIcon(views);
+	}
 	Services::track(&impl->service);
 	return Engine(std::move(impl));
 }

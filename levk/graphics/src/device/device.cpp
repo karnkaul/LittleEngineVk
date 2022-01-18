@@ -1,11 +1,12 @@
-#include <context/device_impl.hpp>
+#include <device/device_impl.hpp>
+#include <levk/core/build_version.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/core/utils/sys_info.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <algorithm>
 #include <iostream>
@@ -102,10 +103,11 @@ vkInst makeInstance(Device::CreateInfo const& info) {
 	}
 	for (auto ext : requiredExtensionsSet) { ret.extensions.push_back(ext.data()); }
 	vk::ApplicationInfo appInfo;
-	appInfo.pApplicationName = "LittleEngineVk Game";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.pApplicationName = info.app.name.data();
+	appInfo.applicationVersion = VK_MAKE_VERSION(info.app.version.major(), info.app.version.minor(), info.app.version.patch());
 	appInfo.pEngineName = "LittleEngineVk";
-	appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
+	auto const& ver = g_buildVersion.version;
+	appInfo.engineVersion = VK_MAKE_VERSION(ver.major(), ver.minor(), ver.patch());
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 	vk::InstanceCreateInfo createInfo;
 	createInfo.pApplicationInfo = &appInfo;
@@ -296,29 +298,12 @@ bool Device::isBusy(vk::Fence fence) const {
 	return false;
 }
 
-void Device::waitFor(vk::Fence fence) const {
-	if (fence) {
-		if constexpr (levk_debug) {
-			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
-			auto const result = m_device->waitForFences(fence, true, s_wait);
-			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
-		} else {
-			m_device->waitForFences(fence, true, maths::max<u64>());
-		}
-	}
-}
-
-void Device::waitAll(vAP<vk::Fence> fences) const {
-	if (!fences.empty()) {
-		if constexpr (levk_debug) {
-			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
-			auto const result = m_device->waitForFences(std::move(fences), true, s_wait);
-			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
-		} else {
-			m_device->waitForFences(std::move(fences), true, maths::max<u64>());
-		}
+void Device::waitFor(Span<vk::Fence const> fences, stdch::nanoseconds const wait) const {
+	if constexpr (levk_debug) {
+		auto const result = m_device->waitForFences(u32(fences.size()), fences.data(), true, static_cast<u64>(wait.count()));
+		ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+	} else {
+		m_device->waitForFences(u32(fences.size()), fences.data(), true, maths::max<u64>());
 	}
 }
 
@@ -329,12 +314,12 @@ void Device::resetFence(vk::Fence optional, bool wait) const {
 	}
 }
 
-void Device::resetCommandPool(vk::CommandPool pool) const {
-	if (!default_v(pool)) { m_device->resetCommandPool(pool, {}); }
+void Device::resetAll(Span<vk::Fence const> fences) const {
+	if (!fences.empty()) { m_device->resetFences(u32(fences.size()), fences.data()); }
 }
 
-void Device::resetAll(vAP<vk::Fence> fences) const {
-	if (!fences.empty()) { m_device->resetFences(std::move(fences)); }
+void Device::resetCommandPool(vk::CommandPool pool) const {
+	if (!default_v(pool)) { m_device->resetCommandPool(pool, {}); }
 }
 
 bool Device::signalled(Span<vk::Fence const> fences) const {

@@ -1,10 +1,10 @@
 #pragma once
 #include <ktl/fixed_vector.hpp>
+#include <levk/core/bitmap.hpp>
 #include <levk/core/io/media.hpp>
 #include <levk/core/os.hpp>
-#include <levk/graphics/bitmap.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/physical_device.hpp>
+#include <levk/graphics/device/physical_device.hpp>
 #include <levk/graphics/draw_view.hpp>
 #include <levk/graphics/geometry.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>

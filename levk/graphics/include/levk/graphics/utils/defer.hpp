@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/graphics/context/device.hpp>
+#include <levk/graphics/device/device.hpp>
 
 namespace le::graphics {
 template <typename T, typename Owner = Device>

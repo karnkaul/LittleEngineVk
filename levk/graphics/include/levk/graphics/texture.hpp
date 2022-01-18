@@ -1,9 +1,9 @@
 #pragma once
 #include <glm/vec2.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <levk/core/bitmap.hpp>
 #include <levk/core/colour.hpp>
-#include <levk/graphics/bitmap.hpp>
-#include <levk/graphics/context/vram.hpp>
+#include <levk/graphics/device/vram.hpp>
 
 namespace le::graphics {
 class Sampler {

@@ -1,8 +1,8 @@
 #include <levk/core/log_channel.hpp>
 #include <levk/core/utils/algo.hpp>
 #include <levk/graphics/common.hpp>
-#include <levk/graphics/context/device.hpp>
-#include <levk/graphics/context/transfer.hpp>
+#include <levk/graphics/device/device.hpp>
+#include <levk/graphics/device/transfer.hpp>
 
 namespace le::graphics {
 namespace {

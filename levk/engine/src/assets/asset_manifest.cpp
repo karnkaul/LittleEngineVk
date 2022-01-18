@@ -269,8 +269,10 @@ std::size_t AssetManifest::addSkyboxes(Group group) {
 	for (auto& [uri, json] : group) {
 		if (auto const cubemap = json->find("cubemap"); cubemap && cubemap->is_string()) {
 			m_skyboxes.add(uri, [this, cb = cubemap->as<std::string>(), u = std::move(uri)]() -> std::unique_ptr<Skybox> {
-				if (auto cube = store().find<Cubemap>(cb)) { return std::make_unique<Skybox>(&*cube); }
-				logW(LC_LibUser, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u);
+				if (auto cube = store().find<graphics::Texture>(cb); cube && cube->type() == graphics::Texture::Type::eCube) {
+					return std::make_unique<Skybox>(&*cube);
+				}
+				logW(LC_LibUser, "[Asset] Failed to find cubemap Texture [{}] for Skybox [{}]", cb, u);
 				return {};
 			});
 			++ret;

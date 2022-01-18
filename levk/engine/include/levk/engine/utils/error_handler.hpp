@@ -29,8 +29,6 @@ struct ErrInfo {
 };
 
 struct ErrList {
-	static Version const build;
-
 	SysInfo sysInfo;
 	ktl::kmutex<std::vector<ErrInfo>> errors;
 };

@@ -1,4 +1,5 @@
 #pragma once
+#include <levk/core/bitmap.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/window/event.hpp>
@@ -76,12 +77,13 @@ class Window {
 	void cursorMode(CursorMode mode);
 	void cursorPosition(glm::vec2 position);
 
-	bool importControllerDB(std::string_view db) const;
-	ktl::fixed_vector<Gamepad, 8> activeGamepads() const;
-	Joystick joyState(s32 id) const;
-	Gamepad gamepadState(s32 id) const;
-	std::size_t joystickAxesCount(s32 id) const;
-	std::size_t joysticKButtonsCount(s32 id) const;
+	bool importControllerDB(std::string_view db) noexcept;
+	void setIcon(Span<TBitmap<BmpView> const> bitmaps);
+	ktl::fixed_vector<Gamepad, 8> activeGamepads() const noexcept;
+	Joystick joyState(s32 id) const noexcept;
+	Gamepad gamepadState(s32 id) const noexcept;
+	std::size_t joystickAxesCount(s32 id) const noexcept;
+	std::size_t joysticKButtonsCount(s32 id) const noexcept;
 
 	static std::string_view keyName(int key, int scancode) noexcept;
 

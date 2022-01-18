@@ -1,6 +1,5 @@
 target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/basis.hpp
-  include/levk/graphics/bitmap.hpp
   include/levk/graphics/buffer.hpp
   include/levk/graphics/command_buffer.hpp
   include/levk/graphics/common.hpp
@@ -15,12 +14,12 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/texture.hpp
   include/levk/graphics/texture_atlas.hpp
 
-  include/levk/graphics/context/defer_queue.hpp
-  include/levk/graphics/context/device.hpp
-  include/levk/graphics/context/physical_device.hpp
-  include/levk/graphics/context/queue.hpp
-  include/levk/graphics/context/transfer.hpp
-  include/levk/graphics/context/vram.hpp
+  include/levk/graphics/device/defer_queue.hpp
+  include/levk/graphics/device/device.hpp
+  include/levk/graphics/device/physical_device.hpp
+  include/levk/graphics/device/queue.hpp
+  include/levk/graphics/device/transfer.hpp
+  include/levk/graphics/device/vram.hpp
 
   include/levk/graphics/font/atlas.hpp
   include/levk/graphics/font/glyph.hpp

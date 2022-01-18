@@ -290,7 +290,7 @@ glm::uvec2 Window::Impl::framebufferSize() const noexcept {
 #endif
 }
 
-bool Window::Impl::importControllerDB(std::string_view db) const {
+bool Window::Impl::importControllerDB(std::string_view db) const noexcept {
 #if defined(LEVK_USE_GLFW)
 	glfwUpdateGamepadMappings(db.data());
 	return true;
@@ -299,7 +299,17 @@ bool Window::Impl::importControllerDB(std::string_view db) const {
 #endif
 }
 
-ktl::fixed_vector<Gamepad, 8> Window::Impl::activeGamepads() const {
+void Window::Impl::setIcon(Span<TBitmap<BmpView> const> bitmaps) {
+#if defined(LEVK_USE_GLFW)
+	std::vector<GLFWimage> images;
+	for (auto const& bitmap : bitmaps) {
+		images.push_back(GLFWimage{.width = (int)bitmap.extent.x, .height = (int)bitmap.extent.y, .pixels = const_cast<u8*>(bitmap.bytes.data())});
+	}
+	glfwSetWindowIcon(*m_win, int(images.size()), images.data());
+#endif
+}
+
+ktl::fixed_vector<Gamepad, 8> Window::Impl::activeGamepads() const noexcept {
 	ktl::fixed_vector<Gamepad, 8> ret;
 #if defined(LEVK_USE_GLFW)
 	for (int id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id) {
@@ -316,24 +326,24 @@ ktl::fixed_vector<Gamepad, 8> Window::Impl::activeGamepads() const {
 	return ret;
 }
 
-Joystick Window::Impl::joyState(int id) const {
+Joystick Window::Impl::joyState(int id) const noexcept {
 	Joystick ret;
 #if defined(LEVK_USE_GLFW)
 	if (glfwJoystickPresent(id)) {
 		ret.id = id;
-		int count;
+		int count{};
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
-		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
-		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.axes[idx] = axes[idx]; }
+		std::size_t end = std::min(std::size_t(count), ret.axes.size());
+		for (std::size_t idx = 0; idx < end; ++idx) { ret.axes[idx] = axes[idx]; }
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
-		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
-		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
+		end = std::min(std::size_t(count), ret.buttons.size());
+		for (std::size_t idx = 0; idx < end; ++idx) { ret.buttons[idx] = buttons[idx]; }
 	}
 #endif
 	return ret;
 }
 
-Gamepad Window::Impl::gamepadState(int id) const {
+Gamepad Window::Impl::gamepadState(int id) const noexcept {
 	Gamepad ret;
 #if defined(LEVK_USE_GLFW)
 	GLFWgamepadstate state;
@@ -346,7 +356,7 @@ Gamepad Window::Impl::gamepadState(int id) const {
 	return ret;
 }
 
-std::size_t Window::Impl::joystickAxesCount(int id) const {
+std::size_t Window::Impl::joystickAxesCount(int id) const noexcept {
 	int max{};
 #if defined(LEVK_USE_GLFW)
 	glfwGetJoystickAxes((int)id, &max);
@@ -354,7 +364,7 @@ std::size_t Window::Impl::joystickAxesCount(int id) const {
 	return std::size_t(max);
 }
 
-std::size_t Window::Impl::joysticKButtonsCount(int id) const {
+std::size_t Window::Impl::joysticKButtonsCount(int id) const noexcept {
 	int max{};
 #if defined(LEVK_USE_GLFW)
 	glfwGetJoystickButtons((int)id, &max);

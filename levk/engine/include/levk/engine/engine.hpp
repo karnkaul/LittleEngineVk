@@ -129,7 +129,6 @@ class Engine::Service {
 	void updateViewStack(gui::ViewStack& out_stack) const;
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) const;
 
-	void nextFrame() const;
 	std::optional<RenderPass> beginRenderPass(RGBA clear, ClearDepth depth = {1.0f, 0}) const { return beginRenderPass({}, clear, depth); }
 	std::optional<RenderPass> beginRenderPass(Opt<SceneManager> sceneManager, RGBA clear, ClearDepth depth = {1.0f, 0}) const;
 	bool endRenderPass(RenderPass& out_rp) const;

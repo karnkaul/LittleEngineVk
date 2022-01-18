@@ -283,16 +283,12 @@ void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 }
 
-void Engine::Service::nextFrame() const {
-	auto pr_ = profile("nextFrame");
-	m_impl->gfx->context.waitForFrame();
-	updateStats();
-}
-
 std::optional<graphics::RenderPass> Engine::Service::beginRenderPass(Opt<SceneManager> sceneManager, RGBA clear, ClearDepth depth) const {
 	graphics::RenderBegin rb;
 	rb.clear = clear;
 	rb.depth = depth;
+	auto pr_ = profile("beginRenderPass");
+	updateStats();
 	if constexpr (levk_editor) {
 		[[maybe_unused]] bool const imgui_begun = m_impl->editor.beginFrame();
 		EXPECT(imgui_begun);

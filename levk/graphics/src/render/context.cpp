@@ -98,10 +98,7 @@ void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 	m_renderer = std::move(renderer);
 }
 
-void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn.get()); }
-
 std::optional<RenderPass> RenderContext::beginMainPass(RenderBegin const& rb, Extent2D fbSize) {
-	m_vram->m_device->decrementDeferred();
 	if (fbSize.x == 0 || fbSize.y == 0) { return std::nullopt; }
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
@@ -119,6 +116,7 @@ bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
 		ret = submit(cb, *m_acquired, fbSize);
 		m_acquired.reset();
 	}
+	m_vram->m_device->decrementDeferred();
 	m_syncs.next();
 	return ret;
 }

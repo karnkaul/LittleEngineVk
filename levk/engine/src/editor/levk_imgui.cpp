@@ -164,7 +164,7 @@ void DearImGui::Del::operator()() const {
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_del.active()) {
-		if (m_state == State::eBegin) { ImGui::Render(); }
+		if (m_state == State::eBegin) { ImGui::EndFrame(); }
 		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
 #if defined(LEVK_USE_GLFW)

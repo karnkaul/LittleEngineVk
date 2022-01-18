@@ -34,7 +34,6 @@ class RenderContext {
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
 
-	void waitForFrame();
 	std::optional<RenderPass> beginMainPass(RenderBegin const& rb, Extent2D fbSize);
 	bool endMainPass(RenderPass& out_rp, Extent2D fbSize);
 	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);

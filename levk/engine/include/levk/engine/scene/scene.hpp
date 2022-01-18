@@ -4,6 +4,10 @@
 #include <levk/engine/scene/scene_registry.hpp>
 
 namespace le {
+namespace graphics {
+class RenderPass;
+}
+
 class Scene : public SceneRegistry {
   public:
 	Scene(Opt<Engine::Service> service = {}) noexcept;

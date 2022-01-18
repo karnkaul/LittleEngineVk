@@ -12,4 +12,9 @@ struct RGBA {
 
 	glm::vec4 toVec4() const noexcept { return type == Type::eAbsolute ? colour.toRGB() : colour.toVec4(); }
 };
+
+struct DepthStencil {
+	f32 depth{};
+	u32 stencil{};
+};
 } // namespace le::graphics

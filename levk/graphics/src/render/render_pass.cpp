@@ -43,7 +43,7 @@ void RenderPass::beginPass() {
 		m_device->m_layouts.transition(m_info.primary.m_cb, m_info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth());
 	}
 	graphics::CommandBuffer::PassInfo passInfo;
-	passInfo.clearValues = {clear, m_info.begin.depth};
+	passInfo.clearValues = {clear, vk::ClearDepthStencilValue{m_info.begin.depth.depth, m_info.begin.depth.stencil}};
 	passInfo.subpassContents = m_info.secondary.empty() ? vk::SubpassContents::eInline : vk::SubpassContents::eSecondaryCommandBuffers;
 	passInfo.usage = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 	m_info.primary.beginRenderPass(m_info.renderPass, m_framebuffer, m_info.framebuffer.extent(), passInfo);

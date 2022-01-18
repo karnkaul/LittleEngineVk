@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/graphics/utils/extent2d.hpp>
+#include <levk/core/bitmap.hpp>
 
 namespace le::graphics {
 struct QuadUV {

@@ -12,7 +12,6 @@
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <levk/graphics/utils/utils.hpp>
-#include <fstream>
 
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/scene_tree.hpp>
@@ -40,7 +39,9 @@
 #include <levk/engine/render/text_mesh.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <levk/graphics/utils/instant_command.hpp>
+#include <fstream>
 
+#include <levk/engine/builder.hpp>
 #include <levk/engine/ecs/components/spring_arm.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>
 #include <levk/engine/render/shader_data.hpp>

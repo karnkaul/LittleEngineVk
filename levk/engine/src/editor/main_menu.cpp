@@ -10,6 +10,7 @@
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/graphics/render/context.hpp>
+#include <levk/window/window.hpp>
 #endif
 
 namespace le::edi {

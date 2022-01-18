@@ -1,3 +1,4 @@
+#include <levk/engine/render/frame.hpp>
 #include <levk/engine/scene/scene_manager.hpp>
 
 namespace le {
@@ -19,9 +20,8 @@ void SceneManager::tick(Time_s dt) {
 }
 
 void SceneManager::render(graphics::RGBA clear) {
-	if (auto rp = m_engine.beginRenderPass(this, clear)) {
-		if (m_active) { m_active->scene->render(*rp); }
-		m_engine.endRenderPass(*rp);
+	if (auto frame = RenderFrame(sceneRef(), m_engine, clear)) {
+		if (m_active) { m_active->scene->render(frame.renderPass()); }
 	}
 }
 

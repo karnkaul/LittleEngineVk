@@ -5,11 +5,13 @@
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/builder.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
+#include <levk/engine/render/frame.hpp>
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/scene/scene_manager.hpp>
 #include <levk/engine/scene/scene_registry.hpp>
@@ -109,16 +111,6 @@ struct Engine::Impl {
 };
 
 BuildVersion Engine::buildVersion() noexcept { return g_buildVersion; }
-
-Span<graphics::PhysicalDevice const> Engine::availableDevices() {
-	auto const channels = dlog::channels();
-	if (s_devices.empty()) {
-		dlog::set_channels({LC_EndUser});
-		s_devices = graphics::Device::physicalDevices();
-	}
-	dlog::set_channels(channels);
-	return s_devices;
-}
 
 Engine::Engine(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}
 
@@ -238,6 +230,16 @@ void Engine::addDefaultAssets() {
 	}
 }
 
+Span<graphics::PhysicalDevice const> Engine::Builder::availableDevices() {
+	auto const channels = dlog::channels();
+	if (s_devices.empty()) {
+		dlog::set_channels({LC_EndUser});
+		s_devices = graphics::Device::physicalDevices();
+	}
+	dlog::set_channels(channels);
+	return s_devices;
+}
+
 std::optional<Engine> Engine::Builder::operator()() {
 	auto impl = std::make_unique<Impl>(std::move(m_logFile), m_logChannels);
 	auto wm = window::Manager::make();
@@ -283,25 +285,6 @@ void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 }
 
-std::optional<graphics::RenderPass> Engine::Service::beginRenderPass(Opt<SceneManager> sceneManager, RGBA clear, ClearDepth depth) const {
-	graphics::RenderBegin rb;
-	rb.clear = clear;
-	rb.depth = depth;
-	auto pr_ = profile("beginRenderPass");
-	updateStats();
-	if constexpr (levk_editor) {
-		[[maybe_unused]] bool const imgui_begun = m_impl->editor.beginFrame();
-		EXPECT(imgui_begun);
-		rb.view = m_impl->view = m_impl->editor.update(sceneManager ? sceneManager->sceneRef() : edi::SceneRef());
-	}
-	return m_impl->gfx->context.beginMainPass(rb, m_impl->win->framebufferSize());
-}
-
-bool Engine::Service::endRenderPass(RenderPass& out_rp) const {
-	if constexpr (levk_editor) { m_impl->editor.render(out_rp.commandBuffers().front()); }
-	return m_impl->gfx->context.endMainPass(out_rp, m_impl->win->framebufferSize());
-}
-
 void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
 void Engine::Service::updateViewStack(gui::ViewStack& out_stack) const { out_stack.update(m_impl->inputFrame); }
 
@@ -342,5 +325,27 @@ void Engine::Service::updateStats() const {
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::MeshPrimitive::s_trisDrawn.store(0);
+}
+
+RenderFrame::RenderFrame(edi::SceneRef const& sceneRef, Engine::Service engine, RGBA clear, DepthStencil depth) : m_engine(std::move(engine)) {
+	graphics::RenderBegin rb;
+	rb.clear = clear;
+	rb.depth = depth;
+	m_profiler = Engine::profile("render");
+	m_engine.updateStats();
+	if constexpr (levk_editor) {
+		[[maybe_unused]] bool const imgui_begun = m_engine.m_impl->editor.beginFrame();
+		EXPECT(imgui_begun);
+		rb.view = m_engine.m_impl->view = m_engine.m_impl->editor.update(sceneRef);
+	}
+	m_renderPass = m_engine.m_impl->gfx->context.beginMainPass(rb, m_engine.m_impl->win->framebufferSize());
+}
+
+RenderFrame::~RenderFrame() {
+	if (m_renderPass) {
+		if constexpr (levk_editor) { m_engine.m_impl->editor.render(m_renderPass->commandBuffers().front()); }
+		m_engine.m_impl->gfx->context.endMainPass(*m_renderPass, m_engine.m_impl->win->framebufferSize());
+	}
+	m_profiler.reset();
 }
 } // namespace le

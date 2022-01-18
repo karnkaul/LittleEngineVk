@@ -45,7 +45,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   
   include/levk/graphics/utils/command_pool.hpp
   include/levk/graphics/utils/defer.hpp
-  include/levk/graphics/utils/extent2d.hpp
   include/levk/graphics/utils/instant_command.hpp
   include/levk/graphics/utils/layout_state.hpp
   include/levk/graphics/utils/trotator.hpp

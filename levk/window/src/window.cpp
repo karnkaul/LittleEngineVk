@@ -23,8 +23,7 @@ std::optional<Manager> Manager::make() {
 	if (!inst) { return std::nullopt; }
 	auto impl = std::make_unique<Impl>();
 	impl->inst = std::move(*inst);
-	Manager ret(std::move(impl));
-	return std::move(ret);
+	return Manager(std::move(impl));
 #endif
 }
 

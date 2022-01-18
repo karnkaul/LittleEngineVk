@@ -1,8 +1,7 @@
 #pragma once
 #include <glm/vec2.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
-#include <levk/core/std_types.hpp>
-#include <levk/graphics/utils/extent2d.hpp>
+#include <levk/core/bitmap.hpp>
 #include <vulkan/vulkan.hpp>
 #include <string_view>
 #include <unordered_map>
@@ -44,7 +43,6 @@ using vIAFB = vk::ImageAspectFlagBits;
 using vIUFB = vk::ImageUsageFlagBits;
 using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
-using ClearDepth = vk::ClearDepthStencilValue;
 
 constexpr Extent2D cast(vk::Extent2D extent) noexcept { return {extent.width, extent.height}; }
 constexpr Extent2D cast(vk::Extent3D extent) noexcept { return {extent.width, extent.height}; }

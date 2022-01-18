@@ -81,5 +81,6 @@ class Editor {
 	std::unique_ptr<class DearImGui> m_imgui;
 
 	friend class Engine;
+	friend class RenderFrame;
 };
 } // namespace le

@@ -3,6 +3,7 @@
 #include <levk/core/span.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/string.hpp>
+#include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/env.hpp>
 #include <levk/graphics/device/physical_device.hpp>
@@ -76,7 +77,7 @@ struct GPU : clap::option_parser {
 				if (i < 0) { return false; }
 				auto const idx = std::size_t(i);
 				try {
-					auto const& devices = Engine::availableDevices();
+					auto const& devices = Engine::Builder::availableDevices();
 					if (idx < devices.size()) {
 						auto const& device = devices[std::size_t(i)];
 						DataObject<Engine::CustomDevice>("gpuOverride")->name = std::string(device.name());
@@ -97,7 +98,7 @@ struct GPU : clap::option_parser {
 					std::stringstream str;
 					str << "Available GPUs:\n";
 					int i = 0;
-					for (auto const& d : Engine::availableDevices()) { str << i++ << ". " << d << "\n"; }
+					for (auto const& d : Engine::Builder::availableDevices()) { str << i++ << ". " << d << "\n"; }
 					std::cout << str.str();
 				} catch (std::runtime_error const& e) { std::cerr << "Failed to poll GPUs: " << e.what() << '\n'; }
 				state.early_exit(true);

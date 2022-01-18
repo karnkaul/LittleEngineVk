@@ -7,6 +7,7 @@
 #include <ktl/async/kmutex.hpp>
 #include <levk/core/array_map.hpp>
 #include <levk/core/colour.hpp>
+#include <levk/core/ref.hpp>
 #include <levk/core/services.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/utils/engine_stats.hpp>

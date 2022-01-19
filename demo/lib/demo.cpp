@@ -578,7 +578,6 @@ class App : public input::Receiver, public Scene {
 			m_testTex.blit(cmd.cb(), frame->ref());
 		}
 
-		auto pr_ = Engine::profile("app::tick");
 		// static constexpr u32 max_cp = 128;
 		// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
 		// 	m_thread = ktl::kthread([this] {
@@ -759,7 +758,7 @@ bool run(io::Media const& media) {
 		ktl::kfuture<bool> bf;
 		ktl::kasync async;
 		while (!engine.service().closing()) {
-			engine.poll(&poll);
+			engine.service().poll(&poll);
 			if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
 			scenes.tick(++dt);
 			scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));

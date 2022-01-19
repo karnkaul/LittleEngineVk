@@ -1,5 +1,4 @@
 #pragma once
-#include <levk/core/services.hpp>
 #include <levk/core/utils/profiler.hpp>
 #include <levk/core/version.hpp>
 #include <levk/engine/input/driver.hpp>
@@ -55,15 +54,10 @@ class Engine {
 	class Service;
 
 	static BuildVersion buildVersion() noexcept;
-	static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
 
 	Engine(Engine&&) noexcept;
 	Engine& operator=(Engine&&) noexcept;
 	~Engine() noexcept;
-
-	bool bootReady() const noexcept;
-
-	void poll(Opt<input::EventParser> custom = {});
 
 	bool boot(BootInfo info);
 	bool unboot() noexcept;
@@ -83,10 +77,11 @@ class Engine {
 
 class Engine::Service {
   public:
+	void poll(Opt<input::EventParser> custom = {}) const;
 	void pushReceiver(not_null<input::Receiver*> context) const;
-	void updateViewStack(gui::ViewStack& out_stack) const;
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) const;
 
+	Profiler::Profiler profile(std::string_view name) const;
 	window::Manager& windowManager() const noexcept;
 	Editor& editor() const noexcept;
 	Device& device() const noexcept;

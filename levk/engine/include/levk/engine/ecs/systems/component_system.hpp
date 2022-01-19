@@ -4,12 +4,12 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <levk/core/time.hpp>
 #include <levk/core/utils/vbase.hpp>
-#include <levk/engine/input/frame.hpp>
+#include <levk/engine/engine.hpp>
 
 namespace le {
 struct SystemData {
 	dts::scheduler& scheduler;
-	input::Frame const& frame;
+	Engine::Service engine;
 	Time_s dt{};
 };
 

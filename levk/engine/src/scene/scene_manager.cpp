@@ -16,10 +16,14 @@ bool SceneManager::open(Hash id) {
 }
 
 void SceneManager::tick(Time_s dt) {
-	if (m_active) { m_active->scene->tick(dt); }
+	if (m_active) {
+		auto p = m_engine.profile("tick");
+		m_active->scene->tick(dt);
+	}
 }
 
 void SceneManager::render(graphics::RGBA clear) {
+	auto p = m_engine.profile("render");
 	if (auto frame = RenderFrame(sceneRef(), m_engine, clear)) {
 		if (m_active) { m_active->scene->render(frame.renderPass()); }
 	}

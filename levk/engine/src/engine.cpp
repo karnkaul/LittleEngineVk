@@ -155,17 +155,6 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
-void Engine::poll(Opt<input::EventParser> custom) {
-	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
-	input::Driver::In in{m_impl->win->pollEvents(), {service().framebufferSize(), service().sceneSpace()}, rscale, &*m_impl->win, custom};
-	m_impl->inputFrame = m_impl->input.update(in, service().editor().view());
-	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
-		if ((*it)->block(m_impl->inputFrame.state)) { break; }
-	}
-	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
-	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
-}
-
 bool Engine::booted() const noexcept { return m_impl->gfx.has_value(); }
 
 Engine::Service Engine::service() const noexcept { return m_impl->service; }
@@ -285,9 +274,19 @@ void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 }
 
-void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
-void Engine::Service::updateViewStack(gui::ViewStack& out_stack) const { out_stack.update(m_impl->inputFrame); }
+void Engine::Service::poll(Opt<input::EventParser> custom) const {
+	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
+	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win, custom};
+	m_impl->inputFrame = m_impl->input.update(in, editor().view());
+	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
+		if ((*it)->block(m_impl->inputFrame.state)) { break; }
+	}
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
+	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
+}
 
+void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
+Engine::Profiler::Profiler Engine::Service::profile(std::string_view name) const { return m_impl->profiler.profile(name); }
 window::Manager& Engine::Service::windowManager() const noexcept { return *m_impl->wm; }
 Editor& Engine::Service::editor() const noexcept { return m_impl->editor; }
 Engine::Device& Engine::Service::device() const noexcept { return *m_impl->gfx->device; }
@@ -331,7 +330,6 @@ RenderFrame::RenderFrame(edi::SceneRef const& sceneRef, Engine::Service engine, 
 	graphics::RenderBegin rb;
 	rb.clear = clear;
 	rb.depth = depth;
-	m_profiler = Engine::profile("render");
 	m_engine.updateStats();
 	if constexpr (levk_editor) {
 		[[maybe_unused]] bool const imgui_begun = m_engine.m_impl->editor.beginFrame();
@@ -346,6 +344,5 @@ RenderFrame::~RenderFrame() {
 		if constexpr (levk_editor) { m_engine.m_impl->editor.render(m_renderPass->commandBuffers().front()); }
 		m_engine.m_impl->gfx->context.endMainPass(*m_renderPass, m_engine.m_impl->win->framebufferSize());
 	}
-	m_profiler.reset();
 }
 } // namespace le

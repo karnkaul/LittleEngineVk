@@ -27,7 +27,6 @@ class RenderFrame {
   private:
 	Engine::Service m_engine;
 	std::optional<RenderPass> m_renderPass;
-	std::optional<Engine::Profiler::Profiler> m_profiler;
 };
 
 // impl

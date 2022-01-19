@@ -10,7 +10,7 @@ dts::scheduler& Scene::scheduler() const {
 }
 
 void Scene::tick(Time_s dt) {
-	updateSystems(scheduler(), dt, engine().inputFrame());
+	updateSystems(scheduler(), dt, engine());
 	scheduler().rethrow();
 }
 

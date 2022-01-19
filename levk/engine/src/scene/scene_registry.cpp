@@ -63,8 +63,8 @@ Material const* SceneRegistry::defaultMaterial() const {
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const& frame) {
-	m_systemGroupRoot.update(m_registry, SystemData{scheduler, frame, dt});
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, Engine::Service const& engine) {
+	m_systemGroupRoot.update(m_registry, SystemData{scheduler, engine, dt});
 }
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }

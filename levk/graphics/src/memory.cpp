@@ -200,12 +200,15 @@ void Memory::unmap(Resource& out_resource) const {
 
 void Memory::Deleter::operator()(not_null<Memory const*> memory, Resource const& resource) const {
 	if (resource.data) { vmaUnmapMemory(resource.allocator, resource.handle); }
-	if (auto buf = resource.resource.get_if<vk::Buffer>()) {
-		vmaDestroyBuffer(resource.allocator, static_cast<VkBuffer>(*buf), resource.handle);
-		memory->m_allocations[Type::eBuffer].fetch_sub(resource.size);
-	} else {
-		vmaDestroyImage(resource.allocator, static_cast<VkImage>(resource.resource.get<vk::Image>()), resource.handle);
-		memory->m_allocations[Type::eImage].fetch_sub(resource.size);
-	}
+	resource.resource.visit(ktl::koverloaded{
+		[&](vk::Buffer buffer) {
+			vmaDestroyBuffer(resource.allocator, static_cast<VkBuffer>(buffer), resource.handle);
+			memory->m_allocations[Type::eBuffer].fetch_sub(resource.size);
+		},
+		[&](vk::Image image) {
+			vmaDestroyImage(resource.allocator, static_cast<VkImage>(image), resource.handle);
+			memory->m_allocations[Type::eImage].fetch_sub(resource.size);
+		},
+	});
 }
 } // namespace le::graphics

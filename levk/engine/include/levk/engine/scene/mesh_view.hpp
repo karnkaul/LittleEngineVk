@@ -40,7 +40,9 @@ inline MeshObjView MeshView::meshViews() const noexcept {
 }
 
 inline bool MeshView::empty() const noexcept {
-	if (auto view = m_objects.get_if<MeshObjView>()) { return view->empty(); }
-	return false;
+	return m_objects.visit(ktl::koverloaded{
+		[](MeshObjView const& view) { return view.empty(); },
+		[](MeshObj const&) { return false; },
+	});
 }
 } // namespace le

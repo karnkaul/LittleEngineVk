@@ -145,16 +145,7 @@ bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data c
 		}
 		return false;
 	};
-	if (auto bitmap = std::get_if<Bitmap>(&data)) {
-		return construct(*bitmap);
-	} else if (auto bytes = std::get_if<ImageData>(&data)) {
-		return construct(*bytes);
-	} else if (auto cubemap = std::get_if<Cubemap>(&data)) {
-		return construct(*cubemap);
-	} else if (auto bytes = std::get_if<Cube>(&data)) {
-		return construct(Span<ImageData const>(*bytes));
-	}
-	return false;
+	return data.visit(construct);
 }
 
 std::unique_ptr<graphics::Font> AssetLoader<graphics::Font>::load(AssetLoadInfo<graphics::Font> const& info) const {

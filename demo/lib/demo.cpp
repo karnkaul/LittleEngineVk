@@ -650,7 +650,7 @@ class App : public input::Receiver, public Scene {
 
 	Data m_data;
 	AssetManifest m_manifest;
-	mutable Renderer m_renderer;
+	Renderer m_renderer;
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;

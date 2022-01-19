@@ -22,8 +22,12 @@ MeshView TextMesh::Obj::mesh(graphics::Font& font, std::string_view line, RGBA c
 TextMesh::TextMesh(not_null<Font*> font) noexcept : m_obj(Obj::make(font->m_vram)), m_font(font) {}
 
 MeshView TextMesh::mesh() const {
-	if (auto geom = m_info.get_if<graphics::Geometry>()) { return m_obj.mesh(*m_font, *geom, m_colour); }
-	if (auto line = m_info.get<Line>(); !line.line.empty()) { return m_obj.mesh(*m_font, line.line, m_colour, line.layout); }
-	return {};
+	return m_info.visit(ktl::koverloaded{
+		[&](graphics::Geometry const& geom) { return m_obj.mesh(*m_font, geom, m_colour); },
+		[&](TextMesh::Line const& line) {
+			if (line.line.empty()) { return MeshView{}; }
+			return m_obj.mesh(*m_font, line.line, m_colour, line.layout);
+		},
+	});
 }
 } // namespace le

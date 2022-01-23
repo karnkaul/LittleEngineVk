@@ -59,11 +59,11 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 		{
 			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20, scale = 25;
 			s64 ftCount = (s64)LogStats::s_frameTimeCount / scale;
-			TWidget<std::pair<s64, s64>> st(CStr<32>("ft count: %i", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
+			TWidget<std::pair<s64, s64>> st(CStr<32>("ft count: {}", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_frameTimeCount = (std::size_t)ftCount * scale;
 			f32 const ftime = ft.samples.empty() ? 0.0f : ft.samples.back();
-			auto const overlay = CStr<32>("%.4fms (avg of %u)", ft.average, ft.samples.size());
-			auto const title = CStr<32>("[%.3fms] [%u] FPS", ftime, ft.rate);
+			auto const overlay = CStr<32>("{.3f}ms (avg of {})", ft.average, ft.samples.size());
+			auto const title = CStr<32>("[{.2f}ms] [{}] FPS", ftime, ft.rate);
 			Styler s(Style::eSameLine);
 			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, overlay.data());
 			s(Style::eSeparator);
@@ -92,7 +92,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			Styler s(Style::eSameLine);
 			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20, scale = 100;
 			s64 lineCount = (s64)LogStats::s_lineCount / scale;
-			TWidget<std::pair<s64, s64>> st(CStr<32>("line count: %i", lineCount * scale), lineCount, s_minTCounter, s_maxTCounter, 1);
+			TWidget<std::pair<s64, s64>> st(CStr<32>("line count: {}", lineCount * scale), lineCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_lineCount = (std::size_t)lineCount * scale;
 		}
 		{

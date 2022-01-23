@@ -1,5 +1,4 @@
 #include <ktl/enum_flags/enumerate_enum.hpp>
-#include <ktl/stack_string.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>

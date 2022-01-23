@@ -67,8 +67,8 @@ CStr<128> uniqueGuiName(T const& t) {
 	} else {
 		str = utils::tName(&t);
 	}
-	str += CStr<128>("##");
-	str += CStr<128>("%x", &t);
+	str += CStr<2>("##");
+	str += CStr<16>("{x}", &t);
 	return str;
 }
 
@@ -78,7 +78,7 @@ void walk(SceneNode& node, InspectVerifier& iv, dens::registry const& reg) {
 		auto tn = makeNode(reg.name(entity), iv(entity), node.nodes().empty());
 		if (auto source = DragDrop::Source()) {
 			source.payload("ENTITY", entity);
-			Text(ktl::stack_string<128>("%s [%u]", reg.name(entity).data(), entity.id));
+			Text(CStr<128>("{} [{}]", reg.name(entity), entity.id));
 		}
 		if (auto target = DragDrop::Target()) {
 			if (auto e = target.payload<dens::entity>("ENTITY")) {

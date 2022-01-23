@@ -459,12 +459,12 @@ TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) {
+	if (ImGui::ArrowButton(CStr<64>("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) {
 		out_t -= dt;
 		changed = true;
 	}
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) {
+	if (ImGui::ArrowButton(CStr<64>("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) {
 		out_t += dt;
 		changed = true;
 	}
@@ -490,7 +490,7 @@ class EditorTab : public PaletteTab {
 };
 
 void inspectMat(Material* out_mat, std::string_view name, int idx) {
-	auto const id = idx >= 0 ? ktl::stack_string<64>("Material_%d", idx) : ktl::stack_string<64>("Material");
+	auto const id = idx >= 0 ? CStr<64>("Material_{}", idx) : CStr<64>("Material");
 	if (auto tn = TreeNode(id, false, false, true, true)) {
 		if (!name.empty()) { Selectable name_(name); }
 		if (out_mat) {
@@ -511,7 +511,7 @@ void inspectMP(Inspect<MeshProvider> provider) {
 		type = "Skybox";
 	}
 	auto store = Services::find<AssetStore>();
-	Text typeStr(ktl::stack_string<64>("Type: %s", type.data()));
+	Text typeStr(CStr<64>("Type: {}", type));
 	Text uri(provider.get().assetURI());
 	if (store) {
 		if (type == "Mesh Primitive") {

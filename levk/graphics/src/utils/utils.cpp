@@ -471,7 +471,7 @@ std::size_t utils::writePPM(not_null<Device*> device, Image const& img, std::ost
 		auto const extent = img.extent2D();
 		auto isr = device->device().getImageSubresourceLayout(img.image(), vk::ImageSubresource(vIAFB::eColor));
 		if (isr.offset < extent.x * extent.y * 4U) { data += isr.offset; }
-		auto const header = ktl::stack_string<256>("P6\n%u\n%u\n255\n", extent.x, extent.y);
+		auto const header = ktl::stack_string<256>("P6\n{}\n{}\n255\n", extent.x, extent.y);
 		out_str << header.get();
 		for (u32 y = 0; y < extent.y; ++y) {
 			auto row = (u32 const*)data;

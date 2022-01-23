@@ -29,7 +29,7 @@ void context(graphics::RenderContext& rc) {
 void renderer(graphics::Renderer& rd) {
 	Text txt("Renderer");
 	static f32 s_newScale = rd.renderScale();
-	if (Button(ktl::stack_string<16>("Scale: %.2f", rd.renderScale())) && rd.canScale()) { Popup::open("settings_renderer_scale"); }
+	if (Button(ktl::stack_string<16>("Scale: {.2f}", rd.renderScale())) && rd.canScale()) { Popup::open("settings_renderer_scale"); }
 	if (auto popup = Popup("settings_renderer_scale")) {
 		TWidget<f32> rsw("Render Scale", s_newScale, 0.03f, 75.0f, {0.5f, 4.0f});
 		if (Button("Set")) {

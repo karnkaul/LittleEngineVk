@@ -357,7 +357,7 @@ TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
-		if (auto add = TreeNode(CStr<16>("[Add %s]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
+		if (auto add = TreeNode(CStr<16>("[Add {}]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
 			dens::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}

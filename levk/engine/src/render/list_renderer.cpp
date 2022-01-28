@@ -45,16 +45,16 @@ void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {
 			drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order});
 		}
 	}
-	std::sort(drawLists.begin(), drawLists.end());
 	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
-	for (auto const& list : drawLists) { writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list); }
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
+	std::sort(drawLists.begin(), drawLists.end());
 	for (auto const& list : drawLists) {
 		EXPECT(list.pipeline.valid());
 		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
 		pipes.insert(list.pipeline.shaderInput);
+		writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list);
 		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list, cb);
 	}
 	for (auto pipe : pipes) { pipe->swap(); }

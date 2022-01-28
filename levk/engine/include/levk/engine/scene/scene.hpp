@@ -1,28 +1,33 @@
 #pragma once
-#include <dumb_tasks/scheduler.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/scene/scene_registry.hpp>
 
 namespace le {
 namespace graphics {
 class RenderPass;
-}
+class ShaderBuffer;
+} // namespace graphics
+
+struct ShaderSceneView;
+class ShaderBufferMap;
 
 class Scene : public SceneRegistry {
   public:
 	Scene(Opt<Engine::Service> service = {}) noexcept;
 
 	Engine::Service const& engine() const noexcept { return m_engineService; }
-	dts::scheduler& scheduler() const;
+	Engine::Executor& executor() const { return m_engineService.executor(); }
+	ShaderBufferMap& shaderBufferMap() const;
+	graphics::ShaderBuffer& shaderBuffer(Hash id) const;
 
-	virtual void open() {}
+	virtual void open();
 	virtual void tick(Time_s dt);
-	virtual void render(graphics::RenderPass&) {}
+	virtual void render(graphics::RenderPass&, ShaderSceneView const&) {}
 	virtual void close();
 
   protected:
 	Engine::Service m_engineService;
-	dts::scheduler* m_taskScheduler{};
+	ShaderBufferMap* m_shaderBufferMap{};
 
 	friend class SceneManager;
 };

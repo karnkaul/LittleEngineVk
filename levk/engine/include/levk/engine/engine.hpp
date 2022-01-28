@@ -5,6 +5,10 @@
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/scene/space.hpp>
 
+namespace dts {
+class executor;
+} // namespace dts
+
 namespace le {
 namespace io {
 class Media;
@@ -46,6 +50,7 @@ class Engine {
 	using Renderer = graphics::Renderer;
 	using Stats = utils::EngineStats;
 	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
+	using Executor = dts::executor;
 
 	struct CustomDevice;
 	struct CreateInfo;
@@ -90,7 +95,8 @@ class Engine::Service {
 	Renderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept;
 	AssetStore& store() const noexcept;
-	input::Receiver::Store& receiverStore() noexcept;
+	input::Receiver::Store& receiverStore() const noexcept;
+	Executor& executor() const noexcept;
 
 	bool closing() const;
 	Extent2D framebufferSize() const noexcept;

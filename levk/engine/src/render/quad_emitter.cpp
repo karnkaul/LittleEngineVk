@@ -54,7 +54,7 @@ void QuadEmitter::create(EmitterInfo const& info) {
 	for (std::size_t i = 0; i < m_info.count / 2; ++i) { addQuad(); }
 }
 
-void QuadEmitter::tick(Time_s dt, Opt<dts::task_queue> tasks) {
+void QuadEmitter::tick(Time_s dt, Opt<dts::executor> executor) {
 	if (m_info.loop) {
 		while (m_data.pos.size() < m_info.count) { addQuad(); }
 	}
@@ -68,17 +68,17 @@ void QuadEmitter::tick(Time_s dt, Opt<dts::task_queue> tasks) {
 	};
 	bool b = true;
 	static constexpr std::size_t chunk = 1024U;
-	if (b && tasks && m_data.pos.size() > chunk) {
-		m_data.tids.reserve(m_data.pos.size() / chunk + 1U);
+	if (b && executor && m_data.pos.size() > chunk) {
+		m_data.futures.reserve(m_data.pos.size() / chunk + 1U);
 		std::size_t begin = 0;
 		std::size_t end = std::min(begin + chunk, m_data.pos.size());
 		while (begin < m_data.pos.size()) {
-			m_data.tids.push_back(tasks->enqueue([range, begin, end] { range(begin, end); }));
+			m_data.futures.push_back(executor->enqueue([range, begin, end] { range(begin, end); }));
 			begin = end;
 			end = std::min(begin + chunk, m_data.pos.size());
 		}
-		tasks->wait_tasks(m_data.tids);
-		m_data.tids.clear();
+		for (auto& future : m_data.futures) { future.wait(); }
+		m_data.futures.clear();
 	} else {
 		range(0U, m_data.pos.size());
 	}

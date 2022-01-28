@@ -161,6 +161,7 @@ bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload p
 	}
 	m_payload = payload;
 	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
+	wait();
 	m_image = load(*m_vram, m_transfer, format, extent, imgs, mips);
 	return true;
 }
@@ -173,6 +174,7 @@ bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format for
 	m_payload = payload;
 	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
 	auto const extent = imgs.front().extent;
+	wait();
 	m_image = load(*m_vram, m_transfer, format, extent, std::move(imgs), mips);
 	return true;
 }

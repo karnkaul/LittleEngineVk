@@ -1,4 +1,6 @@
+#include <dumb_tasks/executor.hpp>
 #include <levk/engine/render/frame.hpp>
+#include <levk/engine/render/shader_data.hpp>
 #include <levk/engine/scene/scene_manager.hpp>
 
 namespace le {
@@ -25,11 +27,16 @@ void SceneManager::tick(Time_s dt) {
 void SceneManager::render(graphics::RGBA clear) {
 	auto p = m_engine.profile("render");
 	if (auto frame = RenderFrame(sceneRef(), m_engine, clear)) {
-		if (m_active) { m_active->scene->render(frame.renderPass()); }
+		if (m_active) {
+			auto const view = ShaderSceneView::make(m_active->scene->camera(), m_engine.sceneSpace());
+			m_active->scene->render(frame.renderPass(), view);
+		}
+		m_shaderBufferMap.swap();
 	}
 }
 
 void SceneManager::close() {
+	m_engine.executor().stop();
 	if (m_active) {
 		m_active->scene->close();
 		logI(LC_EndUser, "[Scene] [{}] closed", m_active->id);

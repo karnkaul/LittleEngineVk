@@ -5,27 +5,23 @@
 #include <algorithm>
 
 namespace le::graphics {
+constexpr Buffering& operator--(Buffering& b) noexcept { return (b = Buffering{u32(b) - 1}, b); }
+
 void DeferQueue::defer(Callback&& callback, Buffering defer) {
-	ktl::klock lock(m_entries);
-	lock->push_back({.callback = std::move(callback), .defer = defer + Buffering::eSingle, .done = false});
+	if (callback) { ktl::klock(m_entries)->push_back({std::move(callback), defer + Buffering::eSingle}); }
 }
 
 std::size_t DeferQueue::decrement() {
 	ktl::klock lock(m_entries);
-	std::vector<Ref<Callback const>> done;
-	done.reserve(lock->size());
 	for (Entry& entry : *lock) {
 		if (entry.defer == Buffering::eNone) {
-			entry.done = true;
-			done.push_back(entry.callback);
+			entry.callback();
+			entry.callback = {};
 		} else {
-			entry.defer = Buffering{u32(entry.defer) - 1};
+			--entry.defer;
 		}
 	}
-	for (Callback const& callback : done) {
-		if (callback) { callback(); }
-	}
-	utils::erase_if(*lock, [](Entry const& d) -> bool { return d.done; });
+	utils::erase_if(*lock, [](Entry const& d) -> bool { return !d.callback; });
 	return lock->size();
 }
 

@@ -7,6 +7,10 @@
 #include <levk/engine/scene/scene_node.hpp>
 
 namespace le {
+namespace graphics {
+struct Camera;
+}
+
 namespace edi {
 class SceneRef;
 }
@@ -30,10 +34,11 @@ class SceneRegistry : public utils::VBase {
 	template <typename T, typename... Args>
 	dens::entity spawn(std::string name, std::string layerURI, Args&&... args);
 
-	void updateSystems(dts::scheduler& scheduler, Time_s dt, Engine::Service const& engine);
+	void updateSystems(Time_s dt, Engine::Service const& engine);
 	Material const* defaultMaterial() const;
 
 	edi::SceneRef ediScene() noexcept;
+	graphics::Camera const& camera() const noexcept;
 
   protected:
 	ComponentSystemGroup m_systemGroupRoot;

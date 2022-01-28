@@ -29,7 +29,7 @@ vk::Result Queue::present(vk::PresentInfoKHR const& info) const {
 }
 
 vk::Result Queue::submit(Span<vk::SubmitInfo const> infos, vk::Fence signal) const {
-	if (valid()) { return ktl::klock(m_queue)->submit(infos.size(), infos.data(), signal); }
+	if (valid()) { return ktl::klock(m_queue)->submit(static_cast<u32>(infos.size()), infos.data(), signal); }
 	return vk::Result::eErrorDeviceLost;
 }
 

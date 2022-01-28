@@ -1,5 +1,5 @@
 #pragma once
-#include <dumb_tasks/task_queue.hpp>
+#include <dumb_tasks/executor.hpp>
 #include <levk/core/nvec.hpp>
 #include <levk/core/time.hpp>
 #include <levk/core/transform.hpp>
@@ -44,7 +44,7 @@ struct EmitterInfo {
 class QuadEmitter {
   public:
 	void create(EmitterInfo const& info);
-	void tick(Time_s dt, Opt<dts::task_queue> tasks = {});
+	void tick(Time_s dt, Opt<dts::executor> tasks = {});
 	graphics::Geometry geometry() const;
 
   private:
@@ -65,7 +65,7 @@ class QuadEmitter {
 	struct {
 		std::vector<Pos> pos;
 		std::vector<Geom> gen;
-		std::vector<dts::task_id> tids;
+		std::vector<dts::future_t> futures;
 	} m_data;
 };
 

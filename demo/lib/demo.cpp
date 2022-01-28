@@ -1,9 +1,7 @@
-#include <dumb_tasks/scheduler.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/utils/algo.hpp>
 #include <levk/core/utils/std_hash.hpp>
 #include <levk/core/utils/string.hpp>
-#include <levk/engine/assets/asset_list.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/editor/inspector.hpp>
 #include <levk/engine/input/control.hpp>
@@ -26,7 +24,6 @@
 #include <levk/engine/utils/exec.hpp>
 
 #include <levk/core/utils/enumerate.hpp>
-#include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/gui/widgets/dropdown.hpp>
 #include <levk/engine/render/descriptor_helper.hpp>
 
@@ -41,11 +38,15 @@
 #include <levk/graphics/utils/instant_command.hpp>
 #include <fstream>
 
+#include <dumb_tasks/executor.hpp>
+#include <ktl/async/kthread.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/ecs/components/spring_arm.hpp>
 #include <levk/engine/ecs/components/trigger.hpp>
 #include <levk/engine/render/shader_data.hpp>
 #include <levk/graphics/render/context.hpp>
+
+#include <levk/engine/assets/asset_manifest.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -121,45 +122,37 @@ class Renderer : public ListRenderer {
   public:
 	using Camera = graphics::Camera;
 
-	struct Scene {
+	struct SceneData {
+		DrawableMap custom;
 		ShaderSceneView view;
-		dens::registry const* registry{};
 		Span<DirLight const> lights;
 	};
 
-	Renderer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
-		m_view.mats = graphics::ShaderBuffer(vram, {});
-		m_view.lights = graphics::ShaderBuffer(vram, {});
-	}
-
-	void render(RenderPass& out_rp, Scene const& scene) {
-		m_view.lights.swap();
-		m_view.mats.swap();
-		m_view.mats.write(scene.view);
-		if (!scene.lights.empty()) {
+	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, dens::registry const& registry) {
+		m_mats = &sbMap.get("mats");
+		m_mats->write(data.view);
+		m_lights = &sbMap.get("lights");
+		if (!data.lights.empty()) {
 			DirLights dl;
-			for (std::size_t idx = 0; idx < scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = scene.lights[idx]; }
-			dl.count = std::min((u32)scene.lights.size(), (u32)dl.lights.size());
-			m_view.lights.write(dl);
+			for (std::size_t idx = 0; idx < data.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = data.lights[idx]; }
+			dl.count = std::min((u32)data.lights.size(), (u32)dl.lights.size());
+			m_lights->write(dl);
 		} else {
-			m_view.lights.write(DirLights());
+			m_lights->write(DirLights());
 		}
-		DrawableMap map;
-		if (scene.registry) { fill(map, *scene.registry); }
-		ListRenderer::render(out_rp, map);
+		auto drawMap = data.custom;
+		fill(drawMap, registry);
+		ListRenderer::render(out_rp, drawMap);
+		drawMap.clear();
 	}
 
   private:
-	struct {
-		graphics::ShaderBuffer mats;
-		graphics::ShaderBuffer lights;
-	} m_view;
-	not_null<graphics::VRAM*> m_vram;
-
 	void writeSets(DescriptorMap map, DrawList const& list) override {
 		auto set0 = list.set(map, 0);
-		set0.update(0, m_view.mats);
-		set0.update(1, m_view.lights);
+		// set0.update(0, m_view.mats);
+		set0.update(0, *m_mats);
+		// set0.update(1, m_view.lights);
+		set0.update(1, *m_lights);
 		for (Drawable const& drawable : list.drawables) {
 			drawable.set(map, 1).update(0, drawable.model);
 			DrawMesh const& drawMesh = drawable.mesh;
@@ -176,6 +169,9 @@ class Renderer : public ListRenderer {
 			}
 		}
 	}
+
+	graphics::ShaderBuffer* m_mats{};
+	graphics::ShaderBuffer* m_lights{};
 };
 
 class TestView : public gui::View {
@@ -354,8 +350,8 @@ struct EmitMesh {
 
 	EmitMesh(not_null<graphics::VRAM*> vram, EmitterInfo info = {}) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic) { emitter.create(info); }
 
-	void tick(Time_s dt, Opt<dts::task_queue> tasks = {}) {
-		emitter.tick(dt, tasks);
+	void tick(Time_s dt, Opt<dts::executor> executor = {}) {
+		emitter.tick(dt, executor);
 		primitive.construct(emitter.geometry());
 	}
 
@@ -367,17 +363,18 @@ class App : public input::Receiver, public Scene {
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(Engine::Service const& eng)
-		: m_renderer(&eng.vram()), m_testTex(&eng.vram(), eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
+		: m_manifest(eng), m_testTex(&eng.vram(), eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
 		  m_emitter(&eng.vram()) {}
 
 	void open() override {
+		Scene::open();
 		// auto const io = scheduler().add_queue();
 		// scheduler().add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
 		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
-		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
-		auto const res = m_manifest.load("demo", &scheduler());
-		ENSURE(res > 0, "Manifest missing/empty");
+		// m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
+		m_manifest.load("demo.manifest");
+		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 
 		/* custom meshes */ {
 			auto rQuad = engine().store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&engine().vram()));
@@ -481,6 +478,11 @@ class App : public input::Receiver, public Scene {
 		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &engine().vram());
 	}
 
+	void close() override {
+		Scene::close();
+		m_manifest.unload();
+	}
+
 	bool block(input::State const& state) override {
 		if (m_controls.editor(state)) { engine().editor().toggle(); }
 		if (m_controls.wireframe(state)) {
@@ -528,26 +530,28 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach<RenderPipeProvider>(ent1, RenderPipeProvider::make("render_pipelines/ui"));
 		}
 
-		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
-		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
-		gui::Dropdown::CreateInfo dci;
-		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
-		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-		dci.textHeight = 30U;
-		dci.options = {"zero", "one", "two", "/bthree", "four"};
-		dci.selected = 2;
-		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
-		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
-		gui::Dialogue::CreateInfo gdci;
-		gdci.header.text = "Dialogue";
-		gdci.content.text = "Content\ngoes\nhere";
-		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
-		gui::InputField::CreateInfo info;
-		// info.secret = true;
-		auto& in = dialogue.push<gui::InputField>(info);
-		in.m_rect.anchor.offset.y = 60.0f;
-		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		if (auto guistack = m_registry.find<gui::ViewStack>(m_data.guiStack)) {
+			auto& stack = *guistack;
+			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
+			gui::Dropdown::CreateInfo dci;
+			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+			dci.textHeight = 30U;
+			dci.options = {"zero", "one", "two", "/bthree", "four"};
+			dci.selected = 2;
+			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
+			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+			gui::Dialogue::CreateInfo gdci;
+			gdci.header.text = "Dialogue";
+			gdci.content.text = "Content\ngoes\nhere";
+			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
+			gui::InputField::CreateInfo info;
+			// info.secret = true;
+			auto& in = dialogue.push<gui::InputField>(info);
+			in.m_rect.anchor.offset.y = 60.0f;
+			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		}
 
 		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
@@ -590,7 +594,7 @@ class App : public input::Receiver, public Scene {
 		// 	auto inst = graphics::InstantCommand(&engine().vram());
 		// 	m_atlas.build(inst.cb(), m_built.value++);
 		// }
-		if (!m_data.init && m_manifest.ready(scheduler())) { onAssetsLoaded(); }
+		if (!m_data.init && !m_manifest.busy()) { onAssetsLoaded(); }
 		auto& cam = m_registry.get<FreeCam>(m_data.camera);
 		m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 		auto& pc = m_registry.get<PlayerController>(m_data.player);
@@ -618,17 +622,15 @@ class App : public input::Receiver, public Scene {
 			tr->position(pos);
 		}
 
-		m_emitter.tick(dt, &scheduler());
+		m_emitter.tick(dt, &executor());
 	}
 
-	void render(graphics::RenderPass& renderPass) override {
+	void render(graphics::RenderPass& renderPass, ShaderSceneView const& view) override {
 		// draw
-		Renderer::Scene scene;
-		scene.registry = &m_registry;
-		auto const cam = m_registry.find<graphics::Camera>(m_sceneRoot);
-		scene.view = ShaderSceneView::make(cam ? *cam : graphics::Camera(), engine().sceneSpace());
+		Renderer::SceneData scene;
+		scene.view = view;
 		scene.lights = m_data.dirLights;
-		m_renderer.render(renderPass, scene);
+		Renderer{}.render(renderPass, shaderBufferMap(), scene, m_registry);
 	}
 
   private:
@@ -649,8 +651,7 @@ class App : public input::Receiver, public Scene {
 	};
 
 	Data m_data;
-	AssetManifest m_manifest;
-	Renderer m_renderer;
+	ManifestLoader m_manifest;
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
@@ -755,7 +756,7 @@ bool run(io::Media const& media) {
 		scenes.attach<App>("app", engine.service());
 		scenes.open("app");
 		DeltaTime dt;
-		ktl::kfuture<bool> bf;
+		ktl::kfuture<void> bf;
 		ktl::kasync async;
 		while (!engine.service().closing()) {
 			engine.service().poll(&poll);

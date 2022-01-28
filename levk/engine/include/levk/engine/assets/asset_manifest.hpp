@@ -1,113 +1,129 @@
 #pragma once
 #include <dumb_json/json.hpp>
-#include <levk/core/utils/vbase.hpp>
-#include <levk/engine/assets/asset_list.hpp>
-#include <levk/engine/assets/asset_loaders.hpp>
-#include <levk/engine/render/pipeline.hpp>
-#include <unordered_map>
+#include <dumb_tasks/executor.hpp>
+#include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/engine.hpp>
+#include <map>
 
 namespace le {
+struct RenderPipeline;
 class Skybox;
+class Model;
 
-class AssetManifest : public utils::VBase {
-  public:
-	enum class Kind {
-		eSampler,
-		eSpirV,
-		eTexture,
-		eRenderLayer,
-		eRenderPipeline,
-		eFont,
-		eMaterial,
-		eSkybox,
-		eModel,
-		eCOUNT_,
-	};
-	using Kinds = ktl::enum_flags<Kind, u16>;
+struct AssetManifest {
+	class Parser;
 
-	using StageID = AssetListLoader::StageID;
-	using QueueID = AssetListLoader::QueueID;
-	using Flag = AssetListLoader::Flag;
-	using Flags = AssetListLoader::Flags;
-
-	Flags& flags() noexcept { return m_loader.m_flags; }
-	Flags const& flags() const noexcept { return m_loader.m_flags; }
-
-	std::size_t preload(dj::json const& root);
-	void stage(dts::scheduler* scheduler);
-	template <typename T>
-	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {}, QueueID qid = {});
-	std::size_t load(io::Path const& jsonID, dts::scheduler* scheduler);
-	std::size_t unload(io::Path const& jsonID, dts::scheduler& scheduler);
-
-	std::vector<StageID> deps(Kinds kinds) const noexcept;
-
-	bool ready(dts::scheduler const& scheduler) const { return m_loader.ready(scheduler); }
-	void wait(dts::scheduler& scheduler) const { m_loader.wait(scheduler); }
-	f32 progress() const noexcept { return m_loader.progress(); }
-
-	EnumArray<Kind, QueueID> m_jsonQIDs = {};
-
-  protected:
-	graphics::Device& device();
-	graphics::VRAM& vram();
-	graphics::RenderContext& context();
-	AssetStore& store();
-
-	template <typename T>
-	std::size_t unloadMap(T& map);
-
-  private:
 	using Metadata = dj::ptr<dj::json>;
 	using Group = std::unordered_map<std::string, Metadata>;
+	using List = std::unordered_map<std::string, Group>;
 
-	virtual std::size_t addCustom(std::string_view, Group) { return 0; }
-	virtual void loadCustom(dts::scheduler*) {}
-	virtual std::size_t unloadCustom() { return 0; }
+	List list;
 
-	std::size_t preload(io::Path const& jsonID);
-	std::size_t add(std::string_view name, Group group);
-	std::size_t addSamplers(Group group);
-	std::size_t addSpirV(Group group);
-	std::size_t addTextures(Group group);
-	std::size_t addRenderLayers(Group group);
-	std::size_t addRenderPipelines(Group group);
-	std::size_t addFonts(Group group);
-	std::size_t addMaterials(Group group);
-	std::size_t addSkyboxes(Group group);
-	std::size_t addModels(Group group);
+	static List populate(dj::json const& root);
+
+	AssetManifest& include(List add);
+	AssetManifest& exclude(List const& remove);
+};
+
+class AssetManifest::Parser : public utils::VBase {
+  public:
+	enum struct Order : u32 { eZeroth, eFirst, eSecond, eThird };
+
+	using Stages = std::map<Order, std::vector<dts::task_t>>;
+	using Group = AssetManifest::Group;
+
+	template <typename T>
+	static constexpr Order order(Order fallback = Order{4}) noexcept;
+	template <typename... T>
+	static constexpr Order depend(Order fallback = Order{4}) noexcept;
+	static constexpr Order maxOrder(std::span<Order const> orders, Order fallback) noexcept;
+
+	Parser(Engine::Service engine, not_null<Stages*> stages, Opt<Parser const> next = {}) noexcept : m_next(next), m_engine(engine), m_stages(stages) {}
+
+	virtual std::optional<std::size_t> operator()(std::string_view name, Group const& group) const = 0;
+
+	Opt<Parser const> m_next{};
+
+  protected:
+	void enqueue(Order order, dts::task_t task) const;
+	template <typename T>
+	void add(Order order, std::string uri, std::unique_ptr<T> asset) const;
+	template <typename T>
+	void load(Order order, std::string uri, AssetLoadData<T> data) const;
+
+	Engine::Service m_engine;
+	not_null<Stages*> m_stages;
+};
+
+class ManifestLoader {
+  public:
+	using Parser = AssetManifest::Parser;
+	using Order = Parser::Order;
+
+	ManifestLoader(Engine::Service engine) noexcept : m_engine(engine) {}
+
+	std::size_t preload(dj::json const& root, Opt<Parser const> custom = {});
+	void loadAsync();
+	void loadBlocking();
+	void load(io::Path jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
 	std::size_t unload();
 
-	AssetList<graphics::Sampler> m_samplers;
-	AssetLoadList<graphics::SpirV> m_spirV;
-	AssetLoadList<graphics::Texture> m_textures;
-	AssetList<RenderLayer> m_renderLayers;
-	AssetList<RenderPipeline> m_renderPipelines;
-	AssetLoadList<graphics::Font> m_fonts;
-	AssetList<Material> m_materials;
-	AssetList<Skybox> m_skyboxes;
-	AssetLoadList<Model> m_models;
-	AssetListLoader m_loader;
-	EnumArray<Kind, StageID> m_deps = {};
+	AssetManifest const& manifest() const noexcept { return m_manifest; }
+	void clear();
+	void wait() const;
+	bool busy() const { return m_future.busy(); }
+
+  private:
+	AssetManifest m_manifest;
+	Parser::Stages m_stages;
+	dts::future_t m_future;
+	Engine::Service m_engine;
 };
 
 // impl
 
-template <typename T>
-AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler* scheduler, Kinds kinds, Span<StageID const> deps, QueueID qid) {
-	auto dp = this->deps(kinds);
-	dp.reserve(dp.size() + deps.size());
-	std::copy(deps.begin(), deps.end(), std::back_inserter(dp));
-	return m_loader.stage(std::move(lists), scheduler, dp, qid);
+namespace detail {
+template <typename T, typename... Compare>
+constexpr bool any_same_v = (... || std::is_same_v<T, Compare>);
 }
 
 template <typename T>
-std::size_t AssetManifest::unloadMap(T& out_map) {
-	std::size_t ret{};
-	for (auto const& [uri, _] : out_map) {
-		if (store().unload(uri)) { ++ret; }
+constexpr AssetManifest::Parser::Order AssetManifest::Parser::order(Order fallback) noexcept {
+	using namespace graphics;
+	if constexpr (detail::any_same_v<T, Sampler, SpirV, RenderLayer>) {
+		return Order::eZeroth;
+	} else if constexpr (detail::any_same_v<T, Texture, RenderPipeline>) {
+		return Order::eFirst;
+	} else if constexpr (detail::any_same_v<T, Material, Font, Skybox, Model>) {
+		return Order::eSecond;
 	}
-	out_map.clear();
+	return fallback;
+}
+
+template <typename... T>
+constexpr AssetManifest::Parser::Order AssetManifest::Parser::depend(Order fallback) noexcept {
+	constexpr Order orders[] = {order<T>()...};
+	return Order{static_cast<u32>(maxOrder(orders, fallback)) + 1U};
+}
+
+constexpr AssetManifest::Parser::Order AssetManifest::Parser::maxOrder(std::span<Order const> orders, Order fallback) noexcept {
+	if (orders.empty()) { return fallback; }
+	Order ret = orders[0];
+	for (auto const order : orders) {
+		if (order > ret) { ret = order; }
+	}
 	return ret;
+}
+
+inline void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
+
+template <typename T>
+void AssetManifest::Parser::add(Order order, std::string uri, std::unique_ptr<T> asset) const {
+	enqueue(order, [e = m_engine, uri = std::move(uri), asset = std::move(asset)]() mutable { e.store().add(std::move(uri), std::move(asset)); });
+}
+
+template <typename T>
+void AssetManifest::Parser::load(Order order, std::string uri, AssetLoadData<T> data) const {
+	enqueue(order, [e = m_engine, uri = std::move(uri), data = std::move(data)] { e.store().load(std::move(uri), std::move(data)); });
 }
 } // namespace le

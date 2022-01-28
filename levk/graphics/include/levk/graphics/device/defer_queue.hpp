@@ -20,7 +20,6 @@ class DeferQueue : public Pinned {
 	struct Entry {
 		Callback callback;
 		Buffering defer;
-		bool done;
 	};
 
 	mutable ktl::strict_tmutex<std::vector<Entry>> m_entries;

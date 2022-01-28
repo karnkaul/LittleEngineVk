@@ -34,7 +34,7 @@ class Texture {
 
 	static Cubemap unitCubemap(Colour colour);
 
-	Texture(not_null<VRAM*> vram, vk::Sampler sm, Colour cl = colours::white, Extent2D ex = default_extent_v, Payload pl = Payload::eColour, bool mips = true);
+	Texture(not_null<VRAM*> vram, vk::Sampler sm, Colour cl = colours::white, Extent2D ex = default_extent_v, Payload pl = Payload::eColour, bool mips = false);
 
 	bool construct(Bitmap const& bitmap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v, bool mips = true);
 	bool construct(ImageData img, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v, bool mips = true);

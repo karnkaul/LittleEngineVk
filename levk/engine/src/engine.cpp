@@ -1,3 +1,4 @@
+#include <dumb_tasks/executor.hpp>
 #include <levk/core/build_version.hpp>
 #include <levk/core/io.hpp>
 #include <levk/core/io/zip_media.hpp>
@@ -94,6 +95,8 @@ struct Engine::Impl {
 	std::optional<Window> win;
 	std::optional<GFX> gfx;
 	AssetStore store;
+	dts::thread_pool threadPool;
+	Executor executor = Executor(&threadPool);
 	input::Driver input;
 	input::ReceiverStore receivers;
 	input::Frame inputFrame;
@@ -138,12 +141,14 @@ bool Engine::boot(BootInfo info) {
 	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 	addDefaultAssets();
 	m_impl->win->show();
+	m_impl->executor.start();
 	return true;
 }
 
 bool Engine::unboot() noexcept {
 	if (booted()) {
 		saveConfig();
+		m_impl->executor.stop();
 		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_impl->editor.deinit();
@@ -283,6 +288,7 @@ void Engine::Service::poll(Opt<input::EventParser> custom) const {
 	}
 	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
+	m_impl->executor.rethrow();
 }
 
 void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
@@ -299,7 +305,8 @@ Engine::Window& Engine::Service::window() const {
 }
 input::Frame const& Engine::Service::inputFrame() const noexcept { return m_impl->inputFrame; }
 AssetStore& Engine::Service::store() const noexcept { return m_impl->store; }
-input::Receiver::Store& Engine::Service::receiverStore() noexcept { return m_impl->receivers; }
+input::Receiver::Store& Engine::Service::receiverStore() const noexcept { return m_impl->receivers; }
+dts::executor& Engine::Service::executor() const noexcept { return m_impl->executor; }
 
 bool Engine::Service::closing() const { return window().closing(); }
 glm::vec2 Engine::Service::sceneSpace() const noexcept { return m_impl->space(m_impl->inputFrame.space); }

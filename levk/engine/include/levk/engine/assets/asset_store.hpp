@@ -122,7 +122,7 @@ Asset<T> AssetStore::add(std::string uri, std::unique_ptr<T>&& t) {
 		Hash const key = uri;
 		auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(t));
 		TAsset<T>& ret = *tasset;
-		auto const [it, b] = lock->emplace(key, std::move(tasset));
+		auto const [it, b] = lock->insert_or_assign(key, std::move(tasset));
 		if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", ret.uri); }
 		logI(LC_EndUser, "== [Asset] [{}] added", ret.uri);
 		return makeAsset<T>(ret);
@@ -148,7 +148,7 @@ Asset<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
 	if ((ret.t = loader.load(*ret.info)); ret.t) {
 		logI(LC_EndUser, "== [Asset] [{}] loaded", ret.uri);
 		ktl::unique_klock<TAssets> lock(m_assets);
-		lock->emplace(key, std::move(tasset));
+		lock->insert_or_assign(key, std::move(tasset));
 		return makeAsset(ret);
 	}
 	logW(LC_EndUser, "[Asset] Failed to load [{}]!", ret.uri);

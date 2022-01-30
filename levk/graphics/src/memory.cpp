@@ -208,6 +208,7 @@ void Memory::Deleter::operator()(not_null<Memory const*> memory, Resource const&
 		[&](vk::Image image) {
 			vmaDestroyImage(resource.allocator, static_cast<VkImage>(image), resource.handle);
 			memory->m_allocations[Type::eImage].fetch_sub(resource.size);
+			memory->m_device->m_layouts.force(image, vk::ImageLayout::eUndefined);
 		},
 	});
 }

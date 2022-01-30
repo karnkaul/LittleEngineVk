@@ -112,6 +112,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	if (ret) {
 		m_storage.swapchain.swapchain = vk::UniqueSwapchainKHR(swapchain, m_vram->m_device->device());
 		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain.swapchain);
+		for (auto const& image : m_storage.images) { m_vram->m_device->m_layouts.force(image.image, vk::ImageLayout::eUndefined); }
 		m_storage.images.clear();
 		for (auto const image : images) {
 			m_storage.swapchain.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));

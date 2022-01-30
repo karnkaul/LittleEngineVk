@@ -3,7 +3,6 @@
 #include <levk/core/version.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
-#include <levk/engine/scene/space.hpp>
 
 namespace dts {
 class executor;

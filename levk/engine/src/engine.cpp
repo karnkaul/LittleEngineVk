@@ -107,7 +107,6 @@ struct Engine::Impl {
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
 	Service service;
-	scene::Space space;
 	io::Path configPath;
 
 	Impl(std::optional<io::Path> logPath, LogChannel active) : io(logPath.value_or("levk-log.txt"), active), service(this) {}
@@ -309,7 +308,7 @@ input::Receiver::Store& Engine::Service::receiverStore() const noexcept { return
 dts::executor& Engine::Service::executor() const noexcept { return m_impl->executor; }
 
 bool Engine::Service::closing() const { return window().closing(); }
-glm::vec2 Engine::Service::sceneSpace() const noexcept { return m_impl->space(m_impl->inputFrame.space); }
+glm::vec2 Engine::Service::sceneSpace() const noexcept { return m_impl->inputFrame.space.display.swapchain; }
 Extent2D Engine::Service::framebufferSize() const noexcept {
 	if (m_impl->gfx) { return m_impl->gfx->context.surface().extent(); }
 	return m_impl->win->framebufferSize();

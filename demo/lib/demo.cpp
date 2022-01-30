@@ -368,11 +368,6 @@ class App : public input::Receiver, public Scene {
 
 	void open() override {
 		Scene::open();
-		// auto const io = scheduler().add_queue();
-		// scheduler().add_agent({io, 0});
-		// m_manifest.m_jsonQID = io;
-		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
-		// m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		m_manifest.load("demo.manifest");
 		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 

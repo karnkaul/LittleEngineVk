@@ -2,6 +2,7 @@
 #include <editor/sudo.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/core/services.hpp>
+#include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/inspector.hpp>
@@ -10,10 +11,10 @@
 #include <levk/engine/editor/scene_tree.hpp>
 #include <levk/engine/editor/types.hpp>
 #include <levk/engine/engine.hpp>
+#include <levk/engine/render/mesh_view_provider.hpp>
 #include <levk/engine/render/model.hpp>
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/engine/render/skybox.hpp>
-#include <levk/engine/scene/asset_provider.hpp>
 #include <levk/graphics/geometry.hpp>
 #include <levk/graphics/render/renderer.hpp>
 
@@ -581,7 +582,7 @@ void inspectRLP(Inspect<RenderPipeProvider> provider) {
 		static ktl::stack_string<128> s_search;
 		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<RenderPipeline>(s_search)) {
-			provider.get() = RenderPipeProvider::make(std::string(select.item));
+			provider.get() = std::string(select.item);
 			popup.close();
 		}
 	}

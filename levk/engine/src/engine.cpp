@@ -3,6 +3,7 @@
 #include <levk/core/io.hpp>
 #include <levk/core/io/zip_media.hpp>
 #include <levk/core/log_channel.hpp>
+#include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
@@ -14,8 +15,6 @@
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/render/frame.hpp>
 #include <levk/engine/render/layer.hpp>
-#include <levk/engine/scene/scene_manager.hpp>
-#include <levk/engine/scene/scene_registry.hpp>
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>

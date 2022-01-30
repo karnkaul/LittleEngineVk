@@ -42,16 +42,16 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string layerURI) {
+dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string pipeURI) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
+	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
 	m_registry.attach<MeshProvider>(ret, std::move(provider));
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string layerURI) {
+dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string pipeURI) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
+	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
 	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
 	return ret;
 }

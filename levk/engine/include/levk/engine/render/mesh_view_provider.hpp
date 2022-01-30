@@ -1,36 +1,14 @@
 #pragma once
 #include <ktl/async/kfunction.hpp>
-#include <levk/core/hash.hpp>
 #include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
-#include <levk/engine/scene/mesh_view.hpp>
+#include <levk/engine/render/mesh_view.hpp>
 #include <type_traits>
 
 namespace le {
-struct RenderLayer;
-struct RenderLayer;
-struct RenderPipeline;
-
 template <typename T>
 concept MeshAPI = requires(T const& t) {
 	{ t.mesh() } -> std::same_as<MeshView>;
-};
-
-template <typename T>
-class AssetProvider {
-  public:
-	static AssetProvider make(std::string assetURI);
-
-	std::string const& uri() const noexcept { return m_assetURI; }
-	void uri(std::string assetURI);
-
-	bool empty() const noexcept { return m_hash == Hash(); }
-	bool ready() const;
-	T const& get(T const& fallback = T{}) const;
-
-  private:
-	std::string m_assetURI;
-	Hash m_hash;
 };
 
 class MeshProvider {
@@ -78,9 +56,6 @@ class DynamicMesh {
 	GetMesh m_getMesh;
 };
 
-using RenderLayerProvider = AssetProvider<RenderLayer>;
-using RenderPipeProvider = AssetProvider<RenderPipeline>;
-
 // impl
 
 template <typename T, typename F>
@@ -106,32 +81,5 @@ template <MeshAPI T>
 DynamicMesh DynamicMesh::make(T const* source) {
 	EXPECT(source);
 	return make([source]() { return source->mesh(); });
-}
-
-template <typename T>
-AssetProvider<T> AssetProvider<T>::make(std::string assetURI) {
-	AssetProvider ret;
-	ret.uri(std::move(assetURI));
-	return ret;
-}
-
-template <typename T>
-bool AssetProvider<T>::ready() const {
-	if (auto store = Services::find<AssetStore>()) { return store->exists<T>(m_hash); }
-	return false;
-}
-
-template <typename T>
-T const& AssetProvider<T>::get(T const& fallback) const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto t = store->find<T>(m_hash)) { return *t; }
-	}
-	return fallback;
-}
-
-template <typename T>
-void AssetProvider<T>::uri(std::string assetURI) {
-	m_assetURI = std::move(assetURI);
-	m_hash = m_assetURI;
 }
 } // namespace le

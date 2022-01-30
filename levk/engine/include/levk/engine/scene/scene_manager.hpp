@@ -1,7 +1,7 @@
 #pragma once
 #include <levk/engine/editor/types.hpp>
+#include <levk/engine/render/shader_buffer_map.hpp>
 #include <levk/engine/scene/scene.hpp>
-#include <levk/engine/scene/shader_buffer_map.hpp>
 
 namespace le {
 class SceneManager {

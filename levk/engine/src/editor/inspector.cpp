@@ -1,6 +1,7 @@
 #include <editor/sudo.hpp>
 #include <levk/core/services.hpp>
 #include <levk/core/utils/algo.hpp>
+#include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/editor/inspector.hpp>
 #include <levk/engine/engine.hpp>
@@ -8,7 +9,6 @@
 #include <levk/engine/gui/widget.hpp>
 #include <levk/engine/render/drawable.hpp>
 #include <levk/engine/render/pipeline.hpp>
-#include <levk/engine/scene/asset_provider.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)

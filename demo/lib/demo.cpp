@@ -17,9 +17,9 @@
 #include <levk/engine/gui/text.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/gui/widget.hpp>
+#include <levk/engine/render/draw_list_gen.hpp>
 #include <levk/engine/render/list_renderer.hpp>
 #include <levk/engine/render/skybox.hpp>
-#include <levk/engine/scene/draw_list_gen.hpp>
 #include <levk/engine/scene/scene_manager.hpp>
 #include <levk/engine/utils/exec.hpp>
 
@@ -438,7 +438,7 @@ class App : public input::Receiver, public Scene {
 			m_testMat.map_Kd = &m_testTex;
 			if (auto primitive = engine().store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, RenderPipeProvider::make("render_pipelines/tex"));
+				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, "render_pipelines/tex");
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
@@ -460,7 +460,7 @@ class App : public input::Receiver, public Scene {
 		{
 			auto ent = spawnNode("emitter");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&m_emitter));
-			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 		}
 		{
 			DirLight l0, l1;
@@ -497,7 +497,7 @@ class App : public input::Receiver, public Scene {
 	void onAssetsLoaded() {
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
+			m_registry.attach<RenderPipeProvider>(triggerDebug, "render_pipelines/wireframe");
 		}
 
 		if (auto font = engine().store().find<graphics::Font>("fonts/vera_serif")) {
@@ -511,7 +511,7 @@ class App : public input::Receiver, public Scene {
 			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
-			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 
 			m_data.cursor.emplace(&*font);
 			m_data.cursor->m_colour = colours::yellow;
@@ -522,7 +522,7 @@ class App : public input::Receiver, public Scene {
 			m_data.text->m_info = m_data.cursor->generateText();
 			auto ent1 = spawnNode("text_cursor");
 			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
-			m_registry.attach<RenderPipeProvider>(ent1, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
 		}
 
 		if (auto guistack = m_registry.find<gui::ViewStack>(m_data.guiStack)) {

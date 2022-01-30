@@ -1,7 +1,7 @@
 #include <levk/core/utils/expect.hpp>
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/material.hpp>
-#include <levk/engine/scene/asset_provider.hpp>
+#include <levk/engine/render/mesh_view_provider.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 
 namespace le {

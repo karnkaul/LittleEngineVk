@@ -3,7 +3,7 @@
 #include <glm/vec2.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <levk/core/std_types.hpp>
-#include <levk/engine/scene/mesh_view.hpp>
+#include <levk/engine/render/mesh_view.hpp>
 
 namespace le {
 class DescriptorUpdater;

@@ -1,4 +1,4 @@
-#include <levk/engine/scene/shader_buffer_map.hpp>
+#include <levk/engine/render/shader_buffer_map.hpp>
 #include <levk/graphics/render/context.hpp>
 
 namespace le {

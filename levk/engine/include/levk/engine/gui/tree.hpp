@@ -5,7 +5,7 @@
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/gui/rect.hpp>
 #include <levk/engine/render/flex.hpp>
-#include <levk/engine/scene/mesh_view.hpp>
+#include <levk/engine/render/mesh_view.hpp>
 #include <levk/engine/utils/owner.hpp>
 #include <levk/graphics/basis.hpp>
 #include <levk/graphics/draw_view.hpp>

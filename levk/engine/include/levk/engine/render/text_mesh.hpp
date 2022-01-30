@@ -1,7 +1,7 @@
 #pragma once
 #include <ktl/either.hpp>
 #include <levk/engine/render/material.hpp>
-#include <levk/engine/scene/mesh_view.hpp>
+#include <levk/engine/render/mesh_view.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 
 namespace le {

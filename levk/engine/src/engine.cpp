@@ -8,7 +8,6 @@
 #include <levk/core/utils/error.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
 #include <levk/engine/builder.hpp>
-#include <levk/engine/editor/editor.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/input/driver.hpp>
@@ -107,7 +106,6 @@ struct Engine::Impl {
 	graphics::ScreenView view;
 	Profiler profiler;
 	time::Point lastPoll{};
-	Editor editor;
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
 	Service service;
@@ -279,6 +277,8 @@ void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 	m_impl->delegates.rendererChanged();
 }
 
+bool Engine::Service::booted() const noexcept { return m_impl->gfx.has_value(); }
+
 void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom) const {
 	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
 	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win, custom};
@@ -294,7 +294,6 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
 Engine::Profiler::Profiler Engine::Service::profile(std::string_view name) const { return m_impl->profiler.profile(name); }
 window::Manager& Engine::Service::windowManager() const noexcept { return *m_impl->wm; }
-Editor& Engine::Service::editor() const noexcept { return m_impl->editor; }
 Engine::Device& Engine::Service::device() const noexcept { return *m_impl->gfx->device; }
 Engine::VRAM& Engine::Service::vram() const noexcept { return *m_impl->gfx->vram; }
 Engine::Context& Engine::Service::context() const noexcept { return m_impl->gfx->context; }

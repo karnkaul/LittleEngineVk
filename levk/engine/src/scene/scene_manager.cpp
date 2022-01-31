@@ -5,19 +5,11 @@
 #include <levk/engine/scene/scene_manager.hpp>
 
 namespace le {
-SceneManager::SceneManager(Engine::Service engine, Opt<Editor> editor) : m_shaderBufferMap(engine), m_engine(engine), m_editor(editor) {
-	if (m_editor) { m_editor->init(m_engine.context(), m_engine.window()); }
-}
+SceneManager::SceneManager(Engine::Service engine) : m_shaderBufferMap(engine), m_engine(engine) {}
 
-SceneManager::~SceneManager() {
-	close();
-	if (m_editor) { m_editor->deinit(); }
-}
+SceneManager::~SceneManager() { close(); }
 
-Viewport const& SceneManager::sceneView() const noexcept {
-	static constexpr Viewport fallback;
-	return m_editor ? m_editor->view() : fallback;
-}
+Viewport const& SceneManager::sceneView() const noexcept { return editor::view(); }
 
 bool SceneManager::open(Hash id) {
 	if (auto it = m_scenes.find(id); it != m_scenes.end()) {
@@ -40,17 +32,13 @@ void SceneManager::tick(Time_s dt) {
 void SceneManager::render(graphics::RGBA clear) {
 	auto p = m_engine.profile("render");
 	graphics::RenderBegin rb{clear};
-	if constexpr (levk_editor) {
-		if (m_editor) { rb.view = m_editor->update(sceneRef()); }
-	}
+	if constexpr (levk_editor) { rb.view = editor::update(sceneRef()); }
 	if (auto frame = RenderFrame(m_engine, rb)) {
 		if (m_active) {
 			auto const view = ShaderSceneView::make(m_active->scene->camera(), m_engine.sceneSpace());
 			m_active->scene->render(frame.renderPass(), view);
 		}
-		if constexpr (levk_editor) {
-			if (m_editor) { m_editor->render(frame.renderPass().commandBuffers().front()); }
-		}
+		if constexpr (levk_editor) { editor::render(frame.renderPass().commandBuffers().front()); }
 		m_shaderBufferMap.swap();
 	}
 }

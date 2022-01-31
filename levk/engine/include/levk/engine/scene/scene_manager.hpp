@@ -6,7 +6,7 @@
 namespace le {
 class SceneManager {
   public:
-	SceneManager(Engine::Service engine, Opt<Editor> editor = {});
+	SceneManager(Engine::Service engine);
 	SceneManager(SceneManager&&) = default;
 	SceneManager& operator=(SceneManager&&) = default;
 	~SceneManager();
@@ -32,7 +32,6 @@ class SceneManager {
 	std::unordered_map<Hash, Entry> m_scenes;
 	ShaderBufferMap m_shaderBufferMap;
 	Engine::Service m_engine;
-	Opt<Editor> m_editor{};
 	Opt<Entry> m_active{};
 };
 

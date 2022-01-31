@@ -47,6 +47,7 @@
 #include <levk/graphics/render/context.hpp>
 
 #include <levk/engine/assets/asset_manifest.hpp>
+#include <levk/engine/editor/editor.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -479,7 +480,7 @@ class App : public input::Receiver, public Scene {
 	}
 
 	bool block(input::State const& state) override {
-		if (m_controls.editor(state)) { engine().editor().toggle(); }
+		if (m_controls.editor(state)) { editor::toggle(); }
 		if (m_controls.wireframe(state)) {
 			/*if (auto lit = engine().store().find<PipelineState>("pipelines/lit")) {
 				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
@@ -747,7 +748,8 @@ bool run(io::Media const& media) {
 	do {
 		flags = {};
 		engine.boot(bootInfo);
-		SceneManager scenes(engine.service(), &engine.service().editor());
+		auto editor = editor::Instance::make(eng->service());
+		SceneManager scenes(engine.service());
 		scenes.attach<App>("app", engine.service());
 		scenes.open("app");
 		DeltaTime dt;

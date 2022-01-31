@@ -5,6 +5,7 @@
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/editor/editor.hpp>
 #include <levk/engine/editor/scene_tree.hpp>
+#include <levk/engine/editor/types.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/gui/widgets/dropdown.hpp>

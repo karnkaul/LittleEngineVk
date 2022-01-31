@@ -99,8 +99,8 @@ MainMenu::MainMenu() {
 	MenuList::Menu assetIndex{"Asset Index", []() { g_panes.flag(Flag::eAssetIndex) = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine::Service>()->editor().showImGuiDemo(); }};
-	MenuList::Menu close{"Close Editor", []() { Services::get<Engine::Service>()->editor().engage(false); }, true};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { editor::showImGuiDemo(); }};
+	MenuList::Menu close{"Close Editor", []() { editor::engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::get<Engine::Service>()->window().close(); }};
 	main.push_front(std::move(quit));
 	main.push_front(std::move(close));

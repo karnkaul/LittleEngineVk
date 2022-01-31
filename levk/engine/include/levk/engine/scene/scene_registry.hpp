@@ -12,7 +12,7 @@ namespace graphics {
 struct Camera;
 }
 
-namespace edi {
+namespace editor {
 class SceneRef;
 }
 
@@ -38,7 +38,7 @@ class SceneRegistry : public utils::VBase {
 	void updateSystems(Time_s dt, Engine::Service const& engine);
 	Material const* defaultMaterial() const;
 
-	edi::SceneRef ediScene() noexcept;
+	editor::SceneRef ediScene() noexcept;
 	graphics::Camera const& camera() const noexcept;
 
   protected:

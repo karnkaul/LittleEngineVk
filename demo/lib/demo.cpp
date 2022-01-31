@@ -378,12 +378,12 @@ class App : public input::Receiver, public Scene {
 
 		engine().pushReceiver(this);
 
-		auto ifreecam = [](edi::Inspect<FreeCam> inspect) { edi::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
-		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
-		edi::Inspector::attach<FreeCam>(ifreecam);
-		edi::Inspector::attach<SpringArm>(SpringArm::inspect);
-		edi::Inspector::attach<PlayerController>(ipc);
-		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
+		auto ifreecam = [](editor::Inspect<FreeCam> inspect) { editor::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
+		auto ipc = [](editor::Inspect<PlayerController> inspect) { editor::TWidget<bool>("Active", inspect.get().active); };
+		editor::Inspector::attach<FreeCam>(ifreecam);
+		editor::Inspector::attach<SpringArm>(SpringArm::inspect);
+		editor::Inspector::attach<PlayerController>(ipc);
+		editor::Inspector::attach<gui::Dialogue>([](editor::Inspect<gui::Dialogue>) { editor::Text("Dialogue found!"); });
 
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
@@ -417,7 +417,7 @@ class App : public input::Receiver, public Scene {
 			m_data.camera = m_registry.make_entity<FreeCam>("freecam");
 			auto [e, c] = SpringArm::attach(m_data.camera, m_registry, m_data.player);
 			auto& [spring, transform] = c;
-			edi::SceneTree::attach(m_data.camera);
+			editor::SceneTree::attach(m_data.camera);
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			cam.position = {0.0f, 0.5f, 4.0f};
 			cam.look({});
@@ -747,14 +747,14 @@ bool run(io::Media const& media) {
 	do {
 		flags = {};
 		engine.boot(bootInfo);
-		SceneManager scenes(engine.service());
+		SceneManager scenes(engine.service(), &engine.service().editor());
 		scenes.attach<App>("app", engine.service());
 		scenes.open("app");
 		DeltaTime dt;
 		ktl::kfuture<void> bf;
 		ktl::kasync async;
 		while (!engine.service().closing()) {
-			engine.service().poll(&poll);
+			engine.service().poll(scenes.sceneView(), &poll);
 			if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
 			scenes.tick(++dt);
 			scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));

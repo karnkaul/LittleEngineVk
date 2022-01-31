@@ -6,16 +6,14 @@
 
 namespace le {
 using RenderPass = graphics::RenderPass;
-using RGBA = graphics::RGBA;
-using DepthStencil = graphics::DepthStencil;
 
-namespace edi {
+namespace editor {
 class SceneRef;
 }
 
 class RenderFrame {
   public:
-	RenderFrame(edi::SceneRef const& sceneRef, Engine::Service engine, RGBA clear, DepthStencil depth = {1.0f, 0});
+	RenderFrame(Engine::Service engine, graphics::RenderBegin const& rb = {});
 	~RenderFrame();
 
 	explicit operator bool() const noexcept { return valid(); }

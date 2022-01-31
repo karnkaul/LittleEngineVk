@@ -3,7 +3,7 @@
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/editor/types.hpp>
 
-namespace le::edi {
+namespace le::editor {
 class PaletteTab;
 
 class Palette : public utils::VBase {
@@ -30,4 +30,4 @@ inline SceneRef Palette::scene() const {
 	EXPECT(m_scene);
 	return *m_scene;
 }
-} // namespace le::edi
+} // namespace le::editor

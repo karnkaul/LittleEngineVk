@@ -5,7 +5,7 @@
 #include <levk/engine/editor/inspect.hpp>
 #include <levk/engine/editor/types.hpp>
 
-namespace le::edi {
+namespace le::editor {
 class Inspector {
   public:
 	static constexpr std::string_view title_v = "Inspector";
@@ -91,4 +91,4 @@ void Inspector::attach(OnInspect<T>&& inspect, OnAttach<T>&& attach, std::string
 		s_gadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T>>(std::move(inspect), std::move(attach)));
 	}
 }
-} // namespace le::edi
+} // namespace le::editor

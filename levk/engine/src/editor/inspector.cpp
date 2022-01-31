@@ -10,7 +10,7 @@
 #include <levk/engine/render/drawable.hpp>
 #include <levk/engine/render/pipeline.hpp>
 
-namespace le::edi {
+namespace le::editor {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct TransformWidget {
@@ -131,7 +131,7 @@ void Inspector::attach(dens::entity entity, dens::registry& reg) {
 		if (Button("Attach")) { Popup::open("attach_component"); }
 		if (auto attach = Popup("attach_component")) {
 			static CStr<128> s_filter;
-			edi::TWidget<char*>("Search##component_filter", s_filter.c_str(), s_filter.capacity());
+			editor::TWidget<char*>("Search##component_filter", s_filter.c_str(), s_filter.capacity());
 			auto filter = s_filter.get();
 			for (auto const& kvp : attachable) {
 				auto const& [id, gadget] = *kvp;
@@ -144,4 +144,4 @@ void Inspector::attach(dens::entity entity, dens::registry& reg) {
 		}
 	}
 }
-} // namespace le::edi
+} // namespace le::editor

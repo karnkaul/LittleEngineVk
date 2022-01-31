@@ -3,7 +3,7 @@
 #include <levk/engine/render/viewport.hpp>
 
 namespace le {
-namespace edi {
+namespace editor {
 class Resizer {
   public:
 	inline static bool s_block = false;
@@ -22,5 +22,5 @@ class Resizer {
 	Viewport m_prev;
 	Handle m_handle = {};
 };
-} // namespace edi
+} // namespace editor
 } // namespace le

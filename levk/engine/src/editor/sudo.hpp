@@ -2,7 +2,7 @@
 #include <levk/engine/editor/scene_ref.hpp>
 #include <utility>
 
-namespace le::edi {
+namespace le::editor {
 class Sudo {
   public:
 	template <typename T, typename... Args>
@@ -29,4 +29,4 @@ class Sudo {
 	static Inspecting* inspect(SceneRef scene) noexcept { return scene.m_inspect; }
 	static void inspect(SceneRef& out_scene, Inspecting& out_ins) noexcept { out_scene.m_inspect = &out_ins; }
 };
-} // namespace le::edi
+} // namespace le::editor

@@ -86,6 +86,10 @@ std::optional<GFX> makeGFX(Engine::BootInfo const& info, window::Window const& w
 	graphics::RenderContext rc(vr, getShader(store), info.vsync, window.framebufferSize());
 	return std::optional<GFX>(GFX{std::move(device), std::move(vram), std::move(rc)});
 }
+
+struct Delegates {
+	ktl::delegate<> rendererChanged;
+};
 } // namespace
 
 struct Engine::Impl {
@@ -96,6 +100,7 @@ struct Engine::Impl {
 	AssetStore store;
 	dts::thread_pool threadPool;
 	Executor executor = Executor(&threadPool);
+	Delegates delegates;
 	input::Driver input;
 	input::ReceiverStore receivers;
 	input::Frame inputFrame;
@@ -136,7 +141,6 @@ bool Engine::boot(BootInfo info) {
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->device->physicalDevice().supportsLazyAllocation());
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, m_impl->gfx->vram.get(), &m_impl->store, &m_impl->profiler);
-	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
 	addDefaultAssets();
 	m_impl->win->show();
 	m_impl->executor.start();
@@ -149,7 +153,6 @@ bool Engine::unboot() noexcept {
 		m_impl->executor.stop();
 		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
-		m_impl->editor.deinit();
 		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
@@ -272,15 +275,14 @@ std::optional<Engine> Engine::Builder::operator()() {
 }
 
 void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
-	m_impl->editor.deinit();
 	m_impl->gfx->context.setRenderer(std::move(renderer));
-	m_impl->editor.init(m_impl->gfx->context, *m_impl->win);
+	m_impl->delegates.rendererChanged();
 }
 
-void Engine::Service::poll(Opt<input::EventParser> custom) const {
+void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom) const {
 	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
 	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win, custom};
-	m_impl->inputFrame = m_impl->input.update(in, editor().view());
+	m_impl->inputFrame = m_impl->input.update(in, view);
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
@@ -314,6 +316,7 @@ Extent2D Engine::Service::framebufferSize() const noexcept {
 }
 Extent2D Engine::Service::windowSize() const noexcept { return m_impl->win->windowSize(); }
 Engine::Stats const& Engine::Service::stats() const noexcept { return m_impl->stats.stats; }
+Engine::Signal Engine::Service::onRendererChanged() const { return m_impl->delegates.rendererChanged.make_signal(); }
 
 void Engine::Service::updateStats() const {
 	m_impl->stats.update();
@@ -331,23 +334,12 @@ void Engine::Service::updateStats() const {
 	graphics::MeshPrimitive::s_trisDrawn.store(0);
 }
 
-RenderFrame::RenderFrame(edi::SceneRef const& sceneRef, Engine::Service engine, RGBA clear, DepthStencil depth) : m_engine(std::move(engine)) {
-	graphics::RenderBegin rb;
-	rb.clear = clear;
-	rb.depth = depth;
+RenderFrame::RenderFrame(Engine::Service engine, graphics::RenderBegin const& rb) : m_engine(std::move(engine)) {
 	m_engine.updateStats();
-	if constexpr (levk_editor) {
-		[[maybe_unused]] bool const imgui_begun = m_engine.m_impl->editor.beginFrame();
-		EXPECT(imgui_begun);
-		rb.view = m_engine.m_impl->view = m_engine.m_impl->editor.update(sceneRef);
-	}
 	m_renderPass = m_engine.m_impl->gfx->context.beginMainPass(rb, m_engine.m_impl->win->framebufferSize());
 }
 
 RenderFrame::~RenderFrame() {
-	if (m_renderPass) {
-		if constexpr (levk_editor) { m_engine.m_impl->editor.render(m_renderPass->commandBuffers().front()); }
-		m_engine.m_impl->gfx->context.endMainPass(*m_renderPass, m_engine.m_impl->win->framebufferSize());
-	}
+	if (m_renderPass) { m_engine.m_impl->gfx->context.endMainPass(*m_renderPass, m_engine.m_impl->win->framebufferSize()); }
 }
 } // namespace le

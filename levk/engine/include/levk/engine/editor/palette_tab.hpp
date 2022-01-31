@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-namespace le::edi {
+namespace le::editor {
 class PaletteTab : public utils::VBase {
   public:
 	glm::vec2 s_minSize = {100.0f, 100.0f};
@@ -33,4 +33,4 @@ T& PaletteTab::attach(std::string id, Args&&... args) {
 	m_items.push_back({std::move(id), std::make_unique<T>(std::forward<Args>(args)...)});
 	return static_cast<T&>(*m_items.back().palette);
 }
-} // namespace le::edi
+} // namespace le::editor

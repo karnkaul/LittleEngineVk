@@ -3,7 +3,7 @@
 #include <levk/core/span.hpp>
 #include <unordered_set>
 
-namespace le::edi {
+namespace le::editor {
 class SceneRef;
 
 class SceneTree {
@@ -20,4 +20,4 @@ class SceneTree {
 	inline static std::unordered_set<dens::entity, dens::entity::hasher> s_custom;
 	friend class Sudo;
 };
-} // namespace le::edi
+} // namespace le::editor

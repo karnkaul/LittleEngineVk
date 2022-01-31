@@ -1,7 +1,7 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/editor/asset_index.hpp>
 
-namespace le::edi {
+namespace le::editor {
 #define MU [[maybe_unused]]
 
 AssetIndex::Select AssetIndex::list(MU Span<Sign const> types, MU std::string_view filter, MU std::string_view selectedURI) {
@@ -17,4 +17,4 @@ AssetIndex::Select AssetIndex::list(MU Span<Sign const> types, MU std::string_vi
 #endif
 	return ret;
 }
-} // namespace le::edi
+} // namespace le::editor

@@ -41,7 +41,6 @@ void SceneNode::clean(dens::registry const& registry) {
 		m_parent = {};
 		m_nodes.clear();
 	} else {
-		refreshEntity(registry, m_parent);
 		std::erase_if(m_nodes, [&registry](dens::entity e) { return !registry.attached<SceneNode>(e); });
 	}
 }

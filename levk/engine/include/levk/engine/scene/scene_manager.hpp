@@ -6,7 +6,7 @@
 namespace le {
 class SceneManager {
   public:
-	SceneManager(Engine::Service engine) : m_shaderBufferMap(engine), m_engine(engine) {}
+	SceneManager(Engine::Service engine, Opt<Editor> editor = {});
 	SceneManager(SceneManager&&) = default;
 	SceneManager& operator=(SceneManager&&) = default;
 	~SceneManager();
@@ -15,13 +15,14 @@ class SceneManager {
 		requires(std::derived_from<T, Scene>)
 	T& attach(std::string id, Args&&... args);
 
+	Viewport const& sceneView() const noexcept;
 	Opt<Scene> active() const noexcept { return m_active ? m_active->scene.get() : nullptr; }
 	bool open(Hash id);
 	void tick(Time_s dt);
 	void render(graphics::RGBA clear = {});
 	void close();
 
-	edi::SceneRef sceneRef() const noexcept { return m_active ? m_active->scene->ediScene() : edi::SceneRef(); }
+	editor::SceneRef sceneRef() const noexcept { return m_active ? m_active->scene->ediScene() : editor::SceneRef(); }
 
   private:
 	struct Entry {
@@ -31,6 +32,7 @@ class SceneManager {
 	std::unordered_map<Hash, Entry> m_scenes;
 	ShaderBufferMap m_shaderBufferMap;
 	Engine::Service m_engine;
+	Opt<Editor> m_editor{};
 	Opt<Entry> m_active{};
 };
 

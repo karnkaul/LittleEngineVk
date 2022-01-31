@@ -5,7 +5,7 @@
 #include <levk/engine/engine.hpp>
 #include <levk/graphics/render/context.hpp>
 
-namespace le::edi {
+namespace le::editor {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 void context(graphics::RenderContext& rc) {
@@ -53,4 +53,4 @@ void Settings::update() {
 	renderer(eng->context().renderer());
 #endif
 }
-} // namespace le::edi
+} // namespace le::editor

@@ -9,7 +9,7 @@
 #include <deque>
 #endif
 
-namespace le::edi {
+namespace le::editor {
 class LogStats {
   public:
 	inline static std::size_t s_maxLines = 5000;
@@ -32,4 +32,4 @@ class LogStats {
 	dlog::pipe::handle m_handle;
 #endif
 };
-} // namespace le::edi
+} // namespace le::editor

@@ -9,7 +9,7 @@ namespace le::gui {
 class TreeRoot;
 }
 
-namespace le::edi {
+namespace le::editor {
 template <typename T>
 struct Inspect {
 	T& out_t;
@@ -18,4 +18,4 @@ struct Inspect {
 
 	T& get() const noexcept { return out_t; }
 };
-} // namespace le::edi
+} // namespace le::editor

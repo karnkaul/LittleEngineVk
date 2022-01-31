@@ -1,7 +1,7 @@
 #pragma once
 #include <levk/engine/editor/types.hpp>
 
-namespace le::edi {
+namespace le::editor {
 class MainMenu {
   public:
 	MainMenu();
@@ -11,4 +11,4 @@ class MainMenu {
   private:
 	MenuList m_main;
 };
-} // namespace le::edi
+} // namespace le::editor

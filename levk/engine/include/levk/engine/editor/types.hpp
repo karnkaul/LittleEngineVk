@@ -28,7 +28,7 @@ class TreeRoot;
 }
 } // namespace le
 
-namespace le::edi {
+namespace le::editor {
 enum GUI { eOpen, eLeftClicked, eRightClicked, eDoubleClicked, eReleased };
 using GUIState = ktl::enum_flags<GUI, u8>;
 
@@ -368,4 +368,4 @@ template <typename T>
 TInspector<T>::operator bool() const {
 	return bOpen;
 }
-} // namespace le::edi
+} // namespace le::editor

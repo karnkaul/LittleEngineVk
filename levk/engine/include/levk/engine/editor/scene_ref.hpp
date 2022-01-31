@@ -12,7 +12,7 @@ namespace gui {
 class TreeRoot;
 }
 
-namespace edi {
+namespace editor {
 struct Inspecting {
 	dens::entity entity;
 	gui::TreeRoot* tree{};
@@ -34,5 +34,5 @@ class SceneRef {
 
 	friend class Sudo;
 };
-} // namespace edi
+} // namespace editor
 } // namespace le

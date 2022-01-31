@@ -14,7 +14,7 @@ static constexpr u8 max_secondary_cmd_v = 8;
 struct RenderBegin {
 	RGBA clear;
 	DepthStencil depth = {1.0f, 0};
-	ScreenView view;
+	ScreenView view{};
 };
 
 struct RenderInfo {

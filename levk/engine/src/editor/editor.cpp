@@ -21,7 +21,7 @@
 #define MU [[maybe_unused]]
 
 namespace le {
-namespace edi {
+namespace editor {
 using sv = std::string_view;
 
 f32 getWindowWidth() {
@@ -588,17 +588,22 @@ void inspectRLP(Inspect<RenderPipeProvider> provider) {
 	}
 	if (Button("Edit...")) { Popup::open("RenderPipeline##inspect_pipe_provider"); }
 }
-} // namespace edi
+} // namespace editor
 
 Editor::Editor() {
-	m_left.tab = std::make_unique<edi::EditorTab<edi::SceneTree>>();
-	m_left.tab->attach<edi::Settings>("Settings");
-	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
-	edi::Inspector::attach<MeshProvider>(&edi::inspectMP, {}, "Mesh");
-	edi::Inspector::attach<RenderPipeProvider>(&edi::inspectRLP, {}, "RenderPipeline");
+	m_left.tab = std::make_unique<editor::EditorTab<editor::SceneTree>>();
+	m_left.tab->attach<editor::Settings>("Settings");
+	m_right.tab = std::make_unique<editor::EditorTab<editor::Inspector>>();
+	editor::Inspector::attach<MeshProvider>(&editor::inspectMP, {}, "Mesh");
+	editor::Inspector::attach<RenderPipeProvider>(&editor::inspectRLP, {}, "RenderPipeline");
 }
 
-Editor::~Editor() noexcept { edi::Sudo::clear<edi::Inspector, edi::SceneTree>(); }
+Editor::Editor(Engine::Service engine) : Editor() {
+	m_storage.rendererChanged = engine.onRendererChanged();
+	m_storage.rendererChanged += [this, engine]() { init(engine.context(), engine.window()); };
+}
+
+Editor::~Editor() noexcept { editor::Sudo::clear<editor::Inspector, editor::SceneTree>(); }
 
 bool Editor::active() const noexcept {
 	if constexpr (levk_imgui) { return true; }
@@ -618,16 +623,20 @@ Viewport const& Editor::view() const noexcept {
 	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update(MU edi::SceneRef scene) {
+graphics::ScreenView Editor::update(MU editor::SceneRef scene) {
 #if defined(LEVK_EDITOR)
+	if (!m_imgui) { return {}; }
+	if (m_storage.renderReady) { m_imgui->endFrame(); }
+	m_storage.renderReady = m_imgui->beginFrame();
+	if (!m_storage.renderReady) { return {}; }
 	auto eng = Services::find<Engine::Service>();
 	if (active() && engaged() && eng) {
-		if (!scene.valid() || m_cache.prev != edi::Sudo::registry(scene)) { m_cache = {}; }
-		m_cache.prev = edi::Sudo::registry(scene);
-		edi::Sudo::inspect(scene, m_cache.inspect);
-		edi::displayScale(eng->renderer().renderScale());
-		if (!edi::Resizer::s_block) { m_storage.resizer(eng->window(), m_storage.gameView, eng->inputFrame()); }
-		edi::Resizer::s_block = false;
+		if (!scene.valid() || m_cache.prev != editor::Sudo::registry(scene)) { m_cache = {}; }
+		m_cache.prev = editor::Sudo::registry(scene);
+		editor::Sudo::inspect(scene, m_cache.inspect);
+		editor::displayScale(eng->renderer().renderScale());
+		if (!editor::Resizer::s_block) { m_storage.resizer(eng->window(), m_storage.gameView, eng->inputFrame()); }
+		editor::Resizer::s_block = false;
 		m_storage.menu(m_menu);
 		glm::vec2 const& size = eng->inputFrame().space.display.window;
 		auto const rect = m_storage.gameView.rect();
@@ -646,21 +655,25 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene) {
 
 void Editor::init(graphics::RenderContext& context, window::Window const& window) {
 	if constexpr (levk_imgui) {
-		if (!m_imgui) { m_imgui = std::make_unique<DearImGui>(); }
-		if (!m_imgui->init(context, window)) { logW(LC_LibUser, "[Editor] Failed to initialize Dear ImGui"); }
+		if (m_imgui) { m_imgui.reset(); }
+		m_imgui = std::make_unique<DearImGui>();
+		if (!m_imgui->init(context, window)) {
+			logW(LC_LibUser, "[Editor] Failed to initialize Dear ImGui");
+			m_imgui.reset();
+		}
 	}
+	m_storage.renderReady = false;
 }
 
 void Editor::deinit() noexcept {
 	if constexpr (levk_imgui) { m_imgui.reset(); }
 }
 
-bool Editor::beginFrame() { return m_imgui ? m_imgui->beginFrame() : false; }
-
 void Editor::render(graphics::CommandBuffer const& cb) {
-	if (m_imgui) {
+	if (m_imgui && m_storage.renderReady) {
 		m_imgui->endFrame();
 		m_imgui->renderDrawData(cb);
+		m_storage.renderReady = false;
 	}
 }
 } // namespace le

@@ -30,7 +30,6 @@ class ViewStack;
 
 class AssetStore;
 class Editor;
-class SceneRegistry;
 
 namespace utils {
 struct EngineStats;
@@ -50,6 +49,7 @@ class Engine {
 	using Stats = utils::EngineStats;
 	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
 	using Executor = dts::executor;
+	using Signal = ktl::delegate<>::signal;
 
 	struct CustomDevice;
 	struct CreateInfo;
@@ -81,7 +81,7 @@ class Engine {
 
 class Engine::Service {
   public:
-	void poll(Opt<input::EventParser> custom = {}) const;
+	void poll(Viewport const& view = {}, Opt<input::EventParser> custom = {}) const;
 	void pushReceiver(not_null<input::Receiver*> context) const;
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) const;
 
@@ -104,6 +104,7 @@ class Engine::Service {
 	Window& window() const;
 
 	Stats const& stats() const noexcept;
+	Signal onRendererChanged() const;
 
   private:
 	Service(not_null<Impl*> impl) noexcept : m_impl(impl) {}

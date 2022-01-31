@@ -3,7 +3,7 @@
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/editor/types.hpp>
 
-namespace le::edi {
+namespace le::editor {
 class AssetIndex {
   public:
 	using Select = TreeSelect::Select;
@@ -21,4 +21,4 @@ template <typename... Types>
 AssetIndex::Select AssetIndex::list(std::string_view filter, std::string_view selectedURI) {
 	return list(AssetStore::signs<Types...>(), filter, selectedURI);
 }
-} // namespace le::edi
+} // namespace le::editor

@@ -5,7 +5,7 @@
 #include <imgui.h>
 #endif
 
-namespace le::edi {
+namespace le::editor {
 bool PaletteTab::detach(std::string_view id) {
 	if (auto it = std::find_if(m_items.begin(), m_items.end(), [&id](Entry const& e) { return e.id == id; }); it != m_items.end()) {
 		m_items.erase(it);
@@ -41,4 +41,4 @@ void PaletteTab::loopItems(MU SceneRef scene) {
 	}
 #endif
 }
-} // namespace le::edi
+} // namespace le::editor

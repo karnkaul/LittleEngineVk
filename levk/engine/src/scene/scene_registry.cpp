@@ -65,6 +65,6 @@ Material const* SceneRegistry::defaultMaterial() const {
 
 void SceneRegistry::updateSystems(Time_s dt, Engine::Service const& engine) { m_systemGroupRoot.update(m_registry, SystemData{engine, dt}); }
 
-edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
+editor::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 graphics::Camera const& SceneRegistry::camera() const noexcept { return m_registry.get<graphics::Camera>(m_sceneRoot); }
 } // namespace le

@@ -13,7 +13,7 @@
 #include <levk/window/window.hpp>
 #endif
 
-namespace le::edi {
+namespace le::editor {
 #define MU [[maybe_unused]]
 
 #if defined(LEVK_USE_IMGUI)
@@ -122,4 +122,4 @@ void MainMenu::operator()(MU MenuList const& extras) const {
 	g_panes();
 #endif
 }
-} // namespace le::edi
+} // namespace le::editor

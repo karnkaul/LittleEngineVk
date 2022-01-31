@@ -7,7 +7,7 @@
 #include <imgui.h>
 #endif
 
-namespace le::edi {
+namespace le::editor {
 using Key = input::Key;
 using CursorType = window::CursorType;
 
@@ -126,4 +126,4 @@ void Resizer::check(Viewport const& vp, CursorType& out_c, bool active, Handle h
 		}
 	}
 }
-} // namespace le::edi
+} // namespace le::editor

@@ -13,7 +13,7 @@
 #include <levk/engine/utils/engine_stats.hpp>
 #endif
 
-namespace le::edi {
+namespace le::editor {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct LogText {
@@ -148,4 +148,4 @@ void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f3
 	}
 #endif
 }
-} // namespace le::edi
+} // namespace le::editor

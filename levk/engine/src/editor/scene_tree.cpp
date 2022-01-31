@@ -9,7 +9,7 @@
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/gui/widgets/dropdown.hpp>
 
-namespace le::edi {
+namespace le::editor {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 TreeNode makeNode(std::string_view id, bool selected, bool leaf) { return TreeNode(id, selected, leaf, true, false); }
@@ -49,7 +49,7 @@ struct InspectVerifier {
 	}
 };
 
-void inspect(InspectVerifier& iv, edi::TreeNode& tn, dens::entity entity, gui::TreeRoot* node) {
+void inspect(InspectVerifier& iv, editor::TreeNode& tn, dens::entity entity, gui::TreeRoot* node) {
 	if (tn.guiState.all(GUIState(GUI::eLeftClicked, GUI::eReleased))) {
 		iv.out.entity = entity;
 		iv.out.tree = node;
@@ -156,4 +156,4 @@ void SceneTree::update([[maybe_unused]] SceneRef scene) {
 }
 
 void SceneTree::clear() { s_custom.clear(); }
-} // namespace le::edi
+} // namespace le::editor

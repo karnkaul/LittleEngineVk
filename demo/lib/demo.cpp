@@ -1,68 +1,56 @@
-#include <core/not_null.hpp>
-#include <core/utils/algo.hpp>
-#include <core/utils/std_hash.hpp>
-#include <core/utils/string.hpp>
-#include <dumb_tasks/scheduler.hpp>
-#include <engine/assets/asset_list.hpp>
-#include <engine/cameras/freecam.hpp>
-#include <engine/editor/inspector.hpp>
-#include <engine/engine.hpp>
-#include <engine/input/control.hpp>
-#include <engine/render/model.hpp>
-#include <engine/scene/scene_node.hpp>
-#include <graphics/common.hpp>
-#include <graphics/render/shader_buffer.hpp>
-#include <graphics/utils/utils.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/utils/algo.hpp>
+#include <levk/core/utils/std_hash.hpp>
+#include <levk/core/utils/string.hpp>
+#include <levk/engine/cameras/freecam.hpp>
+#include <levk/engine/input/control.hpp>
+#include <levk/engine/render/model.hpp>
+#include <levk/graphics/common.hpp>
+#include <levk/graphics/render/shader_buffer.hpp>
+#include <levk/graphics/utils/utils.hpp>
+
+#include <levk/engine/gui/quad.hpp>
+#include <levk/engine/gui/text.hpp>
+#include <levk/engine/gui/view.hpp>
+#include <levk/engine/gui/widget.hpp>
+#include <levk/engine/render/skybox.hpp>
+#include <levk/engine/utils/exec.hpp>
+
+#include <levk/core/utils/enumerate.hpp>
+#include <levk/engine/gui/widgets/dropdown.hpp>
+#include <levk/engine/render/descriptor_helper.hpp>
+
+#include <ktl/async/kasync.hpp>
+#include <levk/core/utils/shell.hpp>
+#include <levk/core/utils/tween.hpp>
+#include <levk/engine/gui/widgets/input_field.hpp>
+#include <levk/engine/input/text_cursor.hpp>
+#include <levk/engine/render/quad_emitter.hpp>
+#include <levk/engine/render/text_mesh.hpp>
+#include <levk/graphics/font/font.hpp>
+#include <levk/graphics/utils/instant_command.hpp>
 #include <fstream>
 
-#include <engine/editor/editor.hpp>
-#include <engine/editor/scene_tree.hpp>
-#include <engine/gui/quad.hpp>
-#include <engine/gui/text.hpp>
-#include <engine/gui/view.hpp>
-#include <engine/gui/widget.hpp>
-#include <engine/render/list_renderer.hpp>
-#include <engine/render/skybox.hpp>
-#include <engine/scene/draw_list_gen.hpp>
-#include <engine/scene/scene_registry.hpp>
-#include <engine/utils/exec.hpp>
+#include <dumb_tasks/executor.hpp>
+#include <ktl/async/kthread.hpp>
+#include <levk/engine/builder.hpp>
+#include <levk/engine/render/shader_data.hpp>
+#include <levk/gameplay/ecs/components/spring_arm.hpp>
+#include <levk/gameplay/ecs/components/trigger.hpp>
+#include <levk/graphics/render/context.hpp>
 
-#include <core/utils/enumerate.hpp>
-#include <engine/assets/asset_manifest.hpp>
-#include <engine/gui/widgets/dropdown.hpp>
-#include <engine/render/descriptor_helper.hpp>
-
-#include <core/utils/shell.hpp>
-#include <core/utils/tween.hpp>
-#include <engine/gui/widgets/input_field.hpp>
-#include <engine/input/text_cursor.hpp>
-#include <engine/render/quad_emitter.hpp>
-#include <engine/render/text_mesh.hpp>
-#include <graphics/font/font.hpp>
-#include <graphics/utils/instant_command.hpp>
-#include <ktl/async/kasync.hpp>
-
-#include <engine/ecs/components/spring_arm.hpp>
-#include <engine/ecs/components/trigger.hpp>
-#include <engine/render/shader_data.hpp>
+#include <levk/engine/assets/asset_manifest.hpp>
+#include <levk/gameplay/editor/editor.hpp>
+#include <levk/gameplay/editor/inspector.hpp>
+#include <levk/gameplay/editor/scene_tree.hpp>
+#include <levk/gameplay/scene/list_renderer.hpp>
+#include <levk/gameplay/scene/scene_manager.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
-enum class Flag { eClosed, eDebug0 };
+enum class Flag { eQuit, eReboot, eClose, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
-
-static void poll(Flags& out_flags, window::EventQueue const& queue) {
-	for (auto const& event : queue) {
-		switch (event.type) {
-		case window::Event::Type::eClose: {
-			out_flags.set(Flag::eClosed);
-			break;
-		}
-		default: break;
-		}
-	}
-}
 
 using namespace dts;
 
@@ -132,45 +120,37 @@ class Renderer : public ListRenderer {
   public:
 	using Camera = graphics::Camera;
 
-	struct Scene {
+	struct SceneData {
+		DrawableMap custom;
 		ShaderSceneView view;
-		dens::registry const* registry{};
 		Span<DirLight const> lights;
 	};
 
-	Renderer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
-		m_view.mats = graphics::ShaderBuffer(vram, {});
-		m_view.lights = graphics::ShaderBuffer(vram, {});
-	}
-
-	void render(RenderPass& out_rp, Scene const& scene) {
-		m_view.lights.swap();
-		m_view.mats.swap();
-		m_view.mats.write(scene.view);
-		if (!scene.lights.empty()) {
+	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, dens::registry const& registry) {
+		m_mats = &sbMap.get("mats");
+		m_mats->write(data.view);
+		m_lights = &sbMap.get("lights");
+		if (!data.lights.empty()) {
 			DirLights dl;
-			for (std::size_t idx = 0; idx < scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = scene.lights[idx]; }
-			dl.count = std::min((u32)scene.lights.size(), (u32)dl.lights.size());
-			m_view.lights.write(dl);
+			for (std::size_t idx = 0; idx < data.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = data.lights[idx]; }
+			dl.count = std::min((u32)data.lights.size(), (u32)dl.lights.size());
+			m_lights->write(dl);
 		} else {
-			m_view.lights.write(DirLights());
+			m_lights->write(DirLights());
 		}
-		DrawableMap map;
-		if (scene.registry) { fill(map, *scene.registry); }
-		ListRenderer::render(out_rp, map);
+		auto drawMap = data.custom;
+		fill(drawMap, registry);
+		ListRenderer::render(out_rp, drawMap);
+		drawMap.clear();
 	}
 
   private:
-	struct {
-		graphics::ShaderBuffer mats;
-		graphics::ShaderBuffer lights;
-	} m_view;
-	not_null<graphics::VRAM*> m_vram;
-
 	void writeSets(DescriptorMap map, DrawList const& list) override {
 		auto set0 = list.set(map, 0);
-		set0.update(0, m_view.mats);
-		set0.update(1, m_view.lights);
+		// set0.update(0, m_view.mats);
+		set0.update(0, *m_mats);
+		// set0.update(1, m_view.lights);
+		set0.update(1, *m_lights);
 		for (Drawable const& drawable : list.drawables) {
 			drawable.set(map, 1).update(0, drawable.model);
 			DrawMesh const& drawMesh = drawable.mesh;
@@ -187,6 +167,9 @@ class Renderer : public ListRenderer {
 			}
 		}
 	}
+
+	graphics::ShaderBuffer* m_mats{};
+	graphics::ShaderBuffer* m_lights{};
 };
 
 class TestView : public gui::View {
@@ -365,43 +348,40 @@ struct EmitMesh {
 
 	EmitMesh(not_null<graphics::VRAM*> vram, EmitterInfo info = {}) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic) { emitter.create(info); }
 
-	void tick(Time_s dt, Opt<dts::task_queue> tasks = {}) {
-		emitter.tick(dt, tasks);
+	void tick(Time_s dt, Opt<dts::executor> executor = {}) {
+		emitter.tick(dt, executor);
 		primitive.construct(emitter.geometry());
 	}
 
 	MeshView mesh() const { return MeshObj{&primitive, &material}; }
 };
 
-class App : public input::Receiver, public SceneRegistry {
+class App : public input::Receiver, public Scene {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	App(not_null<Engine*> eng)
-		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
-		  m_emitter(&eng->gfx().boot.vram) {
-		// auto const io = m_tasks.add_queue();
-		// m_tasks.add_agent({io, 0});
-		// m_manifest.m_jsonQID = io;
-		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
-		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
-		auto const res = m_manifest.load("demo", &m_tasks);
-		ENSURE(res > 0, "Manifest missing/empty");
+	App(Engine::Service const& eng)
+		: m_manifest(eng), m_testTex(&eng.vram(), eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
+		  m_emitter(&eng.vram()) {}
+
+	void open() override {
+		Scene::open();
+		m_manifest.load("demo.manifest");
+		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
+			auto rQuad = engine().store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&engine().vram()));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
-		m_eng->pushReceiver(this);
+		engine().pushReceiver(this);
 
-		auto ifreecam = [](edi::Inspect<FreeCam> inspect) { edi::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
-		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
-		edi::Inspector::attach<FreeCam>(ifreecam);
-		edi::Inspector::attach<SpringArm>(SpringArm::inspect);
-		edi::Inspector::attach<PlayerController>(ipc);
-		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
+		auto ifreecam = [](editor::Inspect<FreeCam> inspect) { editor::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
+		auto ipc = [](editor::Inspect<PlayerController> inspect) { editor::TWidget<bool>("Active", inspect.get().active); };
+		editor::Inspector::attach<FreeCam>(ifreecam);
+		editor::Inspector::attach<SpringArm>(SpringArm::inspect);
+		editor::Inspector::attach<PlayerController>(ipc);
+		editor::Inspector::attach<gui::Dialogue>([](editor::Inspect<gui::Dialogue>) { editor::Text("Dialogue found!"); });
 
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
@@ -435,7 +415,7 @@ class App : public input::Receiver, public SceneRegistry {
 			m_data.camera = m_registry.make_entity<FreeCam>("freecam");
 			auto [e, c] = SpringArm::attach(m_data.camera, m_registry, m_data.player);
 			auto& [spring, transform] = c;
-			edi::SceneTree::attach(m_data.camera);
+			editor::SceneTree::attach(m_data.camera);
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			cam.position = {0.0f, 0.5f, 4.0f};
 			cam.look({});
@@ -454,9 +434,9 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			m_testMat.map_Kd = &m_testTex;
-			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+			if (auto primitive = engine().store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, RenderPipeProvider::make("render_pipelines/tex"));
+				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, "render_pipelines/tex");
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
@@ -464,7 +444,7 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
-			m_eng->store().add("materials/yellow", mat);
+			engine().store().add("materials/yellow", mat);
 			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
@@ -478,7 +458,7 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			auto ent = spawnNode("emitter");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&m_emitter));
-			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 		}
 		{
 			DirLight l0, l1;
@@ -488,13 +468,18 @@ class App : public input::Receiver, public SceneRegistry {
 			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 			m_data.dirLights = {l0, l1};
 		}
-		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng->gfx().boot.vram);
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &engine().vram());
+	}
+
+	void close() override {
+		Scene::close();
+		m_manifest.unload();
 	}
 
 	bool block(input::State const& state) override {
-		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
+		if (m_controls.editor(state)) { editor::toggle(); }
 		if (m_controls.wireframe(state)) {
-			/*if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
+			/*if (auto lit = engine().store().find<PipelineState>("pipelines/lit")) {
 				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
 					lit->fixedState.flags.reset(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 1.0f;
@@ -504,22 +489,16 @@ class App : public input::Receiver, public SceneRegistry {
 				}
 			}*/
 		}
-		if (m_controls.reboot(state)) { m_data.reboot = true; }
-		if (m_controls.unload(state)) {
-			m_data.unloaded = true;
-			m_registry.clear();
-			logI("{} unloaded", m_manifest.unload("demo", m_tasks));
-		}
 		return false;
 	}
 
-	void init1() {
+	void onAssetsLoaded() {
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
+			m_registry.attach<RenderPipeProvider>(triggerDebug, "render_pipelines/wireframe");
 		}
 
-		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
+		if (auto font = engine().store().find<graphics::Font>("fonts/vera_serif")) {
 			m_data.text.emplace(&*font);
 			m_data.text->m_colour = colours::yellow;
 			TextMesh::Line line;
@@ -530,7 +509,7 @@ class App : public input::Receiver, public SceneRegistry {
 			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
-			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 
 			m_data.cursor.emplace(&*font);
 			m_data.cursor->m_colour = colours::yellow;
@@ -541,121 +520,111 @@ class App : public input::Receiver, public SceneRegistry {
 			m_data.text->m_info = m_data.cursor->generateText();
 			auto ent1 = spawnNode("text_cursor");
 			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
-			m_registry.attach<RenderPipeProvider>(ent1, RenderPipeProvider::make("render_pipelines/ui"));
+			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
 		}
 
-		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
-		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
-		gui::Dropdown::CreateInfo dci;
-		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
-		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-		dci.textHeight = 30U;
-		dci.options = {"zero", "one", "two", "/bthree", "four"};
-		dci.selected = 2;
-		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
-		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
-		gui::Dialogue::CreateInfo gdci;
-		gdci.header.text = "Dialogue";
-		gdci.content.text = "Content\ngoes\nhere";
-		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
-		gui::InputField::CreateInfo info;
-		// info.secret = true;
-		auto& in = dialogue.push<gui::InputField>(info);
-		in.m_rect.anchor.offset.y = 60.0f;
-		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		if (auto guistack = m_registry.find<gui::ViewStack>(m_data.guiStack)) {
+			auto& stack = *guistack;
+			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
+			gui::Dropdown::CreateInfo dci;
+			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+			dci.textHeight = 30U;
+			dci.options = {"zero", "one", "two", "/bthree", "four"};
+			dci.selected = 2;
+			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
+			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+			gui::Dialogue::CreateInfo gdci;
+			gdci.header.text = "Dialogue";
+			gdci.content.text = "Content\ngoes\nhere";
+			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
+			gui::InputField::CreateInfo info;
+			// info.secret = true;
+			auto& in = dialogue.push<gui::InputField>(info);
+			in.m_rect.anchor.offset.y = 60.0f;
+			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		}
 
-		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
+		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
 
-		if (auto tex = m_eng->store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
+		if (auto tex = engine().store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
 	}
 
-	bool reboot() const noexcept { return m_data.reboot; }
-
-	void tick(Time_s dt) {
+	void tick(Time_s dt) override {
 		// if (m_data.tgMesh && m_data.tgCursor) {
 		// 	graphics::Geometry geom;
-		// 	if (m_data.tgCursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
-		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+		// 	if (m_data.tgCursor->update(engine().inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
+		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
 		// 		m_data.tgCursor->m_flags.set(input::TextCursor::Flag::eActive);
 		// 	}
 		// }
 
+		Scene::tick(dt);
+
 		if (m_data.text && m_data.cursor) {
-			m_data.cursor->update(m_eng->inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
-			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+			m_data.cursor->update(engine().inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
+			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
 			}
 		}
 
-		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-			auto cmd = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+		if (auto const frame = engine().context().renderer().offScreenImage(); frame && engine().context().renderer().canBlitFrame()) {
+			auto cmd = graphics::InstantCommand(&engine().vram());
 			m_testTex.blit(cmd.cb(), frame->ref());
 		}
 
-		updateSystems(m_tasks, dt, &m_eng->inputFrame());
-		if (!m_data.unloaded) {
-			auto pr_ = Engine::profile("app::tick");
-			// static constexpr u32 max_cp = 128;
-			// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
-			// 	m_thread = ktl::kthread([this] {
-			// 		auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
-			// 		while (m_built.value < max_cp) { m_atlas.build(inst.cb(), m_built.value++); }
-			// 		// m_eng->store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
-			// 	});
-			// }
-			// if (m_data.init && m_built.value < max_cp) {
-			// 	auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
-			// 	m_atlas.build(inst.cb(), m_built.value++);
-			// }
-			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
-			auto& cam = m_registry.get<FreeCam>(m_data.camera);
-			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
-			auto& pc = m_registry.get<PlayerController>(m_data.player);
-			auto const& state = m_eng->inputFrame().state;
-			if (pc.active) {
-				auto& transform = m_registry.get<Transform>(m_data.player);
-				pc.tick(state, transform, dt);
-				auto const forward = nvec3(transform.orientation() * -graphics::front);
-				cam.face(forward);
-				cam.position = m_registry.get<Transform>(m_data.camera).position();
-			} else {
-				cam.tick(state, dt, &m_eng->window());
-			}
-			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			/*if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
-				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
-				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-				tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
-			}*/
-			if (auto tr = m_registry.find<Transform>(m_data.tween)) {
-				auto& tweener = m_registry.get<Tweener>(m_data.tween);
-				auto pos = tr->position();
-				pos.x = tweener.tick(dt);
-				tr->position(pos);
-			}
-
-			m_emitter.tick(dt, &m_tasks);
+		// static constexpr u32 max_cp = 128;
+		// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
+		// 	m_thread = ktl::kthread([this] {
+		// 		auto inst = graphics::InstantCommand(&engine().vram());
+		// 		while (m_built.value < max_cp) { m_atlas.build(inst.cb(), m_built.value++); }
+		// 		// engine().store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
+		// 	});
+		// }
+		// if (m_data.init && m_built.value < max_cp) {
+		// 	auto inst = graphics::InstantCommand(&engine().vram());
+		// 	m_atlas.build(inst.cb(), m_built.value++);
+		// }
+		if (!m_data.init && !m_manifest.busy()) { onAssetsLoaded(); }
+		auto& cam = m_registry.get<FreeCam>(m_data.camera);
+		m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
+		auto& pc = m_registry.get<PlayerController>(m_data.player);
+		auto const& state = engine().inputFrame().state;
+		if (pc.active) {
+			auto& transform = m_registry.get<Transform>(m_data.player);
+			pc.tick(state, transform, dt);
+			auto const forward = nvec3(transform.orientation() * -graphics::front);
+			cam.face(forward);
+			cam.position = m_registry.get<Transform>(m_data.camera).position();
+		} else {
+			cam.tick(state, dt, &engine().window());
+		}
+		m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+		/*if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
+			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
+			tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
+		}*/
+		if (auto tr = m_registry.find<Transform>(m_data.tween)) {
+			auto& tweener = m_registry.get<Tweener>(m_data.tween);
+			auto pos = tr->position();
+			pos.x = tweener.tick(dt);
+			tr->position(pos);
 		}
 
-		m_tasks.rethrow();
+		m_emitter.tick(dt, &executor());
 	}
 
-	void render() {
+	void render(graphics::RenderPass& renderPass, ShaderSceneView const& view) override {
 		// draw
-		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
-			Renderer::Scene scene;
-			scene.registry = &m_registry;
-			scene.view = ShaderSceneView::make(*m_registry.find<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace());
-			scene.lights = m_data.dirLights;
-			m_renderer.render(*rp, scene);
-			m_eng->endRenderPass(*rp);
-		}
+		Renderer::SceneData scene;
+		scene.view = view;
+		scene.lights = m_data.dirLights;
+		Renderer{}.render(renderPass, shaderBufferMap(), scene, m_registry);
 	}
-
-	scheduler& sched() { return m_tasks; }
 
   private:
 	struct Data {
@@ -671,16 +640,11 @@ class App : public input::Receiver, public SceneRegistry {
 		dens::entity guiStack;
 		dens::entity tween;
 		dens::entity roundedQuad;
-		bool reboot = false;
-		bool unloaded = {};
 		bool init{};
 	};
 
 	Data m_data;
-	scheduler m_tasks;
-	AssetManifest m_manifest;
-	not_null<Engine*> m_eng;
-	mutable Renderer m_renderer;
+	ManifestLoader m_manifest;
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
@@ -689,26 +653,28 @@ class App : public input::Receiver, public SceneRegistry {
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};
 		input::Trigger wireframe = {input::Key::eP, input::Action::ePress, input::Mod::eCtrl};
-		input::Trigger reboot = {input::Key::eR, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
-		input::Trigger unload = {input::Key::eU, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
 	} m_controls;
 };
 
 struct FlagsInput : input::Receiver {
 	Flags& flags;
+	input::Trigger reboot = {input::Key::eR, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
+	input::Trigger close = {input::Key::eU, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
 
 	FlagsInput(Flags& flags) : flags(flags) {}
 
 	bool block(input::State const& state) override {
 		bool ret = false;
 		if (auto w = state.released(input::Key::eW); w && w->test(input::Mod::eCtrl)) {
-			flags.set(Flag::eClosed);
+			flags.set(Flag::eQuit);
 			ret = true;
 		}
 		if (auto d = state.released(input::Key::eD); d && d->test(input::Mod::eCtrl)) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}
+		if (reboot(state)) { flags.set(Flag::eReboot); }
+		if (close(state)) { flags.set(Flag::eClose); }
 		return ret;
 	}
 };
@@ -751,47 +717,60 @@ bool package(io::Path const& binary, bool clean) {
 }
 
 bool run(io::Media const& media) {
-	Engine::CreateInfo eci;
-	eci.winInfo.config.title = "levk demo";
-	eci.winInfo.config.size = {1280, 720};
-	eci.winInfo.options.centreCursor = true;
-	Engine engine(eci, &media);
+	window::CreateInfo winInfo;
+	winInfo.config.title = "levk demo";
+	winInfo.config.size = {1280, 720};
+	winInfo.options.centreCursor = true;
+	auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media).addIcon("textures/awesomeface.png")();
+	if (!eng) { return false; }
+	auto& engine = *eng;
 	Flags flags;
 	FlagsInput flagsInput(flags);
-	engine.pushReceiver(&flagsInput);
-	bool reboot = false;
-	Engine::Boot::CreateInfo bootInfo;
+	engine.service().pushReceiver(&flagsInput);
+	Engine::BootInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
 	bootInfo.device.validationLogLevel = LogLevel::info;
+	struct Poll : input::EventParser {
+		Flags* flags{};
+		bool operator()(input::Event const& event) override {
+			if (event.type() == input::Event::Type::eClosed) {
+				flags->set(Flag::eQuit);
+				return true;
+			}
+			return false;
+		}
+	};
+	Poll poll;
+	poll.flags = &flags;
 	do {
+		flags = {};
 		engine.boot(bootInfo);
-		App app(&engine);
+		auto editor = editor::Instance::make(eng->service());
+		SceneManager scenes(engine.service());
+		scenes.attach<App>("app", engine.service());
+		scenes.open("app");
 		DeltaTime dt;
-		ktl::kfuture<bool> bf;
+		ktl::kfuture<void> bf;
 		ktl::kasync async;
-		while (!engine.closing()) {
-			if (!engine.nextFrame()) { continue; }
-			poll(flags, engine.poll(true).residue);
-			if (flags.test(Flag::eClosed)) {
-				reboot = false;
-				break;
-			}
-			if (app.reboot()) {
-				reboot = true;
-				break;
-			}
-			app.tick(++dt);
-			app.render();
+		while (!engine.service().closing()) {
+			engine.service().poll(scenes.sceneView(), &poll);
+			if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
+			scenes.tick(++dt);
+			scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				auto& ctx = engine.gfx().context;
+				auto& ctx = engine.service().context();
 				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
 						if (written > 0) { logD("Screenshot saved to shot.ppm"); }
 					}
 				}
+			}
+			if (flags.test(Flag::eClose)) {
+				scenes.close();
+				flags.reset(Flag::eClose);
 			}
 			flags.reset(Flag::eDebug0);
 			/*bf = async(&package, "out/autobuild", false);
@@ -803,7 +782,8 @@ bool run(io::Media const& media) {
 				}
 			});*/
 		}
-	} while (reboot);
+		flags.reset(Flag::eQuit);
+	} while (flags.test(Flag::eReboot));
 	return true;
 }
 } // namespace le::demo

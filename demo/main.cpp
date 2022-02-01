@@ -1,9 +1,9 @@
-#include <core/io/fs_media.hpp>
-#include <core/io/zip_media.hpp>
-#include <core/log.hpp>
-#include <core/utils/execute.hpp>
 #include <demo.hpp>
-#include <engine/utils/env.hpp>
+#include <levk/core/io/fs_media.hpp>
+#include <levk/core/io/zip_media.hpp>
+#include <levk/core/log.hpp>
+#include <levk/core/utils/execute.hpp>
+#include <levk/engine/utils/env.hpp>
 
 int main(int argc, char const* const argv[]) {
 	using namespace le;

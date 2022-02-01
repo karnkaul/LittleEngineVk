@@ -1,0 +1,30 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# ext
+find_dependency(spirv_cross_core)
+find_dependency(spirv_cross_glsl)
+find_dependency(glfw3)
+
+# core
+find_dependency(ktl)
+find_dependency(dyvk)
+find_dependency(dlog)
+find_dependency(djson)
+find_dependency(dtasks)
+find_dependency(freetype)
+
+# engine
+find_dependency(clap)
+find_dependency(dens)
+
+include("${CMAKE_CURRENT_LIST_DIR}/levk-ext-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-build-interface-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-core-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-window-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-graphics-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-engine-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/levk-gameplay-targets.cmake")
+
+check_required_components(levk)

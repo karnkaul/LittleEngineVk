@@ -1,0 +1,6 @@
+#pragma once
+#include <levk/core/version.hpp>
+
+namespace le {
+inline BuildVersion const g_buildVersion = BuildVersion{Version("${build_version}"), "@LEVK_GIT_COMMIT_HASH@"};
+} // namespace le

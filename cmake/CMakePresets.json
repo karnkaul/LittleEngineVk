@@ -98,7 +98,8 @@
 			"inherits": "ninja-clang",
 			"cacheVariables": {
 				"LEVK_ASAN": "ON",
-				"LEVK_USE_PCH": "OFF"
+				"LEVK_USE_PCH": "OFF",
+				"LEVK_INSTALL": "OFF"
 			}
 		},
 		{
@@ -109,7 +110,8 @@
 			"inherits": "ninja-clang",
 			"cacheVariables": {
 				"LEVK_UBSAN": "ON",
-				"LEVK_USE_PCH": "OFF"
+				"LEVK_USE_PCH": "OFF",
+				"LEVK_INSTALL": "OFF"
 			}
 		}
 	],

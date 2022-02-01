@@ -3,24 +3,17 @@
 #include <levk/core/utils/std_hash.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/cameras/freecam.hpp>
-#include <levk/engine/editor/inspector.hpp>
 #include <levk/engine/input/control.hpp>
 #include <levk/engine/render/model.hpp>
-#include <levk/engine/scene/scene_node.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
-#include <levk/engine/editor/editor.hpp>
-#include <levk/engine/editor/scene_tree.hpp>
 #include <levk/engine/gui/quad.hpp>
 #include <levk/engine/gui/text.hpp>
 #include <levk/engine/gui/view.hpp>
 #include <levk/engine/gui/widget.hpp>
-#include <levk/engine/render/draw_list_gen.hpp>
-#include <levk/engine/render/list_renderer.hpp>
 #include <levk/engine/render/skybox.hpp>
-#include <levk/engine/scene/scene_manager.hpp>
 #include <levk/engine/utils/exec.hpp>
 
 #include <levk/core/utils/enumerate.hpp>
@@ -41,13 +34,17 @@
 #include <dumb_tasks/executor.hpp>
 #include <ktl/async/kthread.hpp>
 #include <levk/engine/builder.hpp>
-#include <levk/engine/ecs/components/spring_arm.hpp>
-#include <levk/engine/ecs/components/trigger.hpp>
 #include <levk/engine/render/shader_data.hpp>
+#include <levk/gameplay/ecs/components/spring_arm.hpp>
+#include <levk/gameplay/ecs/components/trigger.hpp>
 #include <levk/graphics/render/context.hpp>
 
 #include <levk/engine/assets/asset_manifest.hpp>
-#include <levk/engine/editor/editor.hpp>
+#include <levk/gameplay/editor/editor.hpp>
+#include <levk/gameplay/editor/inspector.hpp>
+#include <levk/gameplay/editor/scene_tree.hpp>
+#include <levk/gameplay/scene/list_renderer.hpp>
+#include <levk/gameplay/scene/scene_manager.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;

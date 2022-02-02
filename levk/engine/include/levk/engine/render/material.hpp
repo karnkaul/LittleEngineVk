@@ -1,28 +1,54 @@
 #pragma once
+#include <levk/core/hash.hpp>
 #include <levk/graphics/render/rgba.hpp>
+#include <concepts>
 
 namespace le {
 namespace graphics {
 class Texture;
 } // namespace graphics
+class AssetStore;
+
+///
+/// \brief Wrapper around pointer to const Texture / uri to stored Texture
+///
+class TextureWrap {
+  public:
+	using Texture = graphics::Texture;
+
+	constexpr TextureWrap(Hash uri = {}) noexcept : m_data{{}, uri} {}
+	// clang-format off
+	template <typename T>
+		requires std::convertible_to<T, Opt<Texture const>> 
+	TextureWrap(T texture) noexcept : m_data{texture} {}
+	// clang-format on
+
+	Opt<Texture const> operator()(AssetStore const& store) const;
+
+  private:
+	struct {
+		Opt<Texture const> texture{};
+		Hash uri{};
+	} m_data;
+};
 
 struct Material {
 	///
 	/// \brief Diffuse texture map
 	///
-	graphics::Texture const* map_Kd{};
+	TextureWrap map_Kd{};
 	///
 	/// \brief Specular colour map
 	///
-	graphics::Texture const* map_Ks{};
+	TextureWrap map_Ks{};
 	///
 	/// \brief Alpha texture map
 	///
-	graphics::Texture const* map_d{};
+	TextureWrap map_d{};
 	///
 	/// \brief Normal texture map
 	///
-	graphics::Texture const* map_Bump{};
+	TextureWrap map_Bump{};
 	///
 	/// \brief Ambient colour
 	///

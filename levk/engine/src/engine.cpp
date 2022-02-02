@@ -9,7 +9,6 @@
 #include <levk/engine/assets/asset_loaders_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/view.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/render/frame.hpp>

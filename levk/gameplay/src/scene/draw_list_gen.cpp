@@ -1,9 +1,9 @@
 #include <dens/registry.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/gui/tree.hpp>
-#include <levk/engine/gui/view.hpp>
 #include <levk/engine/render/mesh_view_provider.hpp>
 #include <levk/gameplay/ecs/components/trigger.hpp>
+#include <levk/gameplay/gui/tree.hpp>
+#include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/draw_list_gen.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
 #include <levk/graphics/utils/utils.hpp>

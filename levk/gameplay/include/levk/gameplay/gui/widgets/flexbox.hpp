@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/engine/gui/widget.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 namespace le::gui {
 class Flexbox : public Widget {

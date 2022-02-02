@@ -1,6 +1,6 @@
 #include <levk/core/services.hpp>
-#include <levk/engine/gui/text.hpp>
 #include <levk/engine/input/space.hpp>
+#include <levk/gameplay/gui/text.hpp>
 #include <levk/graphics/font/font.hpp>
 
 namespace le::gui {

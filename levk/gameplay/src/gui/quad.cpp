@@ -1,6 +1,6 @@
 #include <levk/core/maths.hpp>
 #include <levk/core/services.hpp>
-#include <levk/engine/gui/quad.hpp>
+#include <levk/gameplay/gui/quad.hpp>
 
 namespace le::gui {
 Quad::Quad(not_null<TreeRoot*> root, bool hitTest) noexcept

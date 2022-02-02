@@ -1,4 +1,4 @@
-#include <levk/engine/gui/widgets/button.hpp>
+#include <levk/gameplay/gui/widgets/button.hpp>
 
 namespace le::gui {
 Button::Button(not_null<TreeRoot*> parent, Hash fontURI, Hash style) : Widget(parent, style) {

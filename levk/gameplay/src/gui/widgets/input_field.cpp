@@ -1,7 +1,7 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/enumerate.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/widgets/input_field.hpp>
+#include <levk/gameplay/gui/widgets/input_field.hpp>
 #include <levk/graphics/font/font.hpp>
 
 namespace le::gui {

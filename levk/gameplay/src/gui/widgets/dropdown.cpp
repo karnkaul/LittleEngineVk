@@ -1,5 +1,5 @@
-#include <levk/engine/gui/style.hpp>
-#include <levk/engine/gui/widgets/dropdown.hpp>
+#include <levk/gameplay/gui/style.hpp>
+#include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 namespace le::gui {
 namespace {

@@ -2,8 +2,8 @@
 #include <glm/vec2.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/core/utils/error.hpp>
-#include <levk/engine/gui/interact.hpp>
 #include <levk/engine/render/material.hpp>
+#include <levk/gameplay/gui/interact.hpp>
 #include <levk/graphics/render/rgba.hpp>
 #include <unordered_map>
 

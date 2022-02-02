@@ -1,7 +1,7 @@
 #pragma once
-#include <levk/engine/gui/widget.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/input/text_cursor.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 #include <levk/graphics/font/font.hpp>
 
 namespace le::gui {

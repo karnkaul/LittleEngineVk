@@ -1,4 +1,4 @@
-#include <levk/engine/gui/widget.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 namespace le::gui {
 Widget::Widget(not_null<TreeRoot*> root, Hash style) : Quad(root, true) {

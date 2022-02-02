@@ -2,9 +2,9 @@
 #include <dens/registry.hpp>
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/gui/view.hpp>
 #include <levk/engine/render/mesh_view_provider.hpp>
 #include <levk/gameplay/ecs/systems/system_groups.hpp>
+#include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
 
 namespace le {

@@ -2,31 +2,31 @@
 #include <levk/core/utils/algo.hpp>
 #include <levk/core/utils/std_hash.hpp>
 #include <levk/core/utils/string.hpp>
-#include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/input/control.hpp>
 #include <levk/engine/render/model.hpp>
+#include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
-#include <levk/engine/gui/quad.hpp>
-#include <levk/engine/gui/text.hpp>
-#include <levk/engine/gui/view.hpp>
-#include <levk/engine/gui/widget.hpp>
 #include <levk/engine/render/skybox.hpp>
 #include <levk/engine/utils/exec.hpp>
+#include <levk/gameplay/gui/quad.hpp>
+#include <levk/gameplay/gui/text.hpp>
+#include <levk/gameplay/gui/view.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 #include <levk/core/utils/enumerate.hpp>
-#include <levk/engine/gui/widgets/dropdown.hpp>
 #include <levk/engine/render/descriptor_helper.hpp>
+#include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 #include <ktl/async/kasync.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/core/utils/tween.hpp>
-#include <levk/engine/gui/widgets/input_field.hpp>
 #include <levk/engine/input/text_cursor.hpp>
 #include <levk/engine/render/quad_emitter.hpp>
 #include <levk/engine/render/text_mesh.hpp>
+#include <levk/gameplay/gui/widgets/input_field.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <levk/graphics/utils/instant_command.hpp>
 #include <fstream>

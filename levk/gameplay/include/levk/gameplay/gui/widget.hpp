@@ -1,9 +1,9 @@
 #pragma once
 #include <ktl/delegate.hpp>
 #include <levk/core/time.hpp>
-#include <levk/engine/gui/quad.hpp>
-#include <levk/engine/gui/style.hpp>
 #include <levk/engine/input/state.hpp>
+#include <levk/gameplay/gui/quad.hpp>
+#include <levk/gameplay/gui/style.hpp>
 
 namespace le::gui {
 class Widget : public Quad {

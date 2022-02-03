@@ -70,7 +70,7 @@ void inspectMP(Inspect<MeshProvider> provider) {
 	if (store) {
 		if (type == "Mesh Primitive") {
 			std::string_view const matURI = provider.get().materialURI();
-			inspectMat(store->find<Material>(matURI).peek(), matURI, -1);
+			inspectMat(store->find<Material>(matURI), matURI, -1);
 		} else if (type == "Model") {
 			if (auto model = store->find<Model>(provider.get().assetURI())) {
 				for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }

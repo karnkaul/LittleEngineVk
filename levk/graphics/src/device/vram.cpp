@@ -176,6 +176,31 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return ret;
 }
 
+VRAM::Future VRAM::clearAsync(ImageRef const& image, LayerMip const& layerMip, Colour colour, std::optional<vk::ImageLayout> dst) {
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
+	auto const dstLayout = dst.value_or(m_device->m_layouts.get(image.image));
+	auto f = [p = std::move(promise), image, layerMip, colour, dstLayout, this]() mutable {
+		auto stage = m_transfer.newStage(0U);
+		ImgMeta meta;
+		meta.layerMip = layerMip;
+		meta.aspects = vIAFB::eColor;
+		meta.access.first = meta.access.second = vAFB::eMemoryRead | vAFB::eMemoryWrite;
+		meta.layouts = {m_device->m_layouts.get(image.image), vIL::eTransferDstOptimal};
+		meta.stages.first = meta.stages.second = vPSFB::eAllCommands;
+		imageBarrier(stage.command, image.image, meta);
+		clear(stage.command, image, layerMip, meta.layouts.second, colour);
+		if (dstLayout != meta.layouts.second) {
+			meta.layouts.first = std::exchange(meta.layouts.second, dstLayout);
+			imageBarrier(stage.command, image.image, meta);
+		}
+		m_device->m_layouts.force(image.image, dstLayout);
+		m_transfer.addStage(std::move(stage), std::move(p));
+	};
+	m_transfer.m_queue.push(std::move(f));
+	return ret;
+}
+
 VRAM::Future VRAM::copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");

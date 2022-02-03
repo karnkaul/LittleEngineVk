@@ -48,6 +48,7 @@ class VRAM final : public Memory {
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+	[[nodiscard]] Future clearAsync(ImageRef const& image, LayerMip const& layerMip, Colour colour, std::optional<vk::ImageLayout> dst = std::nullopt);
 	[[nodiscard]] Future copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 	[[nodiscard]] Future copyAsync(Images&& imgs, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 

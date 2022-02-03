@@ -68,13 +68,8 @@ Cubemap Texture::unitCubemap(Colour colour) {
 
 Texture::Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour, Extent2D extent, Payload payload, bool mips)
 	: m_image(vram, Image::textureInfo(extent, Image::linear_v, mips)), m_sampler(sampler), m_vram(vram) {
-	Bitmap bmp;
-	bmp.bytes.reserve(std::size_t(extent.x * extent.y));
-	for (u32 i = 0; i < extent.x; ++i) {
-		for (u32 j = 0; j < extent.y; ++j) { utils::append(bmp.bytes, colour); }
-	}
-	bmp.extent = extent;
-	construct(std::move(bmp), payload, Image::linear_v, mips);
+	m_transfer = m_vram->clearAsync(m_image.ref(), m_image.layerMip(), colour, vIL::eShaderReadOnlyOptimal);
+	m_payload = payload;
 }
 
 bool Texture::construct(Bitmap const& bitmap, Payload payload, vk::Format format, bool mips) {
@@ -180,8 +175,11 @@ bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format for
 }
 
 Texture::Result Texture::resize(CommandBuffer cb, Extent2D extent, bool viaBlit) {
-	wait();
 	Image image(m_vram, Image::textureInfo(extent, m_image.format(), m_image.mipCount() > 1U));
+	utils::Transition tr{m_vram->m_device, &cb, image.image()};
+	tr(vk::ImageLayout::eTransferDstOptimal, image.layerMip());
+	m_vram->clear(cb.m_cb, image.ref(), image.layerMip(), vk::ImageLayout::eTransferDstOptimal, {});
+	wait();
 	Result ret;
 	if (viaBlit) {
 		ret.outcome = utils::blit(m_vram, cb, m_image.ref(), image, BlitFilter::eLinear);

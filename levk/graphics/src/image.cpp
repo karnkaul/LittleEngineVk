@@ -65,6 +65,13 @@ ImageRef Image::ref() const noexcept {
 	return ImageRef{ImageView{image(), m_view, extent2D(), m_data.format}, linear};
 }
 
+LayerMip Image::layerMip() const noexcept {
+	LayerMip ret;
+	ret.layer = {0U, layerCount()};
+	ret.mip = {0U, mipCount()};
+	return ret;
+}
+
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
 	u32 const family = d.queues().primary().family();

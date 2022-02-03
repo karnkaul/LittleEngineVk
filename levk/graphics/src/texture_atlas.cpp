@@ -11,6 +11,12 @@ vk::SamplerCreateInfo samplerInfo() {
 	ret.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	return ret;
 }
+
+constexpr u32 ceilPOT(u32 y) noexcept {
+	u32 ret = 2U;
+	while (ret < y) { ret <<= 1U; }
+	return ret;
+}
 } // namespace
 
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
@@ -74,19 +80,20 @@ TextureAtlas::Outcome TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer con
 	auto const& itex = m_texture.image().extent2D();
 	if (extent.x > itex.x) { return Outcome::eOverflowX; }
 	auto const remain = itex - m_data.head;
-	bool resize = false;
+	u32 overflowY{};
 	if (extent.y + m_pad.y > remain.y) { // y overflow
-		resize = true;
+		overflowY = extent.y - remain.y;
 	} else if (extent.x + m_pad.x > remain.x) {					// x overflow
 		if (extent.y + m_pad.y + m_data.rowHeight > remain.y) { // insufficient y
-			resize = true;
+			overflowY = extent.y + m_data.rowHeight - remain.y;
 		} else {
 			nextRow();
 		}
 	}
-	if (resize) {
+	if (overflowY > 0U) {
 		if (m_locked) { return Outcome::eSizeLocked; }
-		auto res = m_texture.resizeCopy(cb, {itex.x, itex.y * 2U});
+		overflowY += m_pad.y * 2U; // add padding to overflow
+		auto res = m_texture.resizeCopy(cb, {itex.x, ceilPOT(itex.y + overflowY)});
 		if (!res.outcome) { return Outcome::eResizeFail; }
 		out.scratch = std::move(res.scratch);
 		nextRow();

@@ -25,7 +25,7 @@ class InputField : public Widget, public input::Receiver {
 	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_line; }
 
   protected:
-	not_null<Font*> m_font;
+	Hash m_fontURI;
 	TextMesh m_textMesh;
 	input::TextCursor2 m_cursor;
 

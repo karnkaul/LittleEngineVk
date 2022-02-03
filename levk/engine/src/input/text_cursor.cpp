@@ -3,7 +3,7 @@
 #include <levk/graphics/font/font.hpp>
 
 namespace le::input {
-TextCursor2::TextCursor2(not_null<Font*> font, Flags flags) : m_flags(flags), m_primitive(font->m_vram), m_font(font) { refresh(); }
+TextCursor2::TextCursor2(not_null<graphics::VRAM*> vram, Flags flags, Opt<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
 
 MeshView TextCursor2::mesh() const noexcept {
 	if (m_drawCursor) {
@@ -131,6 +131,7 @@ void TextCursor2::index(std::size_t index) {
 }
 
 void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
+	if (!m_font) { return; }
 	if (out) {
 		if (clearGeom) { *out = {}; }
 		out->reserve(u32(m_line.size() * 4U), u32(m_line.size() * 6U));

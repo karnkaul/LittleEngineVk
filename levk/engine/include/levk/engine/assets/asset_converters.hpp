@@ -3,6 +3,7 @@
 #include <levk/core/io/converters.hpp>
 #include <levk/core/io/path.hpp>
 #include <levk/engine/render/layer.hpp>
+#include <levk/engine/render/material.hpp>
 
 namespace le {
 namespace io {
@@ -38,6 +39,12 @@ template <>
 struct Jsonify<RenderLayer> : JsonHelper {
 	dj::json operator()(RenderLayer const& layer) const;
 	RenderLayer operator()(dj::json const& json) const;
+};
+
+template <>
+struct Jsonify<Material> : JsonHelper {
+	dj::json operator()(Material const&) const = delete;
+	Material operator()(dj::json const& json) const;
 };
 } // namespace io
 } // namespace le

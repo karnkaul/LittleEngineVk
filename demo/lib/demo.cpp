@@ -472,6 +472,28 @@ class App : public input::Receiver, public Scene {
 			m_data.dirLights = {l0, l1};
 		}
 		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &engine().vram());
+		{
+			auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
+			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
+			gui::Dropdown::CreateInfo dci;
+			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+			dci.textHeight = 30U;
+			dci.options = {"zero", "one", "two", "/bthree", "four"};
+			dci.selected = 2;
+			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
+			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+			gui::Dialogue::CreateInfo gdci;
+			gdci.header.text = "Dialogue";
+			gdci.content.text = "Content\ngoes\nhere";
+			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
+			gui::InputField::CreateInfo info;
+			// info.secret = true;
+			auto& in = dialogue.push<gui::InputField>(info);
+			in.m_rect.anchor.offset.y = 60.0f;
+			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		}
 	}
 
 	void close() override {
@@ -514,7 +536,8 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 
-			m_data.cursor.emplace(&*font);
+			m_data.cursor.emplace(font->m_vram);
+			m_data.cursor->font(&*font);
 			m_data.cursor->m_colour = colours::yellow;
 			m_data.cursor->m_layout.scale = font->scale(80U);
 			m_data.cursor->m_layout.origin.y = 200.0f;
@@ -524,29 +547,6 @@ class App : public input::Receiver, public Scene {
 			auto ent1 = spawnNode("text_cursor");
 			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
 			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
-		}
-
-		if (auto guistack = m_registry.find<gui::ViewStack>(m_data.guiStack)) {
-			auto& stack = *guistack;
-			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
-			gui::Dropdown::CreateInfo dci;
-			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
-			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-			dci.textHeight = 30U;
-			dci.options = {"zero", "one", "two", "/bthree", "four"};
-			dci.selected = 2;
-			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
-			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
-			gui::Dialogue::CreateInfo gdci;
-			gdci.header.text = "Dialogue";
-			gdci.content.text = "Content\ngoes\nhere";
-			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
-			gui::InputField::CreateInfo info;
-			// info.secret = true;
-			auto& in = dialogue.push<gui::InputField>(info);
-			in.m_rect.anchor.offset.y = 60.0f;
-			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 		}
 
 		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }

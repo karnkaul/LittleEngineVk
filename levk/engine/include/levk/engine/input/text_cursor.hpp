@@ -29,8 +29,10 @@ class TextCursor2 {
 
 	static constexpr std::size_t npos = std::string_view::npos;
 
-	TextCursor2(not_null<Font*> font, Flags flags = {});
+	TextCursor2(not_null<graphics::VRAM*> vram, Flags flags = {}, Opt<Font> font = {});
 
+	void font(not_null<Font*> font) noexcept { m_font = font; }
+	Opt<Font> font() const noexcept { return m_font; }
 	MeshView mesh() const noexcept;
 
 	///
@@ -115,7 +117,7 @@ class TextCursor2 {
 	glm::vec2 m_size = {0.07f, 1.1f};
 	time::Point m_lastBlink;
 	std::size_t m_index = npos;
-	not_null<Font*> m_font;
+	Opt<Font> m_font{};
 	bool m_drawCursor = true;
 };
 } // namespace le::input

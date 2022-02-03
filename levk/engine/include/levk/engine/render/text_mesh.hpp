@@ -36,8 +36,11 @@ class TextMesh {
 	};
 	using Info = ktl::either<Line, graphics::Geometry>;
 
+	TextMesh(not_null<graphics::VRAM*> vram) noexcept;
 	TextMesh(not_null<Font*> font) noexcept;
 
+	void font(not_null<Font*> font) noexcept { m_font = font; }
+	Opt<Font> font() const noexcept { return m_font; }
 	MeshView mesh() const;
 
 	Info m_info;
@@ -45,6 +48,6 @@ class TextMesh {
 
   private:
 	mutable Obj m_obj;
-	not_null<Font*> m_font;
+	Opt<Font> m_font{};
 };
 } // namespace le

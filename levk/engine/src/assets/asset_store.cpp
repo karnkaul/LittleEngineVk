@@ -13,8 +13,8 @@ bool AssetStore::unload(Hash uri) {
 }
 
 auto AssetStore::onModified(Hash uri) -> OnModified::signal {
-	ktl::klock lock(m_assets);
-	if (auto it = lock->find(uri); it != lock->end()) { return it->second->onModified.make_signal(); }
+	ktl::klock lock(m_onModified);
+	if (auto it = lock->find(uri); it != lock->end()) { return it->second.make_signal(); }
 	return {};
 }
 
@@ -61,5 +61,10 @@ AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view fil
 		ret.maps.push_back(std::move(map));
 	}
 	return ret;
+}
+
+void AssetStore::modified(Hash uri) {
+	auto lock = ktl::klock(m_onModified);
+	if (auto it = lock->find(uri); it != lock->end()) { it->second(); }
 }
 } // namespace le

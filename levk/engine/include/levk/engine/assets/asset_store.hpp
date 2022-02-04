@@ -38,9 +38,6 @@ class AssetStore : public NoCopy {
 	void update();
 	void clear();
 
-	template <template <typename...> typename L = std::scoped_lock>
-	L<std::mutex> reloadLock() const;
-
 	Resources& resources() noexcept { return m_resources; }
 	Resources const& resources() const noexcept { return m_resources; }
 
@@ -57,15 +54,17 @@ class AssetStore : public NoCopy {
 	struct Base;
 	using DoReload = ktl::kfunction<bool(Base*)>;
 	using TAssets = std::unordered_map<Hash, std::unique_ptr<Base>>;
+	using OnModMap = std::unordered_map<Hash, OnModified>;
 	template <typename T>
 	struct TAsset;
 
 	template <typename T>
 	Opt<T> add(std::unique_ptr<TAsset<T>>&& tasset);
+	void modified(Hash uri);
 
 	template <typename T>
 		requires(detail::reloadable_asset_v<T>)
-	bool reloadAsset(TAsset<T>& out_asset) const;
+	bool reloadAsset(TAsset<T>& out_asset);
 
 	template <typename T>
 	static Opt<T> getT(std::unique_ptr<Base> const& base) {
@@ -74,7 +73,7 @@ class AssetStore : public NoCopy {
 
 	Resources m_resources;
 	ktl::strict_tmutex<TAssets> m_assets;
-	mutable std::mutex m_reloadMutex;
+	ktl::strict_tmutex<OnModMap> m_onModified;
 };
 
 struct AssetStore::Index {
@@ -95,7 +94,6 @@ struct AssetStore::Index {
 struct AssetStore::Base {
 	std::string uri;
 	std::string_view typeName;
-	OnModified onModified;
 	DoReload doReload;
 	Sign sign;
 	Base(std::string uri, std::string_view typeName, Sign sign, DoReload&& doReload) noexcept
@@ -164,11 +162,15 @@ bool AssetStore::exists(Hash uri) const noexcept {
 template <typename T>
 	requires(detail::reloadable_asset_v<T>)
 bool AssetStore::reload(Hash uri) {
-	ktl::klock lock(m_assets);
-	if (auto it = lock->find(uri); it != lock->end()) {
-		EXPECT(it->second);
-		if (it->second->sign == Sign::make<T>()) { return reloadAsset(static_cast<TAsset<T>&>(*it->second)); }
+	TAsset<T>* tasset{};
+	{
+		ktl::klock lock(m_assets);
+		if (auto it = lock->find(uri); it != lock->end()) {
+			EXPECT(it->second);
+			if (it->second->sign == Sign::make<T>()) { tasset = static_cast<TAsset<T>*>(it->second.get()); }
+		}
 	}
+	if (tasset) { return reloadAsset(*tasset); }
 	return false;
 }
 
@@ -185,11 +187,6 @@ bool AssetStore::unload(Hash uri) {
 	return false;
 }
 
-template <template <typename...> typename L>
-L<std::mutex> AssetStore::reloadLock() const {
-	return L<std::mutex>(m_reloadMutex);
-}
-
 template <typename T>
 Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
@@ -202,12 +199,11 @@ Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 
 template <typename T>
 	requires(detail::reloadable_asset_v<T>)
-bool AssetStore::reloadAsset(TAsset<T>& out_asset) const {
-	auto lock = reloadLock();
+bool AssetStore::reloadAsset(TAsset<T>& out_asset) {
 	AssetLoader<T> loader;
 	if (loader.reload(*out_asset.t, *out_asset.info)) {
 		logI(LC_LibUser, "== [Asset] [{}] reloaded", out_asset.uri);
-		out_asset.onModified();
+		modified(out_asset.uri);
 		return true;
 	}
 	return false;

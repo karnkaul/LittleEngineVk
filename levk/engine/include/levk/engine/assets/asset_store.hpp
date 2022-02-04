@@ -52,7 +52,7 @@ class AssetStore : public NoCopy {
 
   private:
 	struct Base;
-	using DoReload = ktl::kfunction<bool(Base*)>;
+	using DoReload = ktl::kfunction<bool(Base&)>;
 	using TAssets = std::unordered_map<Hash, std::unique_ptr<Base>>;
 	using OnModMap = std::unordered_map<Hash, OnModified>;
 	template <typename T>
@@ -67,9 +67,13 @@ class AssetStore : public NoCopy {
 	bool reloadAsset(TAsset<T>& out_asset);
 
 	template <typename T>
-	static Opt<T> getT(std::unique_ptr<Base> const& base) {
-		return static_cast<TAsset<T>&>(*base).t.get();
-	}
+	static TAsset<T>& toTAsset(Base& base) noexcept;
+
+	template <typename T>
+	static Opt<T> toT(Base& base);
+
+	template <typename T>
+	DoReload doReload();
 
 	Resources m_resources;
 	ktl::strict_tmutex<TAssets> m_assets;
@@ -127,14 +131,9 @@ Opt<T> AssetStore::add(std::string uri, std::unique_ptr<T>&& t) {
 
 template <typename T>
 Opt<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
-	AssetLoader<T> loader;
-	AssetLoadInfo<T> info(this, &m_resources, std::move(data), uri);
-	DoReload doReload;
-	if constexpr (detail::reloadable_asset_v<T>) {
-		doReload = [this](Base* base) { return this->reloadAsset(static_cast<TAsset<T>&>(*base)); };
-	}
-	auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(info), std::move(doReload));
-	if ((tasset->t = loader.load(*tasset->info)); tasset->t) { return add(std::move(tasset)); }
+	auto info = AssetLoadInfo<T>(this, &m_resources, std::move(data), uri);
+	auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(info), doReload<T>());
+	if ((tasset->t = AssetLoader<T>{}.load(*tasset->info)); tasset->t) { return add(std::move(tasset)); }
 	logW(LC_EndUser, "[Asset] Failed to load [{}]!", tasset->uri);
 	return {};
 }
@@ -144,19 +143,14 @@ Opt<T> AssetStore::find(Hash uri) const {
 	ktl::klock lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
-		if (it->second->sign == Sign::make<T>()) { return getT<T>(it->second); }
+		if (it->second->sign == Sign::make<T>()) { return toT<T>(*it->second); }
 	}
 	return {};
 }
 
 template <typename T>
 bool AssetStore::exists(Hash uri) const noexcept {
-	ktl::klock lock(m_assets);
-	if (auto it = lock->find(uri); it != lock->end()) {
-		EXPECT(it->second);
-		if (it->second->sign == Sign::make<T>()) { return true; }
-	}
-	return false;
+	return find<T>(uri) != nullptr;
 }
 
 template <typename T>
@@ -167,7 +161,7 @@ bool AssetStore::reload(Hash uri) {
 		ktl::klock lock(m_assets);
 		if (auto it = lock->find(uri); it != lock->end()) {
 			EXPECT(it->second);
-			if (it->second->sign == Sign::make<T>()) { tasset = static_cast<TAsset<T>*>(it->second.get()); }
+			if (it->second->sign == Sign::make<T>()) { tasset = &toTAsset<T>(*it->second); }
 		}
 	}
 	if (tasset) { return reloadAsset(*tasset); }
@@ -194,19 +188,37 @@ Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	auto const [it, b] = ktl::klock(m_assets)->insert_or_assign(key, std::move(tasset));
 	if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", it->second->uri); }
 	logI(LC_EndUser, "== [Asset] [{}] added", it->second->uri);
-	return getT<T>(it->second);
+	return toT<T>(*it->second);
 }
 
 template <typename T>
 	requires(detail::reloadable_asset_v<T>)
 bool AssetStore::reloadAsset(TAsset<T>& out_asset) {
-	AssetLoader<T> loader;
-	if (loader.reload(*out_asset.t, *out_asset.info)) {
+	if (AssetLoader<T>{}.reload(*out_asset.t, *out_asset.info)) {
 		logI(LC_LibUser, "== [Asset] [{}] reloaded", out_asset.uri);
 		modified(out_asset.uri);
 		return true;
 	}
 	return false;
+}
+
+template <typename T>
+auto AssetStore::toTAsset(Base& base) noexcept -> TAsset<T>& {
+	return static_cast<TAsset<T>&>(base);
+}
+
+template <typename T>
+Opt<T> AssetStore::toT(Base& base) {
+	return toTAsset<T>(base).t.get();
+}
+
+template <typename T>
+auto AssetStore::doReload() -> DoReload {
+	if constexpr (detail::reloadable_asset_v<T>) {
+		return [this](Base& base) { return reloadAsset(toTAsset<T>(base)); };
+	} else {
+		return {};
+	}
 }
 
 template <typename T>

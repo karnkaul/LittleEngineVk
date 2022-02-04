@@ -1,4 +1,5 @@
 #include <levk/engine/assets/asset_store.hpp>
+#include <atomic>
 
 namespace le {
 bool AssetStore::exists(Hash uri) const noexcept { return ktl::klock(m_assets)->contains(uri); }
@@ -19,6 +20,9 @@ auto AssetStore::onModified(Hash uri) -> OnModified::signal {
 }
 
 void AssetStore::update() {
+	static std::atomic<bool> s_updating = false;
+	EXPECT(!s_updating);
+	s_updating = true;
 	std::vector<Base*> dirty;
 	u64 reloaded = 0;
 	{
@@ -30,9 +34,11 @@ void AssetStore::update() {
 		}
 	}
 	for (auto base : dirty) {
-		if (base->doReload(base)) { ++reloaded; }
+		if (base->doReload(*base)) { ++reloaded; }
 	}
 	if (reloaded > 0) { logI(LC_LibUser, "[Assets] [{}] Reloads completed", reloaded); }
+	EXPECT(s_updating);
+	s_updating = false;
 }
 
 void AssetStore::clear() {

@@ -185,7 +185,8 @@ template <typename T>
 Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
 	Hash const key = tasset->uri;
-	auto const [it, b] = ktl::klock(m_assets)->insert_or_assign(key, std::move(tasset));
+	ktl::klock lock(m_assets);
+	auto const [it, b] = lock->insert_or_assign(key, std::move(tasset));
 	if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", it->second->uri); }
 	logI(LC_EndUser, "== [Asset] [{}] added", it->second->uri);
 	return toT<T>(*it->second);

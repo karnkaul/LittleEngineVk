@@ -98,7 +98,7 @@ ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string ur
 		RenderPipeline rp;
 		rp.layer = *layer;
 		rp.shaderURIs = {sh.begin(), sh.end()};
-		e.store().add(std::move(uri), std::make_unique<RenderPipeline>(rp));
+		e.store().add(std::move(uri), rp);
 	};
 }
 
@@ -110,7 +110,7 @@ ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {
 	return [engine, cb = std::move(cubemap), uri = std::move(uri)] {
 		if (auto cube = engine.store().find<graphics::Texture>(cb); cube && cube->type() == graphics::Texture::Type::eCube) {
-			engine.store().add(std::move(uri), std::make_unique<Skybox>(&*cube));
+			engine.store().add(std::move(uri), Skybox(&*cube));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to find cubemap Texture [{}] for Skybox [{}]", cb, uri);
 		}
@@ -138,7 +138,7 @@ struct DefaultParser : AssetManifest::Parser {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
 			if (json->contains("min") && json->contains("mag")) {
-				add(order<Sampler>(), std::move(uri), std::make_unique<Sampler>(&m_engine.device(), samplerInfo(json)));
+				add(order<Sampler>(), std::move(uri), Sampler(&m_engine.device(), samplerInfo(json)));
 				++ret;
 			}
 		}
@@ -159,7 +159,7 @@ struct DefaultParser : AssetManifest::Parser {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
 			auto const rs = io::fromJson<RenderLayer>(*json);
-			add(order<RenderLayer>(), std::move(uri), std::make_unique<RenderLayer>(rs));
+			add(order<RenderLayer>(), std::move(uri), rs);
 			++ret;
 		}
 		return ret;

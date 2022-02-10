@@ -7,8 +7,14 @@
 
 namespace le {
 class AssetStore;
+
 template <typename T>
-class Asset;
+using AssetStorage = std::optional<T>;
+
+template <typename T, typename... Args>
+AssetStorage<T> makeAssetStorage(Args&&... args) {
+	return T(std::forward<Args>(args)...);
+}
 
 ///
 /// \brief Customisation point

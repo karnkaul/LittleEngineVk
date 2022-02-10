@@ -126,9 +126,8 @@ class Renderer : public ListRenderer {
 		Span<DirLight const> lights;
 	};
 
-	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, dens::registry const& registry, AssetStore const& store) {
+	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, dens::registry const& registry) {
 		m_mats = &sbMap.get("mats");
-		m_store = &store;
 		m_mats->write(data.view);
 		m_lights = &sbMap.get("lights");
 		if (!data.lights.empty()) {
@@ -160,9 +159,9 @@ class Renderer : public ListRenderer {
 					static Material const s_blank;
 					Material const& mat = mesh.material ? *mesh.material : s_blank;
 					auto set2 = drawMesh.set(map, 2);
-					set2.update(0, mat.map_Kd(*m_store));
-					set2.update(1, mat.map_d(*m_store));
-					set2.update(2, mat.map_Ks(*m_store), TextureFallback::eBlack);
+					set2.update(0, mat.map_Kd);
+					set2.update(1, mat.map_d);
+					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
 					drawMesh.set(map, 3).update(0, ShaderMaterial::make(mat));
 				}
 			}
@@ -171,7 +170,6 @@ class Renderer : public ListRenderer {
 
 	graphics::ShaderBuffer* m_mats{};
 	graphics::ShaderBuffer* m_lights{};
-	Opt<AssetStore const> m_store{};
 };
 
 class TestView : public gui::View {
@@ -461,7 +459,6 @@ class App : public input::Receiver, public Scene {
 			auto ent = spawnNode("emitter");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&m_emitter));
 			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
-			m_emitter.material.map_Kd = Hash("textures/awesomeface.png");
 		}
 		{
 			DirLight l0, l1;
@@ -551,6 +548,8 @@ class App : public input::Receiver, public Scene {
 
 		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
+
+		if (auto tex = engine().store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
 	}
 
 	void tick(Time_s dt) override {
@@ -624,7 +623,7 @@ class App : public input::Receiver, public Scene {
 		Renderer::SceneData scene;
 		scene.view = view;
 		scene.lights = m_data.dirLights;
-		Renderer{}.render(renderPass, shaderBufferMap(), scene, m_registry, m_engineService.store());
+		Renderer{}.render(renderPass, shaderBufferMap(), scene, m_registry);
 	}
 
   private:

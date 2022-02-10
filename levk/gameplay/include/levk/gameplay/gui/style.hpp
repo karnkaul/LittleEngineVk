@@ -14,7 +14,7 @@ struct TextStyle {
 	u32 height = 40U;
 };
 
-InteractStyle<Material> defaultQuadInteractStyle() noexcept;
+constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept;
 
 struct BaseStyle {
 	TextStyle text;
@@ -53,7 +53,7 @@ class Styles {
 
 // impl
 
-inline InteractStyle<Material> defaultQuadInteractStyle() noexcept {
+constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept {
 	InteractStyle<Material> ret;
 	ret.at(InteractStatus::eHover).Tf = colours::cyan;
 	ret.at(InteractStatus::eHold).Tf = colours::yellow;

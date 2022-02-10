@@ -102,9 +102,40 @@ ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string ur
 	};
 }
 
+static graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
+	if (json.is_string()) {
+		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
+	} else if (json.contains("colour")) {
+		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
+			graphics::RGBA ret;
+			ret.colour = Colour(str);
+			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
+			return ret;
+		}
+	}
+	return fallback;
+}
+
 ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
-	Material mat = io::fromJson<Material>(*json);
-	return [uri = std::move(uri), engine, mat]() { engine.store().add(std::move(uri), mat); };
+	Material mat;
+	mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
+	mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
+	mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
+	mat.Tf = parseRGBA(json->get("Tf"), mat.Tf);
+	mat.Ns = json->get_as<f32>("Ns", mat.Ns);
+	mat.d = json->get_as<f32>("d", mat.d);
+	mat.illum = json->get_as<int>("illum", mat.illum);
+	Hash const map_Kd = json->get_as<std::string_view>("map_Kd");
+	Hash const map_Ks = json->get_as<std::string_view>("map_Ks");
+	Hash const map_d = json->get_as<std::string_view>("map_d");
+	Hash const map_bump = json->get_as<std::string_view>("map_bump");
+	return [uri = std::move(uri), engine, mat, map_Kd, map_Ks, map_d, map_bump]() mutable {
+		mat.map_Kd = engine.store().find<graphics::Texture>(map_Kd);
+		mat.map_Ks = engine.store().find<graphics::Texture>(map_Ks);
+		mat.map_d = engine.store().find<graphics::Texture>(map_d);
+		mat.map_Bump = engine.store().find<graphics::Texture>(map_bump);
+		engine.store().add(std::move(uri), mat);
+	};
 }
 
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {

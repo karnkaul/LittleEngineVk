@@ -1,5 +1,4 @@
 #include <levk/engine/assets/asset_store.hpp>
-#include <levk/engine/assets/asset_store2.hpp>
 #include <atomic>
 
 namespace le {

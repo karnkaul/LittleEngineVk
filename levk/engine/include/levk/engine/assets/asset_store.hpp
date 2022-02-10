@@ -232,7 +232,7 @@ AssetStore::Sign AssetStore::sign() {
 template <typename... T>
 Span<AssetStore::Sign const> AssetStore::signs() {
 	if constexpr (sizeof...(T) > 0) {
-		thread_local Sign const ret[] = {sign<T>()...};
+		static Sign const ret[] = {sign<T>()...};
 		return ret;
 	} else {
 		return {};

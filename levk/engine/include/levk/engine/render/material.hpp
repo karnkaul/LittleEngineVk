@@ -10,19 +10,19 @@ struct Material {
 	///
 	/// \brief Diffuse texture map
 	///
-	graphics::Texture const* map_Kd{};
+	Opt<graphics::Texture const> map_Kd{};
 	///
 	/// \brief Specular colour map
 	///
-	graphics::Texture const* map_Ks{};
+	Opt<graphics::Texture const> map_Ks{};
 	///
 	/// \brief Alpha texture map
 	///
-	graphics::Texture const* map_d{};
+	Opt<graphics::Texture const> map_d{};
 	///
 	/// \brief Normal texture map
 	///
-	graphics::Texture const* map_Bump{};
+	Opt<graphics::Texture const> map_Bump{};
 	///
 	/// \brief Ambient colour
 	///

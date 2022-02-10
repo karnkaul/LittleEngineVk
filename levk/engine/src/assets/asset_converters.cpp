@@ -1,23 +1,6 @@
-#include <ktl/debug_trap.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 
 namespace le::io {
-namespace {
-graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
-	if (json.is_string()) {
-		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
-	} else if (json.contains("colour")) {
-		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
-			graphics::RGBA ret;
-			ret.colour = Colour(str);
-			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
-			return ret;
-		}
-	}
-	return fallback;
-}
-} // namespace
-
 dj::json Jsonify<RenderFlags>::operator()(RenderFlags const& flags) const {
 	dj::json ret;
 	if (flags == graphics::pflags_all) {
@@ -68,21 +51,5 @@ RenderLayer Jsonify<RenderLayer>::operator()(dj::json const& json) const {
 	ret.lineWidth = json.get_as<f32>("line_width", ret.lineWidth);
 	ret.order = json.get_as<s64>("order");
 	return ret;
-}
-
-Material Jsonify<Material>::operator()(dj::json const& json) const {
-	Material mat;
-	mat.Ka = parseRGBA(json.get("Ka"), mat.Ka);
-	mat.Kd = parseRGBA(json.get("Kd"), mat.Kd);
-	mat.Ks = parseRGBA(json.get("Ks"), mat.Ks);
-	mat.Tf = parseRGBA(json.get("Tf"), mat.Tf);
-	mat.Ns = json.get_as<f32>("Ns", mat.Ns);
-	mat.d = json.get_as<f32>("d", mat.d);
-	mat.illum = json.get_as<int>("illum", mat.illum);
-	mat.map_Kd = Hash(json.get_as<std::string_view>("map_Kd"));
-	mat.map_Ks = Hash(json.get_as<std::string_view>("map_Ks"));
-	mat.map_d = Hash(json.get_as<std::string_view>("map_d"));
-	mat.map_Bump = Hash(json.get_as<std::string_view>("map_bump"));
-	return mat;
 }
 } // namespace le::io

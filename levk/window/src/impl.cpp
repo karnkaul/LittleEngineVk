@@ -98,7 +98,7 @@ UniqueGlfwWin Manager::Impl::make(CreateInfo const& info) {
 		return {};
 	}
 	if (style == Style::eDecoratedWindow || style == Style::eBorderlessWindow) {
-		glm::vec2 pos{};
+		glm::ivec2 pos{};
 		if (info.config.position) {
 			pos = *info.config.position;
 		} else {

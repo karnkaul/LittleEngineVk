@@ -48,9 +48,9 @@ template <>
 }
 } // namespace
 
-std::unique_ptr<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInfo<graphics::SpirV> const& info) const {
+AssetStorage<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInfo<graphics::SpirV> const& info) const {
 	graphics::SpirV ret;
-	if (reload(ret, info)) { return std::make_unique<graphics::SpirV>(std::move(ret)); }
+	if (reload(ret, info)) { return makeAssetStorage<graphics::SpirV>(std::move(ret)); }
 	return {};
 }
 
@@ -85,13 +85,13 @@ bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo
 	return true;
 }
 
-std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
+AssetStorage<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return {}; }
 	if (auto d = data(info)) {
 		graphics::Texture out_texture(info.m_data.vram, sampler->sampler());
-		if (load(out_texture, *d, sampler->sampler(), info.m_data.forceFormat)) { return std::make_unique<graphics::Texture>(std::move(out_texture)); }
+		if (load(out_texture, *d, sampler->sampler(), info.m_data.forceFormat)) { return makeAssetStorage<graphics::Texture>(std::move(out_texture)); }
 	}
 	return {};
 }
@@ -148,12 +148,12 @@ bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data c
 	return data.visit(construct);
 }
 
-std::unique_ptr<graphics::Font> AssetLoader<graphics::Font>::load(AssetLoadInfo<graphics::Font> const& info) const {
+AssetStorage<graphics::Font> AssetLoader<graphics::Font>::load(AssetLoadInfo<graphics::Font> const& info) const {
 	if (auto ttf = info.resource(info.m_data.ttfURI, Resource::Type::eBinary, {})) {
 		auto fi = info.m_data.info;
 		fi.ttf = ttf->bytes();
 		if (fi.name.empty()) { fi.name = info.m_data.ttfURI.filename().string(); }
-		return std::make_unique<graphics::Font>(info.m_data.vram, fi);
+		return makeAssetStorage<graphics::Font>(info.m_data.vram, fi);
 	}
 	return {};
 }
@@ -169,14 +169,14 @@ bool AssetLoader<graphics::Font>::reload(graphics::Font& out_font, AssetLoadInfo
 	return false;
 }
 
-std::unique_ptr<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
+AssetStorage<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
 	static Hash const defaultSampler = "samplers/default";
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? defaultSampler : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return {}; }
 	if (auto mci = Model::load(info.m_data.modelURI, info.m_data.jsonURI, info.media())) {
 		Model model;
-		if (model.construct(info.m_data.vram, *mci, *sampler, info.m_data.forceFormat)) { return std::make_unique<Model>(std::move(model)); }
+		if (model.construct(info.m_data.vram, *mci, *sampler, info.m_data.forceFormat)) { return makeAssetStorage<Model>(std::move(model)); }
 	}
 	return {};
 }

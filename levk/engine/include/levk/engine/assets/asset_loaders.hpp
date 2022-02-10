@@ -18,7 +18,7 @@ struct AssetLoadData<graphics::SpirV> {
 
 template <>
 struct AssetLoader<graphics::SpirV> {
-	std::unique_ptr<graphics::SpirV> load(AssetLoadInfo<graphics::SpirV> const& info) const;
+	AssetStorage<graphics::SpirV> load(AssetLoadInfo<graphics::SpirV> const& info) const;
 	bool reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
 
 	bool load(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
@@ -44,7 +44,7 @@ struct AssetLoader<graphics::Texture> {
 	using Cube = std::array<ImageData, 6>;
 	using Data = ktl::kvariant<Bitmap, ImageData, Cubemap, Cube>;
 
-	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
+	AssetStorage<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;
 
 	bool load(graphics::Texture& out_texture, Data const& data, vk::Sampler sampler, std::optional<vk::Format> format) const;
@@ -62,7 +62,7 @@ struct AssetLoadData<graphics::Font> {
 
 template <>
 struct AssetLoader<graphics::Font> {
-	std::unique_ptr<graphics::Font> load(AssetLoadInfo<graphics::Font> const& info) const;
+	AssetStorage<graphics::Font> load(AssetLoadInfo<graphics::Font> const& info) const;
 	bool reload(graphics::Font& out_font, AssetLoadInfo<graphics::Font> const& info) const;
 };
 
@@ -79,7 +79,7 @@ struct AssetLoadData<Model> {
 
 template <>
 struct AssetLoader<Model> {
-	std::unique_ptr<Model> load(AssetLoadInfo<Model> const& info) const;
+	AssetStorage<Model> load(AssetLoadInfo<Model> const& info) const;
 	bool reload(Model& out_model, AssetLoadInfo<Model> const& info) const;
 };
 } // namespace le

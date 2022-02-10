@@ -19,14 +19,14 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	Opt<T> add(std::string uri, T t);
 	template <typename T>
-	Opt<T> add(std::string uri, std::unique_ptr<T>&& t);
+	Opt<T> add(std::string uri, AssetStorage<T>&& t);
 	template <typename T>
 	Opt<T> load(std::string uri, AssetLoadData<T> data);
 	template <typename T>
 	Opt<T> find(Hash uri) const;
-	bool exists(Hash uri) const noexcept;
+	bool exists(Hash uri) const;
 	template <typename T>
-	bool exists(Hash uri) const noexcept;
+	bool exists(Hash uri) const;
 	bool unload(Hash uri);
 	template <typename T>
 	bool unload(Hash uri);
@@ -35,7 +35,8 @@ class AssetStore : public NoCopy {
 	bool reload(Hash uri);
 	OnModified::signal onModified(Hash uri);
 
-	void update();
+	void checkModified();
+	std::size_t size() const;
 	void clear();
 
 	Resources& resources() noexcept { return m_resources; }
@@ -109,23 +110,23 @@ struct AssetStore::Base {
 template <typename T>
 struct AssetStore::TAsset : Base {
 	std::optional<AssetLoadInfo<T>> info;
-	std::unique_ptr<T> t;
+	AssetStorage<T> t;
 
 	static std::string_view tName() { return utils::removeNamespaces(utils::tName<T>()); }
 
-	TAsset(std::string&& uri, std::unique_ptr<T>&& t) noexcept : Base(std::move(uri), tName(), Sign::make<T>(), {}), t(std::move(t)) {}
+	TAsset(std::string&& uri, AssetStorage<T>&& t) noexcept : Base(std::move(uri), tName(), AssetStore::sign<T>(), {}), t(std::move(t)) {}
 	TAsset(std::string&& uri, AssetLoadInfo<T>&& info, DoReload&& doReload) noexcept
-		: Base(std::move(uri), tName(), Sign::make<T>(), std::move(doReload)), info(std::move(info)) {}
+		: Base(std::move(uri), tName(), AssetStore::sign<T>(), std::move(doReload)), info(std::move(info)) {}
 	bool dirty() const override { return info && info->modified(); }
 };
 
 template <typename T>
 Opt<T> AssetStore::add(std::string uri, T t) {
-	return add(std::move(uri), std::make_unique<T>(std::move(t)));
+	return add(std::move(uri), makeAssetStorage<T>(std::move(t)));
 }
 
 template <typename T>
-Opt<T> AssetStore::add(std::string uri, std::unique_ptr<T>&& t) {
+Opt<T> AssetStore::add(std::string uri, AssetStorage<T>&& t) {
 	return add(std::make_unique<TAsset<T>>(std::move(uri), std::move(t)));
 }
 
@@ -143,13 +144,13 @@ Opt<T> AssetStore::find(Hash uri) const {
 	ktl::klock lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
-		if (it->second->sign == Sign::make<T>()) { return toT<T>(*it->second); }
+		if (it->second->sign == sign<T>()) { return toT<T>(*it->second); }
 	}
 	return {};
 }
 
 template <typename T>
-bool AssetStore::exists(Hash uri) const noexcept {
+bool AssetStore::exists(Hash uri) const {
 	return find<T>(uri) != nullptr;
 }
 
@@ -161,7 +162,7 @@ bool AssetStore::reload(Hash uri) {
 		ktl::klock lock(m_assets);
 		if (auto it = lock->find(uri); it != lock->end()) {
 			EXPECT(it->second);
-			if (it->second->sign == Sign::make<T>()) { tasset = &toTAsset<T>(*it->second); }
+			if (it->second->sign == sign<T>()) { tasset = &toTAsset<T>(*it->second); }
 		}
 	}
 	if (tasset) { return reloadAsset(*tasset); }
@@ -173,7 +174,7 @@ bool AssetStore::unload(Hash uri) {
 	ktl::klock lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		EXPECT(it->second);
-		if (it->second->sign == Sign::make<T>()) {
+		if (it->second->sign == sign<T>()) {
 			lock->erase(it);
 			return true;
 		}
@@ -185,7 +186,8 @@ template <typename T>
 Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
 	Hash const key = tasset->uri;
-	auto const [it, b] = ktl::klock(m_assets)->insert_or_assign(key, std::move(tasset));
+	ktl::klock lock(m_assets);
+	auto const [it, b] = lock->insert_or_assign(key, std::move(tasset));
 	if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", it->second->uri); }
 	logI(LC_EndUser, "== [Asset] [{}] added", it->second->uri);
 	return toT<T>(*it->second);
@@ -209,7 +211,8 @@ auto AssetStore::toTAsset(Base& base) noexcept -> TAsset<T>& {
 
 template <typename T>
 Opt<T> AssetStore::toT(Base& base) {
-	return toTAsset<T>(base).t.get();
+	auto& t = toTAsset<T>(base).t;
+	return t ? &*t : nullptr;
 }
 
 template <typename T>
@@ -229,7 +232,7 @@ AssetStore::Sign AssetStore::sign() {
 template <typename... T>
 Span<AssetStore::Sign const> AssetStore::signs() {
 	if constexpr (sizeof...(T) > 0) {
-		thread_local Sign const ret[] = {Sign::make<T>()...};
+		static Sign const ret[] = {sign<T>()...};
 		return ret;
 	} else {
 		return {};

@@ -2,7 +2,7 @@
 #include <atomic>
 
 namespace le {
-bool AssetStore::exists(Hash uri) const noexcept { return ktl::klock(m_assets)->contains(uri); }
+bool AssetStore::exists(Hash uri) const { return ktl::klock(m_assets)->contains(uri); }
 
 bool AssetStore::unload(Hash uri) {
 	ktl::klock lock(m_assets);
@@ -19,7 +19,9 @@ auto AssetStore::onModified(Hash uri) -> OnModified::signal {
 	return {};
 }
 
-void AssetStore::update() {
+std::size_t AssetStore::size() const { return ktl::klock(m_assets)->size(); }
+
+void AssetStore::checkModified() {
 	static std::atomic<bool> s_updating = false;
 	EXPECT(!s_updating);
 	s_updating = true;

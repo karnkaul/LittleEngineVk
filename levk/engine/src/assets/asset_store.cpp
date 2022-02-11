@@ -52,7 +52,7 @@ void AssetStore::clear() {
 
 AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view filter) const {
 	ktl::klock lock(m_assets);
-	std::unordered_map<Sign, std::vector<Base*>, Sign::hasher> mapped;
+	std::unordered_map<Sign, std::vector<Base*>, std::hash<Sign::type>> mapped;
 	for (auto const& [hash, asset] : *lock) {
 		EXPECT(asset);
 		if (!filter.empty() && asset->uri.find(filter) == std::string_view::npos) { continue; }

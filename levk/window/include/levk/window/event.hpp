@@ -41,25 +41,30 @@ class Event {
 
 	Type type() const noexcept { return m_type; }
 
-	bool closed() const noexcept { return (check(Type::eClosed), true); }
-	bool focusGained() const noexcept { return (check(Type::eFocusChange), m_payload.b); }
-	bool cursorEntered() const noexcept { return (check(Type::eCursorEnter), m_payload.b); }
-	bool maximized() const noexcept { return (check(Type::eMaximize), m_payload.b); }
-	bool iconified() const noexcept { return (check(Type::eIconify), m_payload.b); }
-	glm::ivec2 positioned() const noexcept { return (check(Type::ePosition), iv2()); }
-	glm::uvec2 framebufferSize() const noexcept { return (check(Type::eFramebufferResize), uv2()); }
-	glm::uvec2 windowSize() const noexcept { return (check(Type::eWindowResize), uv2()); }
-	glm::dvec2 cursor() const noexcept { return (check(Type::eCursor), dv2()); }
-	glm::dvec2 scroll() const noexcept { return (check(Type::eScroll), dv2()); }
-	Key const& key() const noexcept { return (check(Type::eKey), m_payload.key); }
-	Button const& mouseButton() const noexcept { return (check(Type::eMouseButton), m_payload.button); }
-	std::uint32_t codepoint() const noexcept { return (check(Type::eText), m_payload.u32); }
+	bool closed() const noexcept { return check(Type::eClosed, true); }
+	bool focusGained() const noexcept { return check(Type::eFocusChange, m_payload.b); }
+	bool cursorEntered() const noexcept { return check(Type::eCursorEnter, m_payload.b); }
+	bool maximized() const noexcept { return check(Type::eMaximize, m_payload.b); }
+	bool iconified() const noexcept { return check(Type::eIconify, m_payload.b); }
+	glm::ivec2 positioned() const noexcept { return check(Type::ePosition, iv2()); }
+	glm::uvec2 framebufferSize() const noexcept { return check(Type::eFramebufferResize, uv2()); }
+	glm::uvec2 windowSize() const noexcept { return check(Type::eWindowResize, uv2()); }
+	glm::dvec2 cursor() const noexcept { return check(Type::eCursor, dv2()); }
+	glm::dvec2 scroll() const noexcept { return check(Type::eScroll, dv2()); }
+	Key const& key() const noexcept { return check(Type::eKey, m_payload.key); }
+	Button const& mouseButton() const noexcept { return check(Type::eMouseButton, m_payload.button); }
+	std::uint32_t codepoint() const noexcept { return check(Type::eText, m_payload.u32); }
 	Span<std::string const> fileDrop() const noexcept;
 
 	struct Builder;
 
   private:
-	void check(Type const type) const noexcept { EXPECT(m_type == type); }
+	template <typename T>
+	T const& check(Type const type, T const& ret) const noexcept {
+		EXPECT(m_type == type);
+		return ret;
+	}
+
 	glm::uvec2 uv2() const noexcept { return {m_payload.uv2.x, m_payload.uv2.y}; }
 	glm::ivec2 iv2() const noexcept { return {m_payload.iv2.x, m_payload.iv2.y}; }
 	glm::dvec2 dv2() const noexcept { return {m_payload.dv2.x, m_payload.dv2.y}; }

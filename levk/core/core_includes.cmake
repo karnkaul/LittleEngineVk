@@ -44,6 +44,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/utils/string.hpp
   include/levk/core/utils/sys_info.hpp
   include/levk/core/utils/tween.hpp
+  include/levk/core/utils/type_guid.hpp
   include/levk/core/utils/unique.hpp
   include/levk/core/utils/vbase.hpp
 )

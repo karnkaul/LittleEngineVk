@@ -1,18 +1,18 @@
 #pragma once
-#include <dens/detail/sign.hpp>
 #include <ktl/async/kmutex.hpp>
 #include <ktl/delegate.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/core/utils/string.hpp>
+#include <levk/core/utils/type_guid.hpp>
 #include <levk/engine/assets/asset_loader.hpp>
 
 namespace le {
 class AssetStore : public NoCopy {
   public:
 	using OnModified = ktl::delegate<>;
-	using Sign = dens::detail::sign_t;
+	using Sign = utils::TypeGUID;
 
 	struct Index;
 

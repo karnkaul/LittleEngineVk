@@ -72,6 +72,7 @@ void InputField::onUpdate(input::Space const& space) {
 	Widget::onUpdate(space);
 	m_outline->update(space);
 	if (auto font = findFont(m_fontURI)) {
+		m_textMesh.font(font);
 		m_cursor.font(font);
 		m_cursor.m_layout.scale = font->scale(m_style.base.text.height);
 	}

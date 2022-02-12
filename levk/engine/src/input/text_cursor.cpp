@@ -3,9 +3,9 @@
 #include <levk/graphics/font/font.hpp>
 
 namespace le::input {
-TextCursor2::TextCursor2(not_null<graphics::VRAM*> vram, Flags flags, Opt<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
+TextCursor::TextCursor(not_null<graphics::VRAM*> vram, Flags flags, Opt<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
 
-MeshView TextCursor2::mesh() const noexcept {
+MeshView TextCursor::mesh() const noexcept {
 	if (m_drawCursor) {
 		m_material.Tf = m_colour;
 		m_material.d = m_alpha;
@@ -14,7 +14,7 @@ MeshView TextCursor2::mesh() const noexcept {
 	return {};
 }
 
-void TextCursor2::backspace(graphics::Geometry* out) {
+void TextCursor::backspace(graphics::Geometry* out) {
 	if (m_line.empty() || m_index == 0) {
 		refresh(out);
 		return;
@@ -28,12 +28,12 @@ void TextCursor2::backspace(graphics::Geometry* out) {
 	refresh();
 }
 
-void TextCursor2::deleteFront(graphics::Geometry* out) {
+void TextCursor::deleteFront(graphics::Geometry* out) {
 	if (!m_line.empty() && m_index < m_line.size()) { m_line.erase(m_index, 1); }
 	refresh(out);
 }
 
-void TextCursor2::insert(char ch, graphics::Geometry* out) {
+void TextCursor::insert(char ch, graphics::Geometry* out) {
 	if (m_index >= m_line.size()) {
 		m_line += ch;
 		if (m_index < npos) { ++m_index; }
@@ -43,7 +43,7 @@ void TextCursor2::insert(char ch, graphics::Geometry* out) {
 	refresh(out);
 }
 
-bool TextCursor2::update(State const& state, graphics::Geometry* out, bool clearGeom) {
+bool TextCursor::update(State const& state, graphics::Geometry* out, bool clearGeom) {
 	if (state.pressed(Key::eEscape)) { setActive(false); }
 	if (!m_flags.test(Flag::eActive)) {
 		// hide cursor and ignore input
@@ -110,27 +110,27 @@ bool TextCursor2::update(State const& state, graphics::Geometry* out, bool clear
 	return regen;
 }
 
-void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom) { refresh(out, clearGeom, true); }
+void TextCursor::refresh(graphics::Geometry* out, bool clearGeom) { refresh(out, clearGeom, true); }
 
-graphics::Geometry TextCursor2::generateText() {
+graphics::Geometry TextCursor::generateText() {
 	graphics::Geometry ret;
 	refresh(&ret);
 	return ret;
 }
 
-void TextCursor2::setActive(bool active) noexcept {
+void TextCursor::setActive(bool active) noexcept {
 	m_drawCursor = active;
 	m_flags.assign(Flag::eActive, active);
 }
 
-void TextCursor2::index(std::size_t index) {
+void TextCursor::index(std::size_t index) {
 	if (index != m_index) {
 		m_index = index;
 		refresh();
 	}
 }
 
-void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
+void TextCursor::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
 	if (!m_font) { return; }
 	if (out) {
 		if (clearGeom) { *out = {}; }

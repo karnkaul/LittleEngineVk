@@ -15,7 +15,7 @@ using graphics::RGBA;
 ///
 /// Regular calls to update() are required (preferably every frame) for consistent and lag-free response
 ///
-class TextCursor2 {
+class TextCursor {
   public:
 	enum class Flag {
 		// Ignore new lines
@@ -29,7 +29,7 @@ class TextCursor2 {
 
 	static constexpr std::size_t npos = std::string_view::npos;
 
-	TextCursor2(not_null<graphics::VRAM*> vram, Flags flags = {}, Opt<Font> font = {});
+	TextCursor(not_null<graphics::VRAM*> vram, Flags flags = {}, Opt<Font> font = {});
 
 	void font(not_null<Font*> font) noexcept { m_font = font; }
 	Opt<Font> font() const noexcept { return m_font; }

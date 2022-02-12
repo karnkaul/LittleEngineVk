@@ -565,8 +565,8 @@ class App : public input::Receiver, public Scene {
 
 		if (m_data.text && m_data.cursor) {
 			m_data.cursor->update(engine().inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
-			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
-				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
+			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
+				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
 		}
 
@@ -631,7 +631,7 @@ class App : public input::Receiver, public Scene {
 		std::unordered_map<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
-		std::optional<input::TextCursor2> cursor;
+		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 

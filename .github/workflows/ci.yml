@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: init
-        run: sudo apt install -yqq ninja-build xorg-dev
+        run: sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev
       - name: configure
         run: cp cmake/CMakePresets.json . && cmake -S . --preset=levk-rl -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCI_BUILD=ON -B build
       - name: build

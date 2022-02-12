@@ -27,7 +27,7 @@ class InputField : public Widget, public input::Receiver {
   protected:
 	Hash m_fontURI;
 	TextMesh m_textMesh;
-	input::TextCursor2 m_cursor;
+	input::TextCursor m_cursor;
 
   private:
 	void onUpdate(input::Space const& space) override;

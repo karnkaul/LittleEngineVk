@@ -1,6 +1,6 @@
 #pragma once
-#include <levk/engine/gui/text.hpp>
-#include <levk/engine/gui/widget.hpp>
+#include <levk/gameplay/gui/text.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 namespace le::gui {
 class Button : public Widget {

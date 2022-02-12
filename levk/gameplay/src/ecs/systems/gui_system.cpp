@@ -1,7 +1,7 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/view.hpp>
 #include <levk/gameplay/ecs/systems/gui_system.hpp>
+#include <levk/gameplay/gui/view.hpp>
 
 namespace le {
 void GuiSystem::update(dens::registry const& registry) {

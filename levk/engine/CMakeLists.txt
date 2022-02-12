@@ -14,21 +14,27 @@ target_include_directories(${target_name} PRIVATE
 )
 target_link_libraries(${target_name}
   PUBLIC
-    $<$<BOOL:${LEVK_USE_IMGUI}>:levk::dear-imgui>
-    levk::levk-graphics
-    levk::levk-window
-    levk::levk-core
-    dtasks::dtasks
-    clap::clap
-    dens::dens
+  $<$<BOOL:${LEVK_USE_IMGUI}>:levk::dear-imgui>
+  levk::levk-graphics
+  levk::levk-window
+  levk::levk-core
+  dtasks::dtasks
+  clap::clap
+  dens::dens
 
   PRIVATE
-    levk::levk-compile-options
-    stb-image
-    tinyobjloader
+  levk::levk-compile-options
+  stb-image
+  tinyobjloader
 )
+
 if(LEVK_USE_PCH)
-  target_precompile_headers(${target_name} REUSE_FROM levk-graphics)
+  target_precompile_headers(${target_name} PUBLIC
+    <string>
+    <unordered_map>
+    <vector>
+    <vulkan/vulkan.hpp>
+  )
 endif()
 
 file(GLOB_RECURSE levk_includes CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")

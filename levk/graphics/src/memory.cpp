@@ -49,6 +49,13 @@ Memory::~Memory() {
 	logI(LC_LibUser, "[{}] Memory destroyed", g_name);
 }
 
+void Memory::clear(vk::CommandBuffer cb, ImageRef const& image, LayerMip const& layerMip, vk::ImageLayout layout, Colour colour) {
+	vk::ImageSubresourceRange const isr(vIAFB::eColor, layerMip.mip.first, layerMip.mip.count, layerMip.layer.first, layerMip.layer.count);
+	auto const c = colour.toVec4();
+	vk::ClearColorValue const clear(std::array<float, 4>{{c.x, c.y, c.z, c.w}});
+	cb.clearColorImage(image.image, layout, clear, isr);
+}
+
 void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size) {
 	vk::BufferCopy copyRegion;
 	copyRegion.size = size;

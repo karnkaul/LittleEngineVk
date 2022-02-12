@@ -9,7 +9,6 @@
 #include <levk/engine/assets/asset_loaders_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/view.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/render/frame.hpp>
@@ -286,7 +285,7 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
-	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.checkModified(); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
 	m_impl->executor.rethrow();
 }

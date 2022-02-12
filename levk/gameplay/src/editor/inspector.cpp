@@ -2,13 +2,13 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/algo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/view.hpp>
-#include <levk/engine/gui/widget.hpp>
 #include <levk/engine/render/drawable.hpp>
 #include <levk/engine/render/pipeline.hpp>
+#include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/gameplay/editor/inspector.hpp>
+#include <levk/gameplay/gui/view.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 namespace le::editor {
 #if defined(LEVK_USE_IMGUI)

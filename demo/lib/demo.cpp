@@ -2,31 +2,31 @@
 #include <levk/core/utils/algo.hpp>
 #include <levk/core/utils/std_hash.hpp>
 #include <levk/core/utils/string.hpp>
-#include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/input/control.hpp>
 #include <levk/engine/render/model.hpp>
+#include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
-#include <levk/engine/gui/quad.hpp>
-#include <levk/engine/gui/text.hpp>
-#include <levk/engine/gui/view.hpp>
-#include <levk/engine/gui/widget.hpp>
 #include <levk/engine/render/skybox.hpp>
 #include <levk/engine/utils/exec.hpp>
+#include <levk/gameplay/gui/quad.hpp>
+#include <levk/gameplay/gui/text.hpp>
+#include <levk/gameplay/gui/view.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 
 #include <levk/core/utils/enumerate.hpp>
-#include <levk/engine/gui/widgets/dropdown.hpp>
 #include <levk/engine/render/descriptor_helper.hpp>
+#include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 #include <ktl/async/kasync.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/core/utils/tween.hpp>
-#include <levk/engine/gui/widgets/input_field.hpp>
 #include <levk/engine/input/text_cursor.hpp>
 #include <levk/engine/render/quad_emitter.hpp>
 #include <levk/engine/render/text_mesh.hpp>
+#include <levk/gameplay/gui/widgets/input_field.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <levk/graphics/utils/instant_command.hpp>
 #include <fstream>
@@ -469,6 +469,28 @@ class App : public input::Receiver, public Scene {
 			m_data.dirLights = {l0, l1};
 		}
 		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &engine().vram());
+		{
+			auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
+			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
+			gui::Dropdown::CreateInfo dci;
+			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+			dci.textHeight = 30U;
+			dci.options = {"zero", "one", "two", "/bthree", "four"};
+			dci.selected = 2;
+			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
+			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+			gui::Dialogue::CreateInfo gdci;
+			gdci.header.text = "Dialogue";
+			gdci.content.text = "Content\ngoes\nhere";
+			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
+			gui::InputField::CreateInfo info;
+			// info.secret = true;
+			auto& in = dialogue.push<gui::InputField>(info);
+			in.m_rect.anchor.offset.y = 60.0f;
+			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		}
 	}
 
 	void close() override {
@@ -511,7 +533,8 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 
-			m_data.cursor.emplace(&*font);
+			m_data.cursor.emplace(font->m_vram);
+			m_data.cursor->font(&*font);
 			m_data.cursor->m_colour = colours::yellow;
 			m_data.cursor->m_layout.scale = font->scale(80U);
 			m_data.cursor->m_layout.origin.y = 200.0f;
@@ -521,29 +544,6 @@ class App : public input::Receiver, public Scene {
 			auto ent1 = spawnNode("text_cursor");
 			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
 			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
-		}
-
-		if (auto guistack = m_registry.find<gui::ViewStack>(m_data.guiStack)) {
-			auto& stack = *guistack;
-			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
-			gui::Dropdown::CreateInfo dci;
-			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
-			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-			dci.textHeight = 30U;
-			dci.options = {"zero", "one", "two", "/bthree", "four"};
-			dci.selected = 2;
-			auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
-			dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
-			gui::Dialogue::CreateInfo gdci;
-			gdci.header.text = "Dialogue";
-			gdci.content.text = "Content\ngoes\nhere";
-			auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
-			gui::InputField::CreateInfo info;
-			// info.secret = true;
-			auto& in = dialogue.push<gui::InputField>(info);
-			in.m_rect.anchor.offset.y = 60.0f;
-			m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-			m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 		}
 
 		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
@@ -565,8 +565,8 @@ class App : public input::Receiver, public Scene {
 
 		if (m_data.text && m_data.cursor) {
 			m_data.cursor->update(engine().inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
-			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
-				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
+			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && engine().inputFrame().state.pressed(input::Key::eEnter)) {
+				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
 		}
 
@@ -631,7 +631,7 @@ class App : public input::Receiver, public Scene {
 		std::unordered_map<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
-		std::optional<input::TextCursor2> cursor;
+		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 

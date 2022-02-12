@@ -19,9 +19,12 @@ MeshView TextMesh::Obj::mesh(graphics::Font& font, std::string_view line, RGBA c
 	return mesh(font, geom, colour);
 }
 
+TextMesh::TextMesh(not_null<graphics::VRAM*> vram) noexcept : m_obj(Obj::make(vram)) {}
+
 TextMesh::TextMesh(not_null<Font*> font) noexcept : m_obj(Obj::make(font->m_vram)), m_font(font) {}
 
 MeshView TextMesh::mesh() const {
+	if (!m_font) { return {}; }
 	return m_info.visit(ktl::koverloaded{
 		[&](graphics::Geometry const& geom) { return m_obj.mesh(*m_font, geom, m_colour); },
 		[&](TextMesh::Line const& line) {

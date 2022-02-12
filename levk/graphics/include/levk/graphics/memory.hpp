@@ -2,6 +2,7 @@
 #include <vk_mem_alloc.h>
 #include <ktl/either.hpp>
 #include <levk/core/bitmap.hpp>
+#include <levk/core/colour.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/graphics/image_ref.hpp>
@@ -41,6 +42,7 @@ class Memory : public Pinned {
 	~Memory();
 
 	static vk::SharingMode sharingMode(Queues const& queues, QCaps const caps);
+	static void clear(vk::CommandBuffer cb, ImageRef const& image, LayerMip const& layerMip, vk::ImageLayout layout, Colour colour);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
 	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);

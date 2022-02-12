@@ -1,5 +1,5 @@
 #pragma once
-#include <ktl/async/shared_kmutex.hpp>
+#include <ktl/async/kmutex.hpp>
 #include <ktl/either.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/core/io/file_monitor.hpp>
@@ -61,7 +61,7 @@ class Resources {
 
 	using ResourceMap = std::unordered_map<Hash, Resource>;
 
-	ktl::shared_strict_tmutex<ResourceMap> m_loaded;
+	ktl::strict_tmutex<ResourceMap> m_loaded;
 	io::FSMedia m_fsMedia;
 	io::Media const* m_media = nullptr;
 };

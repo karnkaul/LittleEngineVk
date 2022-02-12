@@ -1,10 +1,11 @@
 #include <levk/engine/assets/asset_store.hpp>
+#include <atomic>
 
 namespace le {
-bool AssetStore::exists(Hash uri) const noexcept { return ktl::shared_klock<TAssets const>(m_assets)->contains(uri); }
+bool AssetStore::exists(Hash uri) const { return ktl::klock(m_assets)->contains(uri); }
 
 bool AssetStore::unload(Hash uri) {
-	ktl::shared_klock<TAssets> lock(m_assets);
+	ktl::klock lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {
 		lock->erase(it);
 		return true;
@@ -12,27 +13,46 @@ bool AssetStore::unload(Hash uri) {
 	return false;
 }
 
-void AssetStore::update() {
-	ktl::shared_klock<TAssets> lock(m_assets);
-	m_resources.update();
+auto AssetStore::onModified(Hash uri) -> OnModified::signal {
+	ktl::klock lock(m_onModified);
+	if (auto it = lock->find(uri); it != lock->end()) { return it->second.make_signal(); }
+	return {};
+}
+
+std::size_t AssetStore::size() const { return ktl::klock(m_assets)->size(); }
+
+void AssetStore::checkModified() {
+	static std::atomic<bool> s_updating = false;
+	EXPECT(!s_updating);
+	s_updating = true;
+	std::vector<Base*> dirty;
 	u64 reloaded = 0;
-	for (auto& [_, asset] : *lock) {
-		EXPECT(asset);
-		if (asset->doUpdate && asset->doUpdate(asset.get())) { ++reloaded; }
+	{
+		ktl::klock lock(m_assets);
+		m_resources.update();
+		for (auto& [_, asset] : *lock) {
+			EXPECT(asset);
+			if (asset->dirty() && asset->doReload) { dirty.push_back(asset.get()); }
+		}
+	}
+	for (auto base : dirty) {
+		if (base->doReload(*base)) { ++reloaded; }
 	}
 	if (reloaded > 0) { logI(LC_LibUser, "[Assets] [{}] Reloads completed", reloaded); }
+	EXPECT(s_updating);
+	s_updating = false;
 }
 
 void AssetStore::clear() {
 	// clear assets
-	ktl::unique_klock<TAssets>(m_assets)->clear();
+	ktl::klock(m_assets)->clear();
 	// clear resources
 	m_resources.clear();
 }
 
 AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view filter) const {
-	ktl::shared_klock<TAssets const> lock(m_assets);
-	std::unordered_map<Sign, std::vector<Base*>, Sign::hasher> mapped;
+	ktl::klock lock(m_assets);
+	std::unordered_map<Sign, std::vector<Base*>, std::hash<Sign::type>> mapped;
 	for (auto const& [hash, asset] : *lock) {
 		EXPECT(asset);
 		if (!filter.empty() && asset->uri.find(filter) == std::string_view::npos) { continue; }
@@ -49,5 +69,10 @@ AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view fil
 		ret.maps.push_back(std::move(map));
 	}
 	return ret;
+}
+
+void AssetStore::modified(Hash uri) {
+	auto lock = ktl::klock(m_onModified);
+	if (auto it = lock->find(uri); it != lock->end()) { it->second(); }
 }
 } // namespace le

@@ -1,9 +1,9 @@
 #pragma once
 #include <levk/core/utils/enumerate.hpp>
-#include <levk/engine/gui/shape.hpp>
-#include <levk/engine/gui/text.hpp>
-#include <levk/engine/gui/widgets/button.hpp>
-#include <levk/engine/gui/widgets/flexbox.hpp>
+#include <levk/gameplay/gui/shape.hpp>
+#include <levk/gameplay/gui/text.hpp>
+#include <levk/gameplay/gui/widgets/button.hpp>
+#include <levk/gameplay/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
 class Dropdown : public Button {

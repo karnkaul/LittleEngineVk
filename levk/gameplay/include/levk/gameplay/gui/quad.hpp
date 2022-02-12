@@ -1,6 +1,6 @@
 #pragma once
-#include <levk/engine/gui/tree.hpp>
 #include <levk/engine/render/material.hpp>
+#include <levk/gameplay/gui/tree.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 
 namespace le::gui {

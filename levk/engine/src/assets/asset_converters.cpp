@@ -1,4 +1,3 @@
-#include <ktl/debug_trap.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 
 namespace le::io {

@@ -101,14 +101,14 @@ void Resources::update() {
 }
 
 void Resources::clear() {
-	ktl::unique_klock<ResourceMap> lock(m_loaded);
+	ktl::klock lock(m_loaded);
 	lock.get().clear();
 }
 
 Resource const* Resources::loadImpl(io::Path uri, Resource::Type type, Flags flags) {
 	Resource resource;
 	if (resource.load(media(), uri, type, flags.test(Flag::eMonitor) && levk_resourceMonitor, flags.test(Flag::eSilent))) {
-		ktl::unique_klock<ResourceMap> lock(m_loaded);
+		ktl::klock lock(m_loaded);
 		lock->erase(uri);
 		auto [it, _] = lock.get().emplace(std::move(uri), std::move(resource));
 		return &it->second;

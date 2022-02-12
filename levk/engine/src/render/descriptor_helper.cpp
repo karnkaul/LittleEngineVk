@@ -62,10 +62,10 @@ void DescriptorBinder::operator()(u32 set) {
 
 DescriptorHelper::Cache DescriptorHelper::Cache::make(not_null<const AssetStore*> store) {
 	decltype(Cache::defaults) defaults = {
-		store->find<Texture>("textures/white").peek(),
-		store->find<Texture>("textures/black").peek(),
-		store->find<Texture>("textures/magenta").peek(),
+		store->find<Texture>("textures/white"),
+		store->find<Texture>("textures/black"),
+		store->find<Texture>("textures/magenta"),
 	};
-	return Cache{defaults, store->find<Texture>("cubemaps/blank").peek()};
+	return Cache{defaults, store->find<Texture>("cubemaps/blank")};
 }
 } // namespace le

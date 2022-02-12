@@ -1,7 +1,7 @@
 #pragma once
-#include <levk/engine/gui/widget.hpp>
 #include <levk/engine/input/receiver.hpp>
 #include <levk/engine/input/text_cursor.hpp>
+#include <levk/gameplay/gui/widget.hpp>
 #include <levk/graphics/font/font.hpp>
 
 namespace le::gui {
@@ -25,9 +25,9 @@ class InputField : public Widget, public input::Receiver {
 	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_line; }
 
   protected:
-	not_null<Font*> m_font;
+	Hash m_fontURI;
 	TextMesh m_textMesh;
-	input::TextCursor2 m_cursor;
+	input::TextCursor m_cursor;
 
   private:
 	void onUpdate(input::Space const& space) override;

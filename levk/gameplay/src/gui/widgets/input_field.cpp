@@ -1,12 +1,12 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/enumerate.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/widgets/input_field.hpp>
+#include <levk/gameplay/gui/widgets/input_field.hpp>
 #include <levk/graphics/font/font.hpp>
 
 namespace le::gui {
 InputField::InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI, Hash style)
-	: Widget(root, style), m_font(findFont(fontURI)), m_textMesh(m_font), m_cursor(m_font), m_secret(info.secret) {
+	: Widget(root, style), m_fontURI(fontURI), m_textMesh(vram()), m_cursor(root->vram()), m_secret(info.secret) {
 	m_rect.size = info.size;
 	m_outline = Quad(this);
 	m_outline->m_rect.size = info.size + 5.0f;
@@ -15,7 +15,6 @@ InputField::InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fo
 	m_offsetX = info.offsetX;
 	m_outline->update({});
 	m_cursor.m_colour = m_style.base.text.colour;
-	m_cursor.m_layout.scale = m_font->scale(m_style.base.text.height);
 	align(Font::Align::eMin);
 	setActive(info.active);
 }
@@ -72,6 +71,11 @@ void InputField::setActive(bool active) noexcept {
 void InputField::onUpdate(input::Space const& space) {
 	Widget::onUpdate(space);
 	m_outline->update(space);
+	if (auto font = findFont(m_fontURI)) {
+		m_textMesh.font(font);
+		m_cursor.font(font);
+		m_cursor.m_layout.scale = font->scale(m_style.base.text.height);
+	}
 }
 
 void InputField::reposition() noexcept {

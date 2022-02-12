@@ -82,12 +82,14 @@ UniqueGlfwWin Manager::Impl::make(CreateInfo const& info) {
 	case Style::eDedicatedFullscreen: target = info.options.screenID < screens.size() ? screens[info.options.screenID] : screens[0]; break;
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glm::ivec2 const pos = info.config.position.value_or((glm::ivec2(mode->width, mode->height) - size) / 2);
+
+	if (mode) {
+		glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+		glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+		glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+		glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+	}
 	glfwWindowHint(GLFW_DECORATED, decorated);
-	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 	glfwWindowHint(GLFW_MAXIMIZED, info.config.maximized);
 	auto ret = glfwCreateWindow(size.x, size.y, info.config.title.data(), target, nullptr);
@@ -95,7 +97,17 @@ UniqueGlfwWin Manager::Impl::make(CreateInfo const& info) {
 		log(lvl::error, LC_EndUser, "[{}] Failed to create window", g_name);
 		return {};
 	}
-	glfwSetWindowPos(ret, pos.x, pos.y);
+	if (style == Style::eDecoratedWindow || style == Style::eBorderlessWindow) {
+		glm::ivec2 pos{};
+		if (info.config.position) {
+			pos = *info.config.position;
+		} else {
+			auto const datum = mode ? glm::ivec2(mode->width, mode->height) : glm::ivec2();
+			pos = datum.x > 0 && datum.y > 0 ? datum - size : glm::ivec2();
+			if (pos.x > 0 && pos.y > 0) { pos /= 2; }
+		}
+		glfwSetWindowPos(ret, pos.x, pos.y);
+	}
 	if (info.options.autoShow) { glfwShowWindow(ret); }
 	return ret;
 }

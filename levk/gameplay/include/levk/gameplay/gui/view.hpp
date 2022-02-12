@@ -1,7 +1,7 @@
 #pragma once
-#include <levk/engine/gui/tree.hpp>
 #include <levk/engine/input/frame.hpp>
 #include <levk/engine/utils/owner.hpp>
+#include <levk/gameplay/gui/tree.hpp>
 
 namespace le::graphics {
 class VRAM;

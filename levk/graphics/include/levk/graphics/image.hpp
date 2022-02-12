@@ -20,6 +20,7 @@ class Image {
 	Image(not_null<Memory*> memory, CreateInfo const& info);
 
 	ImageRef ref() const noexcept;
+	LayerMip layerMip() const noexcept;
 	vk::Image image() const noexcept { return m_image.get().resource.get<vk::Image>(); }
 	vk::ImageView view() const noexcept { return m_view; }
 	vk::ImageViewType viewType() const noexcept { return m_data.viewType; }

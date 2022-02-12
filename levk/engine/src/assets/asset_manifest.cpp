@@ -14,20 +14,6 @@ graphics::ShaderType parseShaderType(std::string_view str) noexcept {
 	return graphics::ShaderType::eFragment;
 }
 
-graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
-	if (json.is_string()) {
-		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
-	} else if (json.contains("colour")) {
-		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
-			graphics::RGBA ret;
-			ret.colour = Colour(str);
-			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
-			return ret;
-		}
-	}
-	return fallback;
-}
-
 graphics::ShaderType shaderTypeFromExt(io::Path const& extension) {
 	auto const ext = extension.string();
 	if (!ext.empty() && ext[0] == '.') { return parseShaderType(ext.substr(1)); }
@@ -112,17 +98,26 @@ ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string ur
 		RenderPipeline rp;
 		rp.layer = *layer;
 		rp.shaderURIs = {sh.begin(), sh.end()};
-		e.store().add(std::move(uri), std::make_unique<RenderPipeline>(rp));
+		e.store().add(std::move(uri), rp);
 	};
+}
+
+static graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
+	if (json.is_string()) {
+		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
+	} else if (json.contains("colour")) {
+		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
+			graphics::RGBA ret;
+			ret.colour = Colour(str);
+			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
+			return ret;
+		}
+	}
+	return fallback;
 }
 
 ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
 	Material mat;
-	std::array<Hash, 4> texURIs;
-	texURIs[0] = json->get_as<std::string_view>("map_Kd");
-	texURIs[1] = json->get_as<std::string_view>("map_Ks");
-	texURIs[2] = json->get_as<std::string_view>("map_d");
-	texURIs[3] = json->get_as<std::string_view>("map_bump");
 	mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
 	mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
 	mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
@@ -130,20 +125,23 @@ ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj
 	mat.Ns = json->get_as<f32>("Ns", mat.Ns);
 	mat.d = json->get_as<f32>("d", mat.d);
 	mat.illum = json->get_as<int>("illum", mat.illum);
-	return [uri = std::move(uri), engine, mat, texURIs]() {
-		auto ret = std::make_unique<Material>(mat);
-		ret->map_Kd = engine.store().find<graphics::Texture>(texURIs[0]).peek();
-		ret->map_Ks = engine.store().find<graphics::Texture>(texURIs[1]).peek();
-		ret->map_d = engine.store().find<graphics::Texture>(texURIs[2]).peek();
-		ret->map_Bump = engine.store().find<graphics::Texture>(texURIs[3]).peek();
-		engine.store().add(std::move(uri), std::move(ret));
+	Hash const map_Kd = json->get_as<std::string_view>("map_Kd");
+	Hash const map_Ks = json->get_as<std::string_view>("map_Ks");
+	Hash const map_d = json->get_as<std::string_view>("map_d");
+	Hash const map_bump = json->get_as<std::string_view>("map_bump");
+	return [uri = std::move(uri), engine, mat, map_Kd, map_Ks, map_d, map_bump]() mutable {
+		mat.map_Kd = engine.store().find<graphics::Texture>(map_Kd);
+		mat.map_Ks = engine.store().find<graphics::Texture>(map_Ks);
+		mat.map_d = engine.store().find<graphics::Texture>(map_d);
+		mat.map_Bump = engine.store().find<graphics::Texture>(map_bump);
+		engine.store().add(std::move(uri), mat);
 	};
 }
 
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {
 	return [engine, cb = std::move(cubemap), uri = std::move(uri)] {
 		if (auto cube = engine.store().find<graphics::Texture>(cb); cube && cube->type() == graphics::Texture::Type::eCube) {
-			engine.store().add(std::move(uri), std::make_unique<Skybox>(&*cube));
+			engine.store().add(std::move(uri), Skybox(&*cube));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to find cubemap Texture [{}] for Skybox [{}]", cb, uri);
 		}
@@ -171,7 +169,7 @@ struct DefaultParser : AssetManifest::Parser {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
 			if (json->contains("min") && json->contains("mag")) {
-				add(order<Sampler>(), std::move(uri), std::make_unique<Sampler>(&m_engine.device(), samplerInfo(json)));
+				add(order<Sampler>(), std::move(uri), Sampler(&m_engine.device(), samplerInfo(json)));
 				++ret;
 			}
 		}
@@ -192,7 +190,7 @@ struct DefaultParser : AssetManifest::Parser {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
 			auto const rs = io::fromJson<RenderLayer>(*json);
-			add(order<RenderLayer>(), std::move(uri), std::make_unique<RenderLayer>(rs));
+			add(order<RenderLayer>(), std::move(uri), rs);
 			++ret;
 		}
 		return ret;

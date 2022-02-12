@@ -4,11 +4,11 @@
 #include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/gui/view.hpp>
-#include <levk/engine/gui/widgets/dropdown.hpp>
 #include <levk/gameplay/editor/editor.hpp>
 #include <levk/gameplay/editor/scene_tree.hpp>
 #include <levk/gameplay/editor/types.hpp>
+#include <levk/gameplay/gui/view.hpp>
+#include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 namespace le::editor {
 #if defined(LEVK_USE_IMGUI)

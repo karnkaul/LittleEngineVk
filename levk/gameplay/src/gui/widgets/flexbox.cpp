@@ -1,4 +1,4 @@
-#include <levk/engine/gui/widgets/flexbox.hpp>
+#include <levk/gameplay/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
 Flexbox::Flexbox(not_null<TreeRoot*> root, CreateInfo const& info) noexcept : gui::Widget(root, info.style), m_axis(info.axis), m_pad(info.pad) {

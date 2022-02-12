@@ -47,7 +47,7 @@ class AssetManifest::Parser : public utils::VBase {
   protected:
 	void enqueue(Order order, dts::task_t task) const;
 	template <typename T>
-	void add(Order order, std::string uri, std::unique_ptr<T> asset) const;
+	void add(Order order, std::string uri, T asset) const;
 	template <typename T>
 	void load(Order order, std::string uri, AssetLoadData<T> data) const;
 
@@ -118,7 +118,7 @@ constexpr AssetManifest::Parser::Order AssetManifest::Parser::maxOrder(std::span
 inline void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
 
 template <typename T>
-void AssetManifest::Parser::add(Order order, std::string uri, std::unique_ptr<T> asset) const {
+void AssetManifest::Parser::add(Order order, std::string uri, T asset) const {
 	enqueue(order, [e = m_engine, uri = std::move(uri), asset = std::move(asset)]() mutable { e.store().add(std::move(uri), std::move(asset)); });
 }
 

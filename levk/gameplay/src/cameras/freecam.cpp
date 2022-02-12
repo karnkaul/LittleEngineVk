@@ -1,6 +1,6 @@
 #include <levk/core/maths.hpp>
-#include <levk/engine/cameras/freecam.hpp>
 #include <levk/engine/input/state.hpp>
+#include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/window/window.hpp>
 
 namespace le {

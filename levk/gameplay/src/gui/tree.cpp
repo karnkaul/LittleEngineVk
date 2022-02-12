@@ -1,8 +1,8 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
-#include <levk/engine/gui/tree.hpp>
 #include <levk/engine/input/space.hpp>
 #include <levk/engine/render/viewport.hpp>
+#include <levk/gameplay/gui/tree.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <algorithm>
 

@@ -26,6 +26,10 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/font/face.hpp
   include/levk/graphics/font/font.hpp
 
+  include/levk/graphics/gltf/bytestream.hpp
+  include/levk/graphics/gltf/data_builder.hpp
+  include/levk/graphics/gltf/gltf.hpp
+
   include/levk/graphics/render/buffering.hpp
   include/levk/graphics/render/camera.hpp
   include/levk/graphics/render/context.hpp
@@ -42,7 +46,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/render/framebuffer.hpp
   include/levk/graphics/render/vertex_input.hpp
   include/levk/graphics/render/vsync.hpp
-  
+
   include/levk/graphics/utils/command_pool.hpp
   include/levk/graphics/utils/defer.hpp
   include/levk/graphics/utils/instant_command.hpp

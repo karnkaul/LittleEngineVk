@@ -14,6 +14,9 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   ft/ft.cpp
   ft/ft.hpp
+
+  gltf/bytestream.cpp
+  gltf/gltf.cpp
 )
 
 add_subdirectory(device)

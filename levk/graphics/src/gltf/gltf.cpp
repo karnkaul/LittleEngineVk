@@ -1,5 +1,7 @@
 #include <dumb_json/json.hpp>
 #include <levk/graphics/gltf/gltf.hpp>
+#include <filesystem>
+#include <fstream>
 #include <optional>
 #include <sstream>
 
@@ -81,6 +83,54 @@ constexpr std::optional<camera_t::type_t> camera_type(std::string_view type) {
 	return {};
 }
 
+constexpr std::optional<image_t::type_t> image_type(std::string_view mime_type) {
+	if (mime_type == "image/jpeg") { return image_t::type_t::jpeg; }
+	if (mime_type == "image/png") { return image_t::type_t::png; }
+	return {};
+}
+
+constexpr std::optional<image_t::type_t> image_type_from_ext(std::string_view ext) {
+	if (ext == ".jpeg" || ext == ".jpg") { return image_t::type_t::jpeg; }
+	if (ext == ".png") { return image_t::type_t::png; }
+	return {};
+}
+constexpr std::optional<sampler_t::mag_filter_t> mag_filter(int value) {
+	switch (value) {
+	case 9728: return sampler_t::mag_filter_t::nearest;
+	case 9729: return sampler_t::mag_filter_t::linear;
+	default: break;
+	}
+	return {};
+}
+
+constexpr std::optional<sampler_t::min_filter_t> min_filter(int value) {
+	switch (value) {
+	case 9728: return sampler_t::min_filter_t::nearest;
+	case 9729: return sampler_t::min_filter_t::linear;
+	case 9984: return sampler_t::min_filter_t::nearest_mipmap_nearest;
+	case 9985: return sampler_t::min_filter_t::linear_mipmap_nearest;
+	case 9986: return sampler_t::min_filter_t::nearest_mipmap_linear;
+	case 9987: return sampler_t::min_filter_t::linear_mipmap_linear;
+	default: break;
+	}
+	return {};
+}
+
+constexpr sampler_t::wrap_t texture_wrap(int value) {
+	switch (value) {
+	case 33071: return sampler_t::wrap_t::clamp_to_edge;
+	case 33648: return sampler_t::wrap_t::mirrored_repeat;
+	default: break;
+	}
+	return sampler_t::wrap_t::repeat;
+}
+
+constexpr material_t::alpha_mode_t alpha_mode(std::string_view str) {
+	if (str == "MASK") { return material_t::alpha_mode_t::mask; }
+	if (str == "BLEND") { return material_t::alpha_mode_t::blend; }
+	return material_t::alpha_mode_t::opaque;
+}
+
 error_t make_indices(std::span<buffer_view_t const> buffers, accessor_t const& accessor, std::vector<std::uint32_t>& out) {
 	if (accessor.type != accessor_t::type_t::scalar) { return error_t::invalid_accessor; }
 	if (!accessor.buffer_view_index) { return error_t::invalid_accessor; }
@@ -100,27 +150,59 @@ void fill_array(T (&out)[N], dj::json const& json, char const* key) {
 	}
 }
 
+std::string_view as_string(std::span<std::byte const> bytes) noexcept { return std::string_view(reinterpret_cast<char const*>(bytes.data()), bytes.size()); }
+
+struct file_loader_t {
+	using path_t = std::filesystem::path;
+
+	path_t dir;
+
+	static std::vector<std::byte> read(std::string_view path) {
+		std::vector<std::byte> ret;
+		if (auto file = std::ifstream(path.data(), std::ios::binary | std::ios::ate)) {
+			auto const size = file.tellg();
+			ret.resize(static_cast<std::size_t>(size));
+			file.seekg(std::ios::beg);
+			file.read(reinterpret_cast<char*>(ret.data()), size);
+		}
+		return ret;
+	}
+
+	std::vector<std::byte> operator()(std::string_view uri) const { return read((dir / uri).string()); }
+};
+
 struct parser {
 	asset_t& out;
-	get_uri_bytes_t const& get_uri_bytes;
+	get_bytes_t const& get_bytes;
 
 	error_t parse_asset(dj::json const& root);
 	error_t parse_resources(dj::json const& root);
+	error_t parse_images(dj::json const& root);
+	error_t parse_samplers(dj::json const& root);
+	error_t parse_textures(dj::json const& root);
+	error_t parse_materials(dj::json const& root);
 	error_t parse_meshes(dj::json const& root);
 	error_t parse_cameras(dj::json const& root);
 	error_t parse_nodes(dj::json const& root);
 	error_t parse_scenes(dj::json const& root);
 
-	error_t parse_buffer(std::string_view uri, buffer_storage_t& out_storage) const;
+	error_t parse_buffer(std::string_view uri, std::vector<std::byte>& out_bytes) const;
 	error_t parse_buffers(dj::json const& root);
 	error_t parse_buffer_views(dj::json const& root);
 	error_t parse_accessors(dj::json const& root);
 	error_t parse_attributes(dj::json const& primitive, primitive_t& out_prim) const;
 
+	error_t parse_pbrmr(dj::json const& pbr, pbr_metallic_roughness_t& out_pbr) const;
+	error_t parse_texture_info(dj::json const& texture, texture_info_t& out_tex) const;
+
 	error_t operator()(dj::json const& json) {
 		auto result = parse_asset(json);
 		if (result != error_t::none) { return result; }
 		if (result = parse_resources(json); result != error_t::none) { return result; }
+		if (result = parse_images(json); result != error_t::none) { return result; }
+		if (result = parse_samplers(json); result != error_t::none) { return result; }
+		if (result = parse_textures(json); result != error_t::none) { return result; }
+		if (result = parse_materials(json); result != error_t::none) { return result; }
 		if (result = parse_meshes(json); result != error_t::none) { return result; }
 		if (result = parse_cameras(json); result != error_t::none) { return result; }
 		if (result = parse_nodes(json); result != error_t::none) { return result; }
@@ -146,6 +228,98 @@ error_t parser::parse_resources(dj::json const& root) {
 	if (res != error_t::none) { return res; }
 	if (res = parse_buffer_views(root); res != error_t::none) { return res; }
 	if (res = parse_accessors(root); res != error_t::none) { return res; }
+	return error_t::none;
+}
+
+error_t parser::parse_images(dj::json const& root) {
+	for (auto const& image : root.get_as<dj::vec_t>("images")) {
+		image_t img;
+		auto const uri = image->get_as<std::string_view>("uri");
+		if (uri.empty()) {
+			auto img_type = image_type(image->get_as<std::string_view>("mimeType"));
+			auto buffer_view = image->find_as<std::size_t>("bufferView");
+			if (!img_type || !buffer_view) { return error_t::missing_required_property; }
+			if (*buffer_view >= out.resources.buffer_views.size()) { return error_t::out_of_range; }
+			img.buffer_view_index = *buffer_view;
+			img.type = *img_type;
+		} else {
+			if (uri.size() > 5 && uri.substr(0, 5) == "data:") { return error_t::unsupported; }
+			auto ext = std::filesystem::path(uri).extension().string();
+			std::transform(ext.begin(), ext.end(), ext.begin(), [](char const c) { return std::tolower(static_cast<int>(c)); });
+			auto img_type = image_type_from_ext(ext);
+			if (!img_type) { return error_t::unsupported; }
+			img.bytes = get_bytes(uri);
+			if (img.bytes.empty()) { return error_t::resource_not_found; }
+			img.type = *img_type;
+		}
+		out.images.push_back(std::move(img));
+	}
+	return error_t::none;
+}
+
+error_t parser::parse_samplers(dj::json const& root) {
+	for (auto const& sampler : root.get_as<dj::vec_t>("samplers")) {
+		sampler_t smp;
+		smp.name = sampler->get_as<std::string>("name");
+		smp.mag = mag_filter(sampler->get_as<int>("magFilter"));
+		smp.min = min_filter(sampler->get_as<int>("magFilter"));
+		smp.wraps = texture_wrap(sampler->get_as<int>("wrapS"));
+		smp.wrapt = texture_wrap(sampler->get_as<int>("wrapT"));
+		out.samplers.push_back(std::move(smp));
+	}
+	return error_t::none;
+}
+
+error_t parser::parse_textures(dj::json const& root) {
+	for (auto const& texture : root.get_as<dj::vec_t>("textures")) {
+		texture_t tex;
+		if (auto sampler = texture->find_as<std::size_t>("sampler")) {
+			if (*sampler >= out.samplers.size()) { return error_t::out_of_range; }
+			tex.sampler = *sampler;
+		}
+		if (auto source = texture->find_as<std::size_t>("source")) {
+			if (*source >= out.images.size()) { return error_t::out_of_range; }
+			tex.source = *source;
+		}
+		tex.name = texture->get_as<std::string>("name");
+		out.textures.push_back(std::move(tex));
+	}
+	return error_t::none;
+}
+
+error_t parser::parse_materials(dj::json const& root) {
+	for (auto const& material : root.get_as<dj::vec_t>("materials")) {
+		material_t mat;
+		if (auto pbr = material->find("pbrMetallicRoughness")) {
+			if (auto res = parse_pbrmr(*pbr, mat.pbr_metallic_roughness); res != error_t::none) { return res; }
+		}
+		if (auto et = material->find("emissiveTexture")) {
+			texture_info_t ti{};
+			if (auto res = parse_texture_info(*et, ti); res != error_t::none) { return res; }
+			mat.emissive_texture = ti;
+		}
+		if (auto ef = material->find_as<std::vector<float>>("emissiveFactor")) {
+			if (ef->size() != 3U) { return error_t::out_of_range; }
+			mat.emissive_factor = {{ef->at(0), ef->at(1), ef->at(2)}};
+		}
+		if (auto nt = material->find("normalTexture")) {
+			normal_texture_info_t nti{};
+			if (auto res = parse_texture_info(*nt, nti); res != error_t::none) { return res; }
+			nti.scale = nt->get_as<float>("scale", 1.0f);
+			mat.normal_texture = nti;
+		}
+		if (auto ot = material->find("occlusionTexture")) {
+			occlusion_texture_info_t oti{};
+			if (auto res = parse_texture_info(*ot, oti); res != error_t::none) { return res; }
+			oti.strength = ot->get_as<float>("strength", 1.0f);
+			mat.occlusion_texture = oti;
+		}
+		mat.alpha_mode = alpha_mode(material->get_as<std::string_view>("alphaMode"));
+		mat.alpha_cutoff = material->get_as<float>("alphaCutoff", 0.5f);
+		mat.double_sided = material->get_as<bool>("doubleSided");
+		mat.name = material->get_as<std::string>("name");
+		out.materials.push_back(std::move(mat));
+	}
 	return error_t::none;
 }
 
@@ -265,6 +439,20 @@ error_t parser::parse_buffers(dj::json const& root) {
 	return error_t::none;
 }
 
+error_t parser::parse_buffer(std::string_view uri, std::vector<std::byte>& out_bytes) const {
+	if (uri.empty()) { return error_t::missing_required_property; }
+	if (uri.size() > 5 && uri.substr(0, 5) == "data:") {
+		auto const comma = uri.find(',');
+		if (comma == std::string_view::npos) { return error_t::invalid_data_uri; }
+		auto const buf_str = uri.substr(comma + 1);
+		if (buf_str.empty()) { return error_t::invalid_data_uri; }
+		out_bytes = base64_decode(buf_str);
+		return error_t::none;
+	}
+	out_bytes = get_bytes(uri);
+	return error_t::none;
+}
+
 error_t parser::parse_buffer_views(dj::json const& root) {
 	for (auto const& view : root.get_as<dj::vec_t>("bufferViews")) {
 		auto length = view->find_as<std::size_t>("byteLength");
@@ -317,20 +505,6 @@ error_t parser::parse_accessors(dj::json const& root) {
 	return error_t::none;
 }
 
-error_t parser::parse_buffer(std::string_view uri, buffer_storage_t& out_storage) const {
-	if (uri.empty()) { return error_t::missing_required_property; }
-	if (uri.size() > 5 && uri.substr(0, 5) == "data:") {
-		auto const comma = uri.find(',');
-		if (comma == std::string_view::npos) { return error_t::invalid_data_uri; }
-		auto const buf_str = uri.substr(comma + 1);
-		if (buf_str.empty()) { return error_t::invalid_data_uri; }
-		out_storage = base64_decode(buf_str);
-		return error_t::none;
-	}
-	out_storage = get_uri_bytes(uri);
-	return error_t::none;
-}
-
 error_t parser::parse_attributes(dj::json const& primitive, primitive_t& out_prim) const {
 	auto attributes = primitive.find_as<dj::map_t>("attributes");
 	if (!attributes) { return error_t::missing_required_property; }
@@ -360,28 +534,72 @@ error_t parser::parse_attributes(dj::json const& primitive, primitive_t& out_pri
 	}
 	return error_t::none;
 }
+
+error_t parser::parse_pbrmr(dj::json const& pbr, pbr_metallic_roughness_t& out_pbr) const {
+	if (auto bcf = pbr.find_as<std::vector<float>>("baseColorFactor")) {
+		if (bcf->size() != 4U) { return error_t::out_of_range; }
+		out_pbr.base_colour_factor = {{bcf->at(0), bcf->at(1), bcf->at(2), bcf->at(3)}};
+	}
+	if (auto bct = pbr.find("baseColorTexture")) {
+		texture_info_t ti{};
+		if (auto res = parse_texture_info(*bct, ti); res != error_t::none) { return res; }
+		out_pbr.base_colour_texture = ti;
+	}
+	if (auto mrt = pbr.find("metallicRoughnesTexture")) {
+		texture_info_t ti{};
+		if (auto res = parse_texture_info(*mrt, ti); res != error_t::none) { return res; }
+		out_pbr.metallic_roughness_texture = ti;
+	}
+	out_pbr.metallic_factor = pbr.get_as<float>("metallicFactor", 1.0f);
+	out_pbr.roughness_factor = pbr.get_as<float>("roughnessFactor", 1.0f);
+	return error_t::none;
+}
+
+error_t parser::parse_texture_info(dj::json const& texture, texture_info_t& out_tex) const {
+	auto index = texture.find_as<std::size_t>("index");
+	if (!index) { return error_t::missing_required_property; }
+	if (*index >= out.textures.size()) { return error_t::out_of_range; }
+	out_tex.index = *index;
+	out_tex.tex_coord = texture.get_as<std::size_t>("texCoord");
+	return error_t::none;
+}
 } // namespace
 
 version_t version_t::make(std::string_view version) noexcept {
 	if (version.empty()) { return {}; }
-	std::stringstream str(version.data());
+	auto str = std::stringstream(version.data());
 	auto assign = [&str](int& out) {
 		if (str >> out) {
 			char dot;
 			str >> dot;
 		}
 	};
-	version_t ret;
+	auto ret = version_t{};
 	assign(ret.major);
 	assign(ret.minor);
 	assign(ret.patch);
 	return ret;
 }
 
-result_t asset_t::parse(dj::json const& root, get_uri_bytes_t const& get_uri_bytes) {
-	if (!get_uri_bytes) { return {{}, error_t::missing_required_property}; }
-	result_t ret;
-	ret.error = parser{ret.asset, get_uri_bytes}(root);
+result_t asset_t::parse(char const* json_uri, get_bytes_t get_bytes) {
+	if (!json_uri || !*json_uri) { return {{}, error_t::missing_required_property}; }
+
+	auto const path = std::filesystem::absolute(json_uri);
+	auto const file_loader = file_loader_t{path.parent_path()};
+	auto json_bytes = std::vector<std::byte>{};
+	if (!get_bytes) {
+		if (!std::filesystem::is_regular_file(path)) { return {{}, error_t::resource_not_found}; }
+		json_bytes = file_loader_t::read(path.string());
+		get_bytes = [&file_loader](std::string_view const uri) { return file_loader(uri); };
+	} else {
+		json_bytes = get_bytes(json_uri);
+	}
+	if (json_bytes.empty()) { return {{}, error_t::resource_not_found}; }
+
+	auto root = dj::json{};
+	if (!root.read(as_string(json_bytes))) { return {{}, error_t::resource_not_found}; }
+	auto ret = result_t{};
+	ret.error = parser{ret.asset, get_bytes}(root);
 	return ret;
 }
 } // namespace le::gltf

@@ -30,9 +30,9 @@ graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	return ret;
 }
 
-void ListRenderer::fill(DrawableMap& out_map, dens::registry const& registry) {
-	DrawListGen{}(out_map, registry);
-	DebugDrawListGen{}(out_map, registry);
+void ListRenderer::fill(DrawableMap& out_map, AssetStore const& store, dens::registry const& registry) {
+	DrawListGen{}(out_map, store, registry);
+	DebugDrawListGen{}(out_map, store, registry);
 }
 
 void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {

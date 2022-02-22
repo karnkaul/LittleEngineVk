@@ -7,8 +7,11 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/geometry.hpp
   include/levk/graphics/image_ref.hpp
   include/levk/graphics/image.hpp
+  include/levk/graphics/material_data.hpp
   include/levk/graphics/memory.hpp
   include/levk/graphics/mesh_primitive.hpp
+  include/levk/graphics/mesh_view.hpp
+  include/levk/graphics/mesh.hpp
   include/levk/graphics/qtype.hpp
   include/levk/graphics/screen_rect.hpp
   include/levk/graphics/texture.hpp

@@ -1,7 +1,6 @@
 #pragma once
 #include <ktl/async/kfunction.hpp>
 #include <levk/core/hash.hpp>
-#include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <type_traits>
 
@@ -20,8 +19,8 @@ class AssetProvider {
 	void uri(std::string assetURI) noexcept;
 
 	bool empty() const noexcept { return m_hash == Hash(); }
-	bool ready() const;
-	T const& get(T const& fallback = T{}) const;
+	bool ready(AssetStore const& store) const;
+	T const& get(AssetStore const& store, T const& fallback = T{}) const;
 
   private:
 	std::string m_uri;
@@ -34,16 +33,13 @@ using RenderPipeProvider = AssetProvider<RenderPipeline>;
 // impl
 
 template <typename T>
-bool AssetProvider<T>::ready() const {
-	if (auto store = Services::find<AssetStore>()) { return store->exists<T>(m_hash); }
-	return false;
+bool AssetProvider<T>::ready(AssetStore const& store) const {
+	return store.exists<T>(m_hash);
 }
 
 template <typename T>
-T const& AssetProvider<T>::get(T const& fallback) const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto t = store->find<T>(m_hash)) { return *t; }
-	}
+T const& AssetProvider<T>::get(AssetStore const& store, T const& fallback) const {
+	if (auto t = store.find<T>(m_hash)) { return *t; }
 	return fallback;
 }
 

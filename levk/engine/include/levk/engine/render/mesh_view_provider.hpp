@@ -7,21 +7,21 @@
 
 namespace le {
 template <typename T>
-concept MeshAPI = requires(T const& t) {
+concept MeshViewAPI = requires(T const& t) {
 	{ t.mesh() } -> std::same_as<MeshView>;
 };
 
-class MeshProvider {
+class MeshViewProvider {
   public:
 	using Sign = AssetStore::Sign;
 
 	inline static std::string const default_material_v = "materials/default";
 
-	template <MeshAPI T>
-	static MeshProvider make(std::string assetURI);
+	template <MeshViewAPI T>
+	static MeshViewProvider make(std::string assetURI);
 	template <typename T, typename F>
-	static MeshProvider make(std::string assetURI, F&& getMesh);
-	static MeshProvider make(std::string primitiveURI, std::string materialURI = default_material_v);
+	static MeshViewProvider make(std::string assetURI, F&& getMesh);
+	static MeshViewProvider make(std::string primitiveURI, std::string materialURI = default_material_v);
 
 	std::string_view assetURI() const noexcept { return m_assetURI; }
 	std::string_view materialURI() const noexcept { return m_materialURI; }
@@ -41,13 +41,13 @@ class MeshProvider {
 	Sign m_sign{};
 };
 
-class DynamicMesh {
+class DynamicMeshView {
   public:
 	using GetMesh = ktl::kfunction<MeshView()>;
 
-	static DynamicMesh make(GetMesh&& getMesh);
-	template <MeshAPI T>
-	static DynamicMesh make(T const* source);
+	static DynamicMeshView make(GetMesh&& getMesh);
+	template <MeshViewAPI T>
+	static DynamicMeshView make(T const* source);
 
 	bool active() const noexcept { return m_getMesh.has_value(); }
 	MeshView mesh() const { return m_getMesh ? m_getMesh() : MeshView{}; }
@@ -59,8 +59,8 @@ class DynamicMesh {
 // impl
 
 template <typename T, typename F>
-MeshProvider MeshProvider::make(std::string assetURI, F&& getMesh) {
-	MeshProvider ret;
+MeshViewProvider MeshViewProvider::make(std::string assetURI, F&& getMesh) {
+	MeshViewProvider ret;
 	ret.uri(std::move(assetURI));
 	ret.m_sign = AssetStore::sign<T>();
 	ret.m_getMesh = [gm = std::move(getMesh)](Hash assetURI) -> MeshView {
@@ -72,13 +72,13 @@ MeshProvider MeshProvider::make(std::string assetURI, F&& getMesh) {
 	return ret;
 }
 
-template <MeshAPI T>
-MeshProvider MeshProvider::make(std::string assetURI) {
+template <MeshViewAPI T>
+MeshViewProvider MeshViewProvider::make(std::string assetURI) {
 	return make<T>(std::move(assetURI), [](T const& t) { return t.mesh(); });
 }
 
-template <MeshAPI T>
-DynamicMesh DynamicMesh::make(T const* source) {
+template <MeshViewAPI T>
+DynamicMeshView DynamicMeshView::make(T const* source) {
 	EXPECT(source);
 	return make([source]() { return source->mesh(); });
 }

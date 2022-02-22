@@ -7,27 +7,6 @@ MeshPrimitive::MeshPrimitive(not_null<VRAM*> vram, Type type) : m_vram(vram), m_
 
 MeshPrimitive::~MeshPrimitive() { wait(); }
 
-void MeshPrimitive::exchg(MeshPrimitive& lhs, MeshPrimitive& rhs) noexcept {
-	std::swap(lhs.m_vbo, rhs.m_vbo);
-	std::swap(lhs.m_ibo, rhs.m_ibo);
-	std::swap(lhs.m_type, rhs.m_type);
-	std::swap(lhs.m_triCount, rhs.m_triCount);
-	std::swap(lhs.m_vram, rhs.m_vram);
-}
-
-MeshPrimitive::Storage MeshPrimitive::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
-	Storage ret;
-	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
-	ENSURE(ret.buffer.has_value(), "Invalid buffer");
-	if (m_type == Type::eStatic) {
-		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
-	} else {
-		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
-		ENSURE(bRes, "Write failure");
-	}
-	return ret;
-}
-
 bool MeshPrimitive::draw(CommandBuffer cb, u32 instances, u32 first) const {
 	if (ready()) {
 		cb.bindVBO(*m_vbo.buffer, m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr);
@@ -57,5 +36,27 @@ void MeshPrimitive::wait() const {
 		std::array const arr = {RF(m_vbo.transfer), RF(m_ibo.transfer)};
 		m_vram->wait(arr);
 	}
+}
+
+void MeshPrimitive::exchg(MeshPrimitive& lhs, MeshPrimitive& rhs) noexcept {
+	std::swap(lhs.m_vbo, rhs.m_vbo);
+	std::swap(lhs.m_ibo, rhs.m_ibo);
+	std::swap(lhs.m_type, rhs.m_type);
+	std::swap(lhs.m_triCount, rhs.m_triCount);
+	std::swap(lhs.m_vram, rhs.m_vram);
+	std::swap(lhs.m_material, rhs.m_material);
+}
+
+MeshPrimitive::Storage MeshPrimitive::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
+	Storage ret;
+	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
+	ENSURE(ret.buffer.has_value(), "Invalid buffer");
+	if (m_type == Type::eStatic) {
+		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
+	} else {
+		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
+		ENSURE(bRes, "Write failure");
+	}
+	return ret;
 }
 } // namespace le::graphics

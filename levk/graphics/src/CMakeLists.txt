@@ -5,6 +5,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   image.cpp
   memory.cpp
   mesh_primitive.cpp
+  mesh.cpp
   texture.cpp
   texture_atlas.cpp
 

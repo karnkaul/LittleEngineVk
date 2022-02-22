@@ -27,9 +27,9 @@ class SceneRegistry : public utils::VBase {
 
 	dens::entity spawnNode(std::string name);
 
-	dens::entity spawnMesh(std::string name, MeshProvider&& provider, std::string pipeURI);
-	dens::entity spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string pipeURI);
-	template <MeshAPI T>
+	dens::entity spawnMesh(std::string name, MeshViewProvider&& provider, std::string pipeURI);
+	dens::entity spawnMesh(std::string name, DynamicMeshView&& dynMesh, std::string pipeURI);
+	template <MeshViewAPI T>
 	dens::entity spawnMesh(std::string name, std::string assetURI, std::string pipeURI);
 
 	template <typename T, typename... Args>
@@ -49,9 +49,9 @@ class SceneRegistry : public utils::VBase {
 
 // impl
 
-template <MeshAPI T>
+template <MeshViewAPI T>
 dens::entity SceneRegistry::spawnMesh(std::string name, std::string assetURI, std::string pipeURI) {
-	return spawnMesh(std::move(name), MeshProvider::make<T>(std::move(assetURI)), std::move(pipeURI));
+	return spawnMesh(std::move(name), MeshViewProvider::make<T>(std::move(assetURI)), std::move(pipeURI));
 }
 
 template <typename T, typename... Args>

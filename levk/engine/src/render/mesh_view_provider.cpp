@@ -5,8 +5,8 @@
 #include <levk/graphics/mesh_primitive.hpp>
 
 namespace le {
-MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialURI) {
-	MeshProvider ret;
+MeshViewProvider MeshViewProvider::make(std::string primitiveURI, std::string materialURI) {
+	MeshViewProvider ret;
 	ret.uri(std::move(primitiveURI));
 	Hash const mat = materialURI;
 	ret.m_materialURI = std::move(materialURI);
@@ -22,13 +22,13 @@ MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialUR
 	return ret;
 }
 
-void MeshProvider::uri(std::string assetURI) {
+void MeshViewProvider::uri(std::string assetURI) {
 	m_assetURI = std::move(assetURI);
 	m_hash = m_assetURI;
 }
 
-DynamicMesh DynamicMesh::make(GetMesh&& getMesh) {
-	DynamicMesh ret;
+DynamicMeshView DynamicMeshView::make(GetMesh&& getMesh) {
+	DynamicMeshView ret;
 	ret.m_getMesh = std::move(getMesh);
 	return ret;
 }

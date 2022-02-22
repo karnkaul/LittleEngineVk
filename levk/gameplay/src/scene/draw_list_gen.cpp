@@ -6,28 +6,37 @@
 #include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/draw_list_gen.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
 namespace le {
 namespace {
 DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 
-void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, gui::TreeRoot const& root) {
+void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, AssetStore const& store, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
-		if (node->m_active && rp.ready()) {
+		if (node->m_active && rp.ready(store)) {
 			if (auto mesh = node->mesh(); !mesh.empty()) {
 				DrawScissor const rect = cast(graphics::utils::scissor(node->m_scissor));
-				ListRenderer::add(map, rp.get(), node->model(), mesh, rect);
+				ListRenderer::add(map, rp.get(store), node->model(), mesh, rect);
 			}
 		}
 	}
 	for (auto& node : root.nodes()) {
-		if (node->m_active) { addNodes(map, rp, *node); }
+		if (node->m_active) { addNodes(map, rp, store, *node); }
 	}
+}
+
+Drawable fromMesh(graphics::Mesh const& mesh, glm::mat4 model) {
+	if (mesh.primitives.empty()) { return {}; }
+	Drawable ret;
+	ret.mesh.mesh2 = mesh.view();
+	ret.model = model;
+	return ret;
 }
 } // namespace
 
-void DrawListGen::operator()(ListRenderer::DrawableMap& map, dens::registry const& registry) const {
+void DrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	auto modelMat = [&registry](dens::entity e) {
 		if (auto n = registry.find<SceneNode>(e)) {
@@ -37,32 +46,36 @@ void DrawListGen::operator()(ListRenderer::DrawableMap& map, dens::registry cons
 		}
 		return glm::mat4(1.0f);
 	};
-	for (auto [e, c] : registry.view<RenderPipeProvider, DynamicMesh>(exclude)) {
+	for (auto [e, c] : registry.view<RenderPipeProvider, DynamicMeshView>(exclude)) {
 		auto& [rp, dm] = c;
-		if (rp.ready()) { ListRenderer::add(map, rp.get(), modelMat(e), dm.mesh()); }
+		if (rp.ready(store)) { ListRenderer::add(map, rp.get(store), modelMat(e), dm.mesh()); }
 	}
-	for (auto [e, c] : registry.view<RenderPipeProvider, MeshProvider>(exclude)) {
+	for (auto [e, c] : registry.view<RenderPipeProvider, MeshViewProvider>(exclude)) {
 		auto& [rp, provider] = c;
-		if (rp.ready()) { ListRenderer::add(map, rp.get(), modelMat(e), provider.mesh()); }
+		if (rp.ready(store)) { ListRenderer::add(map, rp.get(store), modelMat(e), provider.mesh()); }
 	}
 	for (auto [e, c] : registry.view<RenderPipeProvider, MeshView>(exclude)) {
 		auto& [rp, view] = c;
-		if (rp.ready()) { ListRenderer::add(map, rp.get(), modelMat(e), view); }
+		if (rp.ready(store)) { ListRenderer::add(map, rp.get(store), modelMat(e), view); }
 	}
 	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
 		auto& [rp, stack] = c;
-		for (auto const& view : stack.views()) { addNodes(map, rp, *view); }
+		for (auto const& view : stack.views()) { addNodes(map, rp, store, *view); }
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
+		auto& [rp, mesh] = c;
+		if (rp.ready(store) && mesh.ready(store)) { map[rp.get(store)].push_back(fromMesh(mesh.get(store), modelMat(e))); }
 	}
 }
 
-void DebugDrawListGen::operator()(ListRenderer::DrawableMap& map, dens::registry const& registry) const {
+void DebugDrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	if (populate_v) {
 		for (auto [_, c] : registry.view<RenderPipeProvider, physics::Trigger::Debug>(exclude)) {
 			auto& [rp, physics] = c;
-			if (rp.ready()) {
+			if (rp.ready(store)) {
 				if (auto drawables = physics.drawables(registry); !drawables.empty()) {
-					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[rp.get()]));
+					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[rp.get(store)]));
 				}
 			}
 		}

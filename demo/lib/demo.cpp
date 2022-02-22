@@ -46,6 +46,8 @@
 #include <levk/gameplay/scene/list_renderer.hpp>
 #include <levk/gameplay/scene/scene_manager.hpp>
 
+#include <levk/graphics/mesh.hpp>
+
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
@@ -126,7 +128,7 @@ class Renderer : public ListRenderer {
 		Span<DirLight const> lights;
 	};
 
-	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, dens::registry const& registry) {
+	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, AssetStore const& store, dens::registry const& registry) {
 		m_mats = &sbMap.get("mats");
 		m_mats->write(data.view);
 		m_lights = &sbMap.get("lights");
@@ -138,31 +140,61 @@ class Renderer : public ListRenderer {
 		} else {
 			m_lights->write(DirLights());
 		}
-		auto drawMap = data.custom;
-		fill(drawMap, registry);
-		ListRenderer::render(out_rp, drawMap);
-		drawMap.clear();
+		auto& drawMap = data.custom;
+		fill(drawMap, store, registry);
+		ListRenderer::render(out_rp, std::move(drawMap));
 	}
 
   private:
 	void writeSets(DescriptorMap map, DrawList const& list) override {
 		auto set0 = list.set(map, 0);
-		// set0.update(0, m_view.mats);
 		set0.update(0, *m_mats);
-		// set0.update(1, m_view.lights);
 		set0.update(1, *m_lights);
 		for (Drawable const& drawable : list.drawables) {
 			drawable.set(map, 1).update(0, drawable.model);
-			DrawMesh const& drawMesh = drawable.mesh;
-			for (MeshObj const& mesh : drawable.meshViews()) {
-				if (mesh.primitive) {
-					static Material const s_blank;
-					Material const& mat = mesh.material ? *mesh.material : s_blank;
-					auto set2 = drawMesh.set(map, 2);
-					set2.update(0, mat.map_Kd);
-					set2.update(1, mat.map_d);
-					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
-					drawMesh.set(map, 3).update(0, ShaderMaterial::make(mat));
+			if (drawable.mesh.mesh2) {
+				for (auto const& primitive : drawable.mesh.mesh2.primitives) {
+					auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
+					auto set2 = drawable.mesh.set(map, 2);
+					set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
+					set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
+					set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
+					drawable.set(map, 3).update(0, smat);
+				}
+			} else {
+				DrawMesh const& drawMesh = drawable.mesh;
+				for (MeshObj const& mesh : drawable.meshViews()) {
+					if (mesh.primitive) {
+						static Material const s_blank;
+						Material const& mat = mesh.material ? *mesh.material : s_blank;
+						auto set2 = drawMesh.set(map, 2);
+						set2.update(0, mat.map_Kd);
+						set2.update(1, mat.map_d);
+						set2.update(2, mat.map_Ks, TextureFallback::eBlack);
+						drawMesh.set(map, 3).update(0, ShaderMaterial::make(mat));
+					}
+				}
+			}
+		}
+	}
+
+	void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const override {
+		for (u32 const set : list.sets) { bind(set); }
+		for (Drawable const& d : list.drawables) {
+			for (u32 const set : d.sets) { bind(set); }
+			if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
+			if (d.mesh.mesh2) {
+				for (auto const& primitive : d.mesh.mesh2.primitives) {
+					for (u32 const set : d.mesh.sets) { bind(set); }
+					primitive.primitive->draw(cb);
+				}
+			} else {
+				for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
+					EXPECT(mesh.primitive);
+					if (mesh.primitive) {
+						for (u32 const set : d.mesh.sets) { bind(set); }
+						mesh.primitive->draw(cb);
+					}
 				}
 			}
 		}
@@ -366,6 +398,14 @@ class App : public input::Receiver, public Scene {
 
 	void open() override {
 		Scene::open();
+
+		{
+			auto mesh = graphics::Mesh::fromObjMtl("models/test/nanosuit/nanosuit.json", engine().store().resources().media(), &engine().vram());
+			if (mesh) { engine().store().add("meshes/test", std::move(*mesh)); }
+			auto node = spawnNode("test_mesh");
+			m_registry.attach<RenderPipeProvider>(node, "render_pipelines/lit");
+			m_registry.attach<AssetProvider<graphics::Mesh>>(node, AssetProvider<graphics::Mesh>("meshes/test"));
+		}
 		m_manifest.load("demo.manifest");
 		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 
@@ -385,7 +425,7 @@ class App : public input::Receiver, public Scene {
 
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
-			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "render_pipelines/lit");
+			m_data.player = spawnMesh("player", MeshViewProvider::make("meshes/cube", "materials/player/cube"), "render_pipelines/lit");
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
 			m_registry.attach<PlayerController>(m_data.player);
 			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
@@ -424,12 +464,12 @@ class App : public input::Receiver, public Scene {
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 		}
 		{
-			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "render_pipelines/basic");
+			auto ent = spawnMesh("prop_1", MeshViewProvider::make("meshes/cube"), "render_pipelines/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "render_pipelines/tex");
+			auto ent = spawnMesh("prop_2", MeshViewProvider::make("meshes/cone"), "render_pipelines/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
@@ -445,7 +485,7 @@ class App : public input::Receiver, public Scene {
 			Material mat;
 			mat.Tf = colours::yellow;
 			engine().store().add("materials/yellow", mat);
-			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
+			auto node = spawnMesh("trigger/cube", MeshViewProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);
@@ -457,7 +497,7 @@ class App : public input::Receiver, public Scene {
 		}
 		{
 			auto ent = spawnNode("emitter");
-			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&m_emitter));
+			m_registry.attach<DynamicMeshView>(ent, DynamicMeshView::make(&m_emitter));
 			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 		}
 		{
@@ -530,7 +570,7 @@ class App : public input::Receiver, public Scene {
 			line.line = "Hello!";
 			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
-			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
+			m_registry.attach<DynamicMeshView>(ent, DynamicMeshView::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
 
 			m_data.cursor.emplace(font->m_vram);
@@ -542,7 +582,7 @@ class App : public input::Receiver, public Scene {
 			m_data.cursor->m_line = "Hello!";
 			m_data.text->m_info = m_data.cursor->generateText();
 			auto ent1 = spawnNode("text_cursor");
-			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
+			m_registry.attach<DynamicMeshView>(ent1, DynamicMeshView::make(&*m_data.cursor));
 			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
 		}
 
@@ -623,7 +663,7 @@ class App : public input::Receiver, public Scene {
 		Renderer::SceneData scene;
 		scene.view = view;
 		scene.lights = m_data.dirLights;
-		Renderer{}.render(renderPass, shaderBufferMap(), scene, m_registry);
+		Renderer{}.render(renderPass, shaderBufferMap(), scene, engine().store(), m_registry);
 	}
 
   private:

@@ -4,8 +4,13 @@
 #include <ktl/fixed_vector.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/engine/render/mesh_view.hpp>
+#include <levk/graphics/mesh_view.hpp>
 
 namespace le {
+namespace graphics {
+class Mesh;
+}
+
 class DescriptorUpdater;
 class DescriptorMap;
 
@@ -25,6 +30,7 @@ struct DrawBindable {
 
 struct DrawMesh : DrawBindable {
 	MeshView mesh;
+	graphics::MeshView mesh2{};
 };
 
 struct Drawable : DrawBindable {

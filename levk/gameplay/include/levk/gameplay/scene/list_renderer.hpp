@@ -24,7 +24,7 @@ class ListRenderer {
 	void render(RenderPass& out_rp, DrawableMap map);
 
   protected:
-	virtual void fill(DrawableMap& out_map, dens::registry const& registry);
+	virtual void fill(DrawableMap& out_map, AssetStore const& store, dens::registry const& registry);
 	virtual void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const;
 
 	virtual void writeSets(DescriptorMap map, DrawList const& list) = 0;

@@ -54,7 +54,7 @@ void inspectMat(Material* out_mat, std::string_view name, int idx) {
 	}
 }
 
-void inspectMP(Inspect<MeshProvider> provider) {
+void inspectMP(Inspect<MeshViewProvider> provider) {
 	std::string_view type = "Other";
 	auto const th = provider.get().sign();
 	if (th == AssetStore::sign<MeshPrimitive>()) {
@@ -81,14 +81,14 @@ void inspectMP(Inspect<MeshProvider> provider) {
 	if (auto popup = Popup("Model##inspect_asset_provider")) {
 		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
-			provider.get() = MeshProvider::make<Model>(std::string(select.item));
+			provider.get() = MeshViewProvider::make<Model>(std::string(select.item));
 			popup.close();
 		}
 	}
 	if (auto popup = Popup("Skybox##inspect_asset_provider")) {
 		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<Skybox>(s_search, s_search)) {
-			provider.get() = MeshProvider::make<Skybox>(std::string(select.item));
+			provider.get() = MeshViewProvider::make<Skybox>(std::string(select.item));
 			popup.close();
 		}
 	}
@@ -234,7 +234,7 @@ Instance Instance::make(Engine::Service engine) {
 	impl->storage.left.tab = std::make_unique<EditorTab<SceneTree>>();
 	impl->storage.left.tab->attach<Settings>("Settings");
 	impl->storage.right.tab = std::make_unique<EditorTab<Inspector>>();
-	Inspector::attach<MeshProvider>(&inspectMP, {}, "Mesh");
+	Inspector::attach<MeshViewProvider>(&inspectMP, {}, "Mesh");
 	Inspector::attach<RenderPipeProvider>(&inspectRLP, {}, "RenderPipeline");
 #endif
 	g_state.gameView = g_comboView;

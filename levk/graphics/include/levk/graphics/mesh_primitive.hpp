@@ -6,6 +6,7 @@
 namespace le::graphics {
 class Device;
 class CommandBuffer;
+struct BlinnPhongMaterial;
 
 class MeshPrimitive {
   public:
@@ -21,7 +22,6 @@ class MeshPrimitive {
 	MeshPrimitive(MeshPrimitive&& rhs) noexcept : MeshPrimitive(rhs.m_vram) { exchg(*this, rhs); }
 	MeshPrimitive& operator=(MeshPrimitive rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~MeshPrimitive();
-	static void exchg(MeshPrimitive& lhs, MeshPrimitive& rhs) noexcept;
 
 	template <typename T = glm::vec3>
 	void construct(Span<T const> vertices, Span<u32 const> indices);
@@ -41,6 +41,7 @@ class MeshPrimitive {
 	bool hasIndices() const noexcept;
 
 	not_null<VRAM*> m_vram;
+	std::size_t m_material{};
 
   private:
 	struct Storage {
@@ -49,6 +50,7 @@ class MeshPrimitive {
 		VRAM::Future transfer;
 	};
 
+	static void exchg(MeshPrimitive& lhs, MeshPrimitive& rhs) noexcept;
 	Storage construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const;
 
 	Storage m_vbo;

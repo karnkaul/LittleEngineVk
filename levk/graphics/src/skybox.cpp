@@ -12,17 +12,11 @@ Skybox::Skybox(not_null<VRAM*> vram, Opt<Texture const> texture) : m_mesh(vram) 
 void Skybox::cubemap(Opt<Texture const> texture) noexcept {
 	EXPECT(texture->type() == Texture::Type::eCube);
 	if (texture->type() != Texture::Type::eCube) { return; }
-	m_cubemap = texture;
+	m_materialTextures[MatTexType::eDiffuse] = texture;
 }
 
-MeshView Skybox::meshView() const noexcept {
+PrimitiveView Skybox::primitive() const noexcept {
 	static BPMaterialData const s_mat{};
-	MeshView ret{};
-	if (m_cubemap) {
-		auto prim = PrimitiveView::make(&m_mesh, &s_mat);
-		prim.textures[MatTexType::eDiffuse] = m_cubemap;
-		ret.primitives.push_back(prim);
-	}
-	return ret;
+	return {&m_mesh, &m_materialTextures, &s_mat};
 }
 } // namespace le::graphics

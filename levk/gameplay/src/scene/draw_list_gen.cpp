@@ -9,11 +9,11 @@
 #include <levk/graphics/mesh.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
-#include <levk/engine/render/skybox.hpp>
+#include <levk/graphics/skybox.hpp>
 
 namespace le {
 namespace {
-DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
+DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}}; }
 
 void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, AssetStore const& store, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
@@ -32,15 +32,15 @@ void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, Asse
 Drawable fromMesh(graphics::Mesh const& mesh, glm::mat4 model) {
 	if (mesh.primitives.empty()) { return {}; }
 	Drawable ret;
-	ret.mesh.mesh2 = mesh.view();
+	ret.mesh.mesh2 = mesh.primitiveViews();
 	ret.model = model;
 	return ret;
 }
 
-Drawable fromMeshView(graphics::MeshView const& view, glm::mat4 model) {
-	if (!view) { return {}; }
+Drawable fromMeshView(Span<graphics::PrimitiveView const> view, glm::mat4 model) {
+	if (view.empty()) { return {}; }
 	Drawable ret;
-	ret.mesh.mesh2 = view;
+	ret.mesh.mesh2 = {view.begin(), view.end()};
 	ret.model = model;
 	return ret;
 }
@@ -72,10 +72,10 @@ void DrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& s
 		auto& [rp, stack] = c;
 		for (auto const& view : stack.views()) { addNodes(map, rp, store, *view); }
 	}
-	for (auto& [e, c] : registry.view<RenderPipeProvider, Skybox>()) {
+	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>()) {
 		auto& [rp, skybox] = c;
 		if (rp.ready(store)) {
-			if (auto mesh = skybox.meshView()) { map[rp.get(store)].push_back(fromMeshView(mesh, modelMat(e))); }
+			if (auto mesh = skybox.primitive()) { map[rp.get(store)].push_back(fromMeshView(mesh, modelMat(e))); }
 		}
 	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {

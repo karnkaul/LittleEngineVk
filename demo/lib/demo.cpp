@@ -152,13 +152,13 @@ class Renderer : public ListRenderer {
 		set0.update(1, *m_lights);
 		for (Drawable const& drawable : list.drawables) {
 			drawable.set(map, 1).update(0, drawable.model);
-			if (drawable.mesh.mesh2) {
-				for (auto const& primitive : drawable.mesh.mesh2.primitives) {
+			if (!drawable.mesh.mesh2.empty()) {
+				for (auto const& primitive : drawable.mesh.mesh2) {
 					auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
 					auto set2 = drawable.mesh.set(map, 2);
-					set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
-					set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
-					set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
+					set2.update(0, primitive.texture(graphics::MatTexType::eDiffuse));
+					set2.update(1, primitive.texture(graphics::MatTexType::eAlpha));
+					set2.update(2, primitive.texture(graphics::MatTexType::eSpecular), TextureFallback::eBlack);
 					drawable.set(map, 3).update(0, smat);
 				}
 			} else {
@@ -182,9 +182,9 @@ class Renderer : public ListRenderer {
 		for (u32 const set : list.sets) { bind(set); }
 		for (Drawable const& d : list.drawables) {
 			for (u32 const set : d.sets) { bind(set); }
-			if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-			if (d.mesh.mesh2) {
-				for (auto const& primitive : d.mesh.mesh2.primitives) {
+			if (d.scissor) { cb.setScissor(cast(*d.scissor)); }
+			if (!d.mesh.mesh2.empty()) {
+				for (auto const& primitive : d.mesh.mesh2) {
 					for (u32 const set : d.mesh.sets) { bind(set); }
 					primitive.primitive->draw(cb);
 				}

@@ -19,7 +19,7 @@ class ListRenderer {
 
 	static constexpr vk::Rect2D cast(DrawScissor rect) noexcept { return {{rect.offset.x, rect.offset.y}, {rect.extent.x, rect.extent.y}}; }
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
-	static void add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor = {});
+	static void add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, std::optional<DrawScissor> scissor = {});
 
 	void render(RenderPass& out_rp, DrawableMap map);
 

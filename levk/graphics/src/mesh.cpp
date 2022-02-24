@@ -211,16 +211,15 @@ std::optional<Mesh> Mesh::fromObjMtl(io::Path const& jsonURI, io::Media const& m
 	return ret;
 }
 
-MeshView Mesh::view() const {
-	MeshView ret;
-	ret.primitives.reserve(primitives.size());
+std::vector<PrimitiveView> Mesh::primitiveViews() const {
+	std::vector<PrimitiveView> ret;
+	ret.reserve(primitives.size());
 	for (auto const& primitive : primitives) {
 		auto const& material = materials[primitive.m_material];
-		TMatTexArray<Opt<Texture const>> tex{};
 		for (std::size_t i = 0; i < std::size_t(MatTexType::eCOUNT_); ++i) {
-			if (material.textures.arr[i]) { tex.arr[i] = &textures[*material.textures.arr[i]]; }
+			materialTextures.arr[i] = material.textures.arr[i] ? &textures[*material.textures.arr[i]] : nullptr;
 		}
-		ret.primitives.push_back(PrimitiveView{tex, &primitive, material.data.get_if<BPMaterialData>(), material.data.get_if<PBRMaterialData>()});
+		ret.push_back({&primitive, &materialTextures, material.data.get_if<BPMaterialData>(), material.data.get_if<PBRMaterialData>()});
 	}
 	return ret;
 }

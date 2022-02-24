@@ -22,11 +22,12 @@ struct Mesh {
 	std::vector<Texture> textures{};
 	std::vector<Material> materials{};
 	std::vector<MeshPrimitive> primitives{};
+	mutable MaterialTextures materialTextures{};
 
 	static std::optional<Mesh> fromObjMtl(io::Path const& jsonURI, io::Media const& media, not_null<VRAM*> vram, vk::Sampler sampler = {});
 
 	Opt<Texture const> texture(std::optional<std::size_t> idx) const noexcept { return idx && *idx < textures.size() ? &textures[*idx] : nullptr; }
-	MeshView view() const;
+	std::vector<PrimitiveView> primitiveViews() const;
 };
 } // namespace graphics
 } // namespace le

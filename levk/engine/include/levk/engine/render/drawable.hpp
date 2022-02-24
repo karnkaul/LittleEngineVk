@@ -5,6 +5,7 @@
 #include <levk/core/std_types.hpp>
 #include <levk/engine/render/mesh_view.hpp>
 #include <levk/graphics/mesh_view.hpp>
+#include <optional>
 
 namespace le {
 class DescriptorUpdater;
@@ -13,7 +14,6 @@ class DescriptorMap;
 struct DrawScissor {
 	glm::uvec2 extent{};
 	glm::ivec2 offset{};
-	bool set{};
 };
 
 struct DrawBindable {
@@ -26,15 +26,21 @@ struct DrawBindable {
 
 struct DrawMesh : DrawBindable {
 	MeshView mesh;
-	graphics::MeshView mesh2{};
+	std::vector<graphics::PrimitiveView> mesh2{};
 };
 
 struct Drawable : DrawBindable {
 	glm::mat4 model = glm::mat4(1.0f);
 	DrawMesh mesh;
-	DrawScissor scissor;
+	std::optional<DrawScissor> scissor;
 
 	MeshObjView meshViews() const { return mesh.mesh.meshViews(); }
+};
+
+struct Drawable2 {
+	glm::mat4 matrix = glm::mat4(1.0f);
+	std::optional<DrawScissor> scissor;
+	std::vector<graphics::PrimitiveView> primitives;
 };
 
 struct NoDraw {};

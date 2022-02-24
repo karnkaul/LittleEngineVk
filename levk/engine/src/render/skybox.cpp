@@ -22,17 +22,4 @@ MeshView Skybox::mesh() const {
 	}
 	return {};
 }
-
-graphics::MeshView Skybox::meshView() const {
-	graphics::MeshView ret;
-	if (auto store = Services::find<AssetStore>()) {
-		auto cube = store->find<MeshPrimitive>("meshes/cube");
-		if (!cube) { return {}; }
-		if (!m_cubemap->ready()) { return {}; }
-		graphics::PrimitiveView prim{{}, cube, &m_materialData};
-		prim.textures[graphics::MatTexType::eDiffuse] = m_cubemap;
-		ret.primitives.push_back(prim);
-	}
-	return ret;
-}
 } // namespace le

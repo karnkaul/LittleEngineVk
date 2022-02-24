@@ -16,7 +16,7 @@ constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
 };
 } // namespace
 
-void ListRenderer::add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+void ListRenderer::add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, std::optional<DrawScissor> scissor) {
 	if (!mesh.empty()) { out_map[rp].push_back({{}, model, {{}, mesh}, scissor}); }
 }
 
@@ -64,7 +64,7 @@ void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::C
 	for (u32 const set : list.sets) { bind(set); }
 	for (Drawable const& d : list.drawables) {
 		for (u32 const set : d.sets) { bind(set); }
-		if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
+		if (d.scissor) { cb.setScissor(cast(*d.scissor)); }
 		for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
 			EXPECT(mesh.primitive);
 			if (mesh.primitive) {

@@ -7,13 +7,13 @@ class Skybox {
   public:
 	Skybox(not_null<VRAM*> vram, Opt<Texture const> texture = {});
 
-	Opt<Texture const> cubemap() const noexcept { return m_cubemap; }
+	Opt<Texture const> cubemap() const noexcept { return m_materialTextures[MatTexType::eDiffuse]; }
 	void cubemap(Opt<Texture const> texture) noexcept;
 
-	MeshView meshView() const noexcept;
+	PrimitiveView primitive() const noexcept;
 
   private:
+	MaterialTextures m_materialTextures{};
 	MeshPrimitive m_mesh;
-	Opt<Texture const> m_cubemap{};
 };
 } // namespace le::graphics

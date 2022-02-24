@@ -7,10 +7,6 @@
 #include <levk/graphics/mesh_view.hpp>
 
 namespace le {
-namespace graphics {
-class Mesh;
-}
-
 class DescriptorUpdater;
 class DescriptorMap;
 

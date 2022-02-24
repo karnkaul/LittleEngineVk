@@ -5,7 +5,7 @@
 #include <levk/core/transform.hpp>
 #include <levk/engine/input/space.hpp>
 #include <levk/graphics/geometry.hpp>
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <utility>
 #include <vector>
 

@@ -13,7 +13,9 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/mesh_view.hpp
   include/levk/graphics/mesh.hpp
   include/levk/graphics/qtype.hpp
+  include/levk/graphics/rgba.hpp
   include/levk/graphics/screen_rect.hpp
+  include/levk/graphics/skybox.hpp
   include/levk/graphics/texture.hpp
   include/levk/graphics/texture_atlas.hpp
 
@@ -43,7 +45,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/render/pipeline.hpp
   include/levk/graphics/render/render_pass.hpp
   include/levk/graphics/render/renderer.hpp
-  include/levk/graphics/render/rgba.hpp
   include/levk/graphics/render/shader_buffer.hpp
   include/levk/graphics/render/surface.hpp
   include/levk/graphics/render/framebuffer.hpp

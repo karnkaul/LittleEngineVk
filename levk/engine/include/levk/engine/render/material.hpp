@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 
 namespace le {
 namespace graphics {

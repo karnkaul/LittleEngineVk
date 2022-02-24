@@ -3,8 +3,8 @@
 #include <levk/graphics/image.hpp>
 #include <levk/graphics/render/buffering.hpp>
 #include <levk/graphics/render/render_pass.hpp>
-#include <levk/graphics/render/rgba.hpp>
 #include <levk/graphics/render/surface.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <levk/graphics/screen_rect.hpp>
 #include <levk/graphics/utils/defer.hpp>
 #include <levk/graphics/utils/trotator.hpp>

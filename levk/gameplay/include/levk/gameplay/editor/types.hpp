@@ -11,7 +11,7 @@
 #include <levk/core/utils/string.hpp>
 #include <levk/gameplay/editor/scene_ref.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <optional>
 #include <string>
 

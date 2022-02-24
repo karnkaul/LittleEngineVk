@@ -12,6 +12,9 @@ struct PrimitiveView {
 	not_null<MeshPrimitive const*> primitive;
 	Opt<BPMaterialData const> blinnPhong{};
 	Opt<PBRMaterialData const> pbr{};
+
+	static PrimitiveView make(not_null<MeshPrimitive const*> primitive, Opt<BPMaterialData const> material) { return {{}, primitive, material}; }
+	static PrimitiveView make(not_null<MeshPrimitive const*> primitive, Opt<PBRMaterialData const> material) { return {{}, primitive, {}, material}; }
 };
 
 struct MeshView {

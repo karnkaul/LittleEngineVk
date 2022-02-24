@@ -4,7 +4,7 @@
 #include <levk/core/utils/error.hpp>
 #include <levk/engine/render/material.hpp>
 #include <levk/gameplay/gui/interact.hpp>
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <unordered_map>
 
 namespace le::gui {

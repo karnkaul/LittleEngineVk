@@ -2,7 +2,7 @@
 #include <levk/core/not_null.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/render/framebuffer.hpp>
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <levk/graphics/screen_rect.hpp>
 #include <levk/graphics/utils/defer.hpp>
 

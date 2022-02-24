@@ -1,8 +1,5 @@
 #pragma once
-#include <ktl/async/kfunction.hpp>
-#include <levk/core/hash.hpp>
 #include <levk/engine/assets/asset_store.hpp>
-#include <type_traits>
 
 namespace le {
 struct RenderLayer;

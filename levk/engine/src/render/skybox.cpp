@@ -3,6 +3,7 @@
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/skybox.hpp>
 #include <levk/graphics/geometry.hpp>
+#include <levk/graphics/material_data.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 #include <levk/graphics/texture.hpp>
 
@@ -20,5 +21,18 @@ MeshView Skybox::mesh() const {
 		return MeshObj{.primitive = &*cube, .material = &m_material};
 	}
 	return {};
+}
+
+graphics::MeshView Skybox::meshView() const {
+	graphics::MeshView ret;
+	if (auto store = Services::find<AssetStore>()) {
+		auto cube = store->find<MeshPrimitive>("meshes/cube");
+		if (!cube) { return {}; }
+		if (!m_cubemap->ready()) { return {}; }
+		graphics::PrimitiveView prim{{}, cube, &m_materialData};
+		prim.textures[graphics::MatTexType::eDiffuse] = m_cubemap;
+		ret.primitives.push_back(prim);
+	}
+	return ret;
 }
 } // namespace le

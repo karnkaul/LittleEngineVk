@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 
 namespace le::graphics {
 enum class MatTexType { eDiffuse, eSpecular, eAlpha, eBump, eMetalRough, eOcclusion, eNormal, eEmissive, eCOUNT_ };

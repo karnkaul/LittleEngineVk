@@ -10,7 +10,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/graphics/material_data.hpp
   include/levk/graphics/memory.hpp
   include/levk/graphics/mesh_primitive.hpp
-  include/levk/graphics/primitive_view.hpp
+  include/levk/graphics/draw_primitive.hpp
   include/levk/graphics/mesh.hpp
   include/levk/graphics/qtype.hpp
   include/levk/graphics/rgba.hpp

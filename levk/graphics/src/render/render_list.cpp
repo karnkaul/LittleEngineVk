@@ -2,7 +2,7 @@
 #include <levk/graphics/render/render_list.hpp>
 
 namespace le::graphics {
-DrawList& DrawList::push(Span<PrimitiveView const> primitives, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
+DrawList& DrawList::push(Span<DrawPrimitive const> primitives, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
 	std::size_t const start = this->m_primitives.size();
 	m_primitives.reserve(m_primitives.size() + primitives.size());
 	for (auto const primitive : primitives) {
@@ -25,7 +25,7 @@ DrawList& DrawList::push(std::size_t primitiveStart, glm::mat4 matrix, std::opti
 	return *this;
 }
 
-Span<PrimitiveView const> DrawList::iterator::prims() const {
+Span<DrawPrimitive const> DrawList::iterator::prims() const {
 	auto const& p = m_list->m_entries[m_index].primitives;
 	return Span(&m_list->m_primitives[p.first], p.second);
 }

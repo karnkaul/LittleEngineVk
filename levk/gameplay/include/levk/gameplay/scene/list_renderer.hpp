@@ -46,7 +46,7 @@ class ListRenderer2 {
 	using Pipeline = graphics::Pipeline;
 	using RenderPass = graphics::RenderPass;
 	using RenderMap = std::unordered_map<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
-	using Primitive = graphics::PrimitiveView;
+	using Primitive = graphics::DrawPrimitive;
 
 	static constexpr std::optional<vk::Rect2D> cast(std::optional<DrawScissor> rect) noexcept {
 		return rect ? std::optional<vk::Rect2D>({{rect->offset.x, rect->offset.y}, {rect->extent.x, rect->extent.y}}) : std::nullopt;

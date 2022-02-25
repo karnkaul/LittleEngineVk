@@ -1,8 +1,8 @@
 #pragma once
 #include <glm/mat4x4.hpp>
 #include <levk/core/span.hpp>
+#include <levk/graphics/draw_primitive.hpp>
 #include <levk/graphics/draw_view.hpp>
-#include <levk/graphics/primitive_view.hpp>
 #include <levk/graphics/render/pipeline.hpp>
 #include <optional>
 #include <vector>
@@ -13,11 +13,11 @@ class DrawList {
 	class iterator;
 	using const_iterator = iterator;
 
-	DrawList& push(Span<PrimitiveView const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
+	DrawList& push(Span<DrawPrimitive const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
 	template <typename T>
 	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {}) {
 		auto const start = m_primitives.size();
-		PrimitiveAdder<T>{}(t, std::back_inserter(m_primitives));
+		DrawPrimitiveAdder<T>{}(t, std::back_inserter(m_primitives));
 		return push(start, matrix, scissor);
 	}
 
@@ -34,14 +34,14 @@ class DrawList {
 	};
 
 	std::vector<glm::mat4> m_matrices;
-	std::vector<PrimitiveView> m_primitives;
+	std::vector<DrawPrimitive> m_primitives;
 	std::vector<vk::Rect2D> m_scissors;
 	std::vector<Entry> m_entries;
 };
 
 struct DrawObject {
 	not_null<glm::mat4 const*> matrix;
-	Span<PrimitiveView const> primitives;
+	Span<DrawPrimitive const> primitives;
 	Opt<vk::Rect2D const> scissor{};
 };
 
@@ -64,7 +64,7 @@ class DrawList::iterator {
   private:
 	iterator(DrawList const& list, std::size_t index) : m_list(&list), m_index(index) {}
 
-	Span<PrimitiveView const> prims() const;
+	Span<DrawPrimitive const> prims() const;
 	not_null<glm::mat4 const*> matrix() const;
 	Opt<vk::Rect2D const> scissor() const;
 

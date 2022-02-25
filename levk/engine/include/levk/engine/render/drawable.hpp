@@ -4,7 +4,7 @@
 #include <ktl/fixed_vector.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/engine/render/mesh_view.hpp>
-#include <levk/graphics/primitive_view.hpp>
+#include <levk/graphics/draw_primitive.hpp>
 #include <optional>
 
 namespace le {
@@ -26,7 +26,7 @@ struct DrawBindable {
 
 struct DrawMesh : DrawBindable {
 	MeshView mesh;
-	std::vector<graphics::PrimitiveView> mesh2{};
+	std::vector<graphics::DrawPrimitive> mesh2{};
 };
 
 struct Drawable : DrawBindable {
@@ -40,7 +40,7 @@ struct Drawable : DrawBindable {
 struct Drawable2 {
 	glm::mat4 matrix = glm::mat4(1.0f);
 	std::optional<DrawScissor> scissor;
-	std::vector<graphics::PrimitiveView> primitives;
+	std::vector<graphics::DrawPrimitive> primitives;
 };
 
 struct NoDraw {};

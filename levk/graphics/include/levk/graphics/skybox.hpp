@@ -1,6 +1,6 @@
 #pragma once
+#include <levk/graphics/draw_primitive.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
-#include <levk/graphics/primitive_view.hpp>
 
 namespace le::graphics {
 class Skybox {
@@ -10,7 +10,7 @@ class Skybox {
 	Opt<Texture const> cubemap() const noexcept { return m_materialTextures[MatTexType::eDiffuse]; }
 	void cubemap(Opt<Texture const> texture) noexcept;
 
-	PrimitiveView primitive() const noexcept;
+	DrawPrimitive primitive() const noexcept;
 
   private:
 	MaterialTextures m_materialTextures{};
@@ -18,8 +18,8 @@ class Skybox {
 };
 
 template <>
-struct PrimitiveAdder<Skybox> {
-	template <std::output_iterator<PrimitiveView> It>
+struct DrawPrimitiveAdder<Skybox> {
+	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(Skybox const& skybox, It it) const {
 		if (auto primitive = skybox.primitive()) { *it++ = skybox.primitive(); }
 	}

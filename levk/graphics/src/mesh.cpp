@@ -211,10 +211,10 @@ std::optional<Mesh> Mesh::fromObjMtl(io::Path const& jsonURI, io::Media const& m
 	return ret;
 }
 
-std::vector<PrimitiveView> Mesh::primitiveViews() const {
-	std::vector<PrimitiveView> ret;
+std::vector<DrawPrimitive> Mesh::primitiveViews() const {
+	std::vector<DrawPrimitive> ret;
 	ret.reserve(primitives.size());
-	PrimitiveAdder<Mesh>{}(*this, std::back_inserter(ret));
+	DrawPrimitiveAdder<Mesh>{}(*this, std::back_inserter(ret));
 	return ret;
 }
 } // namespace le::graphics

@@ -8,7 +8,7 @@ class Texture;
 
 using MaterialTextures = TMatTexArray<Opt<Texture const>>;
 
-struct PrimitiveView {
+struct DrawPrimitive {
 	Opt<MeshPrimitive const> primitive{};
 	Opt<MaterialTextures const> textures{};
 	Opt<BPMaterialData const> blinnPhong{};
@@ -19,8 +19,8 @@ struct PrimitiveView {
 };
 
 template <typename T>
-struct PrimitiveAdder {
-	template <std::output_iterator<PrimitiveView> It>
+struct DrawPrimitiveAdder {
+	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(T const& t, It it) const;
 };
 } // namespace le::graphics

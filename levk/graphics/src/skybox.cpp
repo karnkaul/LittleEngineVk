@@ -10,8 +10,10 @@ Skybox::Skybox(not_null<VRAM*> vram, Opt<Texture const> texture) : m_mesh(vram) 
 }
 
 void Skybox::cubemap(Opt<Texture const> texture) noexcept {
-	EXPECT(texture->type() == Texture::Type::eCube);
-	if (texture->type() != Texture::Type::eCube) { return; }
+	if (texture) {
+		EXPECT(texture->type() == Texture::Type::eCube);
+		if (texture->type() != Texture::Type::eCube) { return; }
+	}
 	m_cubemap = texture;
 }
 

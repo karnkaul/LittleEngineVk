@@ -47,6 +47,7 @@
 #include <levk/gameplay/scene/scene_manager.hpp>
 
 #include <levk/graphics/mesh.hpp>
+#include <levk/graphics/skybox.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -465,8 +466,8 @@ class App : public input::Receiver, public Scene {
 			auto mesh = graphics::Mesh::fromObjMtl("models/test/nanosuit/nanosuit.json", engine().store().resources().media(), &engine().vram());
 			if (mesh) { engine().store().add("meshes/test", std::move(*mesh)); }
 			auto node = spawnNode("test_mesh");
-			m_registry.attach<RenderPipeProvider>(node, "render_pipelines/lit");
-			m_registry.attach<AssetProvider<graphics::Mesh>>(node, AssetProvider<graphics::Mesh>("meshes/test"));
+			m_registry.attach(node, RenderPipeProvider("render_pipelines/lit"));
+			m_registry.attach(node, AssetProvider<graphics::Mesh>("meshes/test"));
 		}
 		m_manifest.load("demo.manifest");
 		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
@@ -538,7 +539,7 @@ class App : public input::Receiver, public Scene {
 			m_testMat.map_Kd = &m_testTex;
 			if (auto primitive = engine().store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, "render_pipelines/tex");
+				m_registry.attach(m_data.roundedQuad, RenderPipeProvider("render_pipelines/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
@@ -552,15 +553,15 @@ class App : public input::Receiver, public Scene {
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);
 			trig1.scale = glm::vec3(2.0f);
-			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+			auto& tweener = m_registry.attach(node, Tweener(-5.0f, 5.0f, 2s, utils::TweenCycle::eSwing));
 			auto pos = m_registry.get<Transform>(node).position();
 			pos.x = tweener.current();
 			m_registry.get<Transform>(node).position(pos);
 		}
 		{
 			auto ent = spawnNode("emitter");
-			m_registry.attach<DynamicMeshView>(ent, DynamicMeshView::make(&m_emitter));
-			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
+			m_registry.attach(ent, DynamicMeshView::make(&m_emitter));
+			m_registry.attach(ent, RenderPipeProvider("render_pipelines/ui"));
 		}
 		{
 			DirLight l0, l1;
@@ -570,7 +571,7 @@ class App : public input::Receiver, public Scene {
 			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 			m_data.dirLights = {l0, l1};
 		}
-		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &engine().vram());
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", gui::ViewStack(&engine().vram()));
 		{
 			auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
 			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
@@ -619,7 +620,14 @@ class App : public input::Receiver, public Scene {
 	void onAssetsLoaded() {
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<RenderPipeProvider>(triggerDebug, "render_pipelines/wireframe");
+			m_registry.attach(triggerDebug, RenderPipeProvider("render_pipelines/wireframe"));
+		}
+
+		{
+			auto sky2 = spawnNode("skybox2");
+			auto& skybox = m_registry.attach(sky2, graphics::Skybox(&engine().vram()));
+			skybox.cubemap(engine().store().find<graphics::Texture>("cubemaps/sky_dusk"));
+			m_registry.attach(sky2, RenderPipeProvider("render_pipelines/skybox"));
 		}
 
 		if (auto font = engine().store().find<graphics::Font>("fonts/vera_serif")) {
@@ -632,8 +640,8 @@ class App : public input::Receiver, public Scene {
 			line.line = "Hello!";
 			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
-			m_registry.attach<DynamicMeshView>(ent, DynamicMeshView::make(&*m_data.text));
-			m_registry.attach<RenderPipeProvider>(ent, "render_pipelines/ui");
+			m_registry.attach(ent, DynamicMeshView::make(&*m_data.text));
+			m_registry.attach(ent, RenderPipeProvider("render_pipelines/ui"));
 
 			m_data.cursor.emplace(font->m_vram);
 			m_data.cursor->font(&*font);
@@ -644,8 +652,8 @@ class App : public input::Receiver, public Scene {
 			m_data.cursor->m_line = "Hello!";
 			m_data.text->m_info = m_data.cursor->generateText();
 			auto ent1 = spawnNode("text_cursor");
-			m_registry.attach<DynamicMeshView>(ent1, DynamicMeshView::make(&*m_data.cursor));
-			m_registry.attach<RenderPipeProvider>(ent1, "render_pipelines/ui");
+			m_registry.attach(ent1, DynamicMeshView::make(&*m_data.cursor));
+			m_registry.attach(ent1, RenderPipeProvider("render_pipelines/ui"));
 		}
 
 		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
@@ -722,10 +730,10 @@ class App : public input::Receiver, public Scene {
 
 	void render(graphics::RenderPass& renderPass, ShaderSceneView const& view) override {
 		// draw
-		Renderer::SceneData scene;
+		Renderer2::SceneData scene;
 		scene.view = view;
 		scene.lights = m_data.dirLights;
-		Renderer{}.render(renderPass, shaderBufferMap(), scene, engine().store(), m_registry);
+		Renderer2{}.render(renderPass, shaderBufferMap(), scene, engine().store(), m_registry);
 	}
 
   private:

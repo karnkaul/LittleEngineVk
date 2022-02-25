@@ -8,6 +8,7 @@ class Flexbox : public Widget {
 
 	struct CreateInfo {
 		Material background;
+		graphics::BPMaterialData background2;
 		Axis axis = Axis::eHorz;
 		f32 pad = 5.0f;
 		Hash style;

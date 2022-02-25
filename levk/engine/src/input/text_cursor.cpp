@@ -14,6 +14,15 @@ MeshView TextCursor::mesh() const noexcept {
 	return {};
 }
 
+graphics::DrawPrimitive TextCursor::drawPrimitive() const {
+	if (m_drawCursor) {
+		m_material2.Tf = m_colour;
+		m_material2.d = m_alpha;
+		return graphics::DrawPrimitive{{}, &m_primitive, &m_material2};
+	}
+	return {};
+}
+
 void TextCursor::backspace(graphics::Geometry* out) {
 	if (m_line.empty() || m_index == 0) {
 		refresh(out);

@@ -275,18 +275,18 @@ class TestView : public gui::View {
 		auto& bg = push<gui::Quad>();
 		bg.m_rect.size = {200.0f, 100.0f};
 		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
-		bg.m_material.Tf = colours::cyan;
+		bg.m_material.Tf = bg.m_bpMaterial.Tf = colours::cyan;
 		auto& centre = bg.push<gui::Quad>();
 		centre.m_rect.size = {50.0f, 50.0f};
-		centre.m_material.Tf = colours::red;
+		centre.m_material.Tf = centre.m_bpMaterial.Tf = colours::red;
 		auto& dot = centre.push<gui::Quad>();
 		dot.offset({30.0f, 20.0f});
-		dot.m_material.Tf = Colour(0x333333ff);
+		dot.m_material.Tf = dot.m_bpMaterial.Tf = Colour(0x333333ff);
 		dot.m_rect.anchor.norm = {-0.5f, -0.5f};
 		auto& topLeft = bg.push<gui::Quad>();
 		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
-		topLeft.m_material.Tf = colours::magenta;
+		topLeft.m_material.Tf = topLeft.m_bpMaterial.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(fontURI);
 		text.set("click").height(60U);
 		m_button = &push<gui::Button>(fontURI);
@@ -382,12 +382,12 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
-	m_header.title->m_style.widget.quad.base.Tf = info.header.background;
+	m_header.title->m_style.widget.quad2.base.Tf = info.header.background;
 	m_header.title->m_text->set(info.header.text).height(info.header.textHeight);
-	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
+	m_header.title->m_style.widget.quad2.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
 	m_header.close = &m_header.title->push<Button>(m_fontURI);
-	m_header.close->m_style.widget.quad.base.Tf = colours::red;
+	m_header.close->m_style.widget.quad2.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
 	m_header.close->m_text->set("x").height(20U);
 	m_header.close->m_rect.size = {20.0f, 20.0f};
@@ -398,7 +398,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 
 	m_footer.bg = &m_content->push<Widget>(info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
-	m_footer.bg->m_style.widget.quad.base.Tf = info.footer.background;
+	m_footer.bg->m_style.widget.quad2.base.Tf = info.footer.background;
 	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
 	m_footer.bg->m_rect.anchor.offset.y = info.footer.height * -0.5f;
 	m_footer.bg->m_interact = false;
@@ -576,7 +576,7 @@ class App : public input::Receiver, public Scene {
 			auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
 			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
 			gui::Dropdown::CreateInfo dci;
-			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			dci.flexbox.background2.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
 			dci.textHeight = 30U;
 			dci.options = {"zero", "one", "two", "/bthree", "four"};

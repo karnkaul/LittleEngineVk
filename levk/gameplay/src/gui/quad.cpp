@@ -16,4 +16,11 @@ void Quad::onUpdate(input::Space const&) {
 		m_primitive.construct(graphics::makeRoundedQuad(m_size, m_cornerRadius, s_cornerPoints, gi));
 	}
 }
+
+void Quad::addPrimitives(DrawList& out) const {
+	DrawPrimitive dp;
+	dp.primitive = &m_primitive;
+	dp.blinnPhong = &m_bpMaterial;
+	pushPrimitive(out, dp);
+}
 } // namespace le::gui

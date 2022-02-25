@@ -17,6 +17,7 @@ class InputField : public Widget, public input::Receiver {
 
 	Status onInput(input::State const& state) override;
 	MeshView mesh() const noexcept override;
+	void addPrimitives(DrawList& out) const override;
 
 	bool block(input::State const& state) override;
 

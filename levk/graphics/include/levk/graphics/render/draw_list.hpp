@@ -14,7 +14,7 @@ class DrawList {
 	using const_iterator = iterator;
 
 	DrawList& push(Span<DrawPrimitive const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
-	template <typename T>
+	template <DrawPrimitiveAPI T>
 	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {}) {
 		auto const start = m_primitives.size();
 		AddDrawPrimitives<T>{}(t, std::back_inserter(m_primitives));

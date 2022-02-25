@@ -4,6 +4,8 @@
 #include <levk/engine/render/viewport.hpp>
 #include <levk/gameplay/gui/tree.hpp>
 #include <levk/graphics/font/font.hpp>
+#include <levk/graphics/render/draw_list.hpp>
+#include <levk/graphics/utils/utils.hpp>
 #include <algorithm>
 
 namespace le::gui {
@@ -26,4 +28,6 @@ void TreeNode::update(input::Space const& space) {
 	onUpdate(space);
 	for (auto& node : m_ts) { node->update(space); }
 }
+
+void TreeNode::pushPrimitive(DrawList& out_list, DrawPrimitive primitive) const { out_list.push(primitive, matrix(), graphics::utils::scissor(m_scissor)); }
 } // namespace le::gui

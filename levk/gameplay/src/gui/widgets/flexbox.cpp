@@ -3,7 +3,9 @@
 namespace le::gui {
 Flexbox::Flexbox(not_null<TreeRoot*> root, CreateInfo const& info) noexcept : gui::Widget(root, info.style), m_axis(info.axis), m_pad(info.pad) {
 	m_style.widget.quad.reset();
+	m_style.widget.quad2.reset();
 	m_style.widget.quad.base = info.background;
+	m_style.widget.quad2.base = info.background2;
 	resize();
 }
 

@@ -20,12 +20,21 @@ void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, Asse
 		if (node->m_active && rp.ready(store)) {
 			if (auto mesh = node->mesh(); !mesh.empty()) {
 				DrawScissor const rect = cast(graphics::utils::scissor(node->m_scissor));
-				ListRenderer::add(map, rp.get(store), node->model(), mesh, rect);
+				ListRenderer::add(map, rp.get(store), node->matrix(), mesh, rect);
 			}
 		}
 	}
 	for (auto& node : root.nodes()) {
 		if (node->m_active) { addNodes(map, rp, store, *node); }
+	}
+}
+
+void addNodes(ListRenderer2::RenderMap& map, RenderPipeline const& rp, gui::TreeRoot const& root) {
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { node->addPrimitives(map[rp]); }
+	}
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { addNodes(map, rp, *node); }
 	}
 }
 
@@ -97,8 +106,10 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 		return glm::mat4(1.0f);
 	};
 	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
-		[[maybe_unused]] auto& [rp, stack] = c;
-		// for (auto const& view : stack.views()) { addNodes(map, rp, store, *view); }
+		auto& [rp, stack] = c;
+		if (auto r = rp.find(store)) {
+			for (auto const& view : stack.views()) { addNodes(map, *r, *view); }
+		}
 	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>(exclude)) {
 		auto& [rp, skybox] = c;

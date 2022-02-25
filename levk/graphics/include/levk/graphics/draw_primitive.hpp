@@ -18,8 +18,10 @@ struct DrawPrimitive {
 };
 
 template <typename T>
-struct AddDrawPrimitives {
-	template <std::output_iterator<DrawPrimitive> It>
-	void operator()(T const& t, It it) const;
+struct AddDrawPrimitives;
+
+template <typename T>
+concept DrawPrimitiveAPI = requires(T t, DrawPrimitive& p) {
+	AddDrawPrimitives<T>{}(t, &p);
 };
 } // namespace le::graphics

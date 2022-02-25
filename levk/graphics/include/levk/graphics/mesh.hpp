@@ -23,8 +23,6 @@ struct Mesh {
 	std::vector<Material> materials{};
 	std::vector<MeshPrimitive> primitives{};
 
-	mutable std::vector<MaterialTextures> materialTextures{};
-
 	static std::optional<Mesh> fromObjMtl(io::Path const& jsonURI, io::Media const& media, not_null<VRAM*> vram, vk::Sampler sampler = {});
 
 	Opt<Texture const> texture(std::optional<std::size_t> idx) const noexcept { return idx && *idx < textures.size() ? &textures[*idx] : nullptr; }
@@ -32,19 +30,16 @@ struct Mesh {
 };
 
 template <>
-struct DrawPrimitiveAdder<Mesh> {
+struct AddDrawPrimitives<Mesh> {
 	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(Mesh const& mesh, It it) const {
-		mesh.materialTextures.clear();
-		mesh.materialTextures.reserve(mesh.primitives.size());
 		for (auto const& primitive : mesh.primitives) {
 			auto const& mat = mesh.materials[primitive.m_material];
 			MaterialTextures matTex;
 			for (std::size_t i = 0; i < std::size_t(MatTexType::eCOUNT_); ++i) {
 				matTex.arr[i] = mat.textures.arr[i] ? &mesh.textures[*mat.textures.arr[i]] : nullptr;
 			}
-			mesh.materialTextures.push_back(matTex);
-			*it++ = DrawPrimitive{&primitive, &mesh.materialTextures.back(), mat.data.get_if<BPMaterialData>(), mat.data.get_if<PBRMaterialData>()};
+			*it++ = DrawPrimitive{matTex, &primitive, mat.data.get_if<BPMaterialData>(), mat.data.get_if<PBRMaterialData>()};
 		}
 	}
 };

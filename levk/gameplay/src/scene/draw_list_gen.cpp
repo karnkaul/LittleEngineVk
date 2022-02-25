@@ -37,7 +37,7 @@ Drawable fromMesh(graphics::Mesh const& mesh, glm::mat4 model) {
 	return ret;
 }
 
-Drawable fromMeshView(Span<graphics::DrawPrimitive const> view, glm::mat4 model) {
+Drawable fromDrawPrims(Span<graphics::DrawPrimitive const> view, glm::mat4 model) {
 	if (view.empty()) { return {}; }
 	Drawable ret;
 	ret.mesh.mesh2 = {view.begin(), view.end()};
@@ -76,9 +76,8 @@ void DrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& s
 		auto& [rp, skybox] = c;
 		if (rp.ready(store)) {
 			graphics::DrawPrimitive primitive;
-			graphics::DrawPrimitiveAdder<graphics::Skybox>{}(skybox, &primitive);
-			if (primitive) { map[rp.get(store)].push_back(fromMeshView(primitive, modelMat(e))); }
-			// if (auto mesh = skybox.primitive()) { map[rp.get(store)].push_back(fromMeshView(mesh, modelMat(e))); }
+			graphics::AddDrawPrimitives<graphics::Skybox>{}(skybox, &primitive);
+			if (primitive) { map[rp.get(store)].push_back(fromDrawPrims(primitive, modelMat(e))); }
 		}
 	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
@@ -101,11 +100,11 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 		[[maybe_unused]] auto& [rp, stack] = c;
 		// for (auto const& view : stack.views()) { addNodes(map, rp, store, *view); }
 	}
-	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>()) {
+	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>(exclude)) {
 		auto& [rp, skybox] = c;
 		map[rp.get(store)].add(skybox, modelMat(e));
 	}
-	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>()) {
+	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>(exclude)) {
 		auto& [rp, skybox] = c;
 		if (auto s = skybox.find(store); s && rp.ready(store)) { map[rp.get(store)].add(*s, modelMat(e)); }
 	}

@@ -1,11 +1,11 @@
 #include <levk/core/utils/expect.hpp>
-#include <levk/graphics/render/render_list.hpp>
+#include <levk/graphics/render/draw_list.hpp>
 
 namespace le::graphics {
 DrawList& DrawList::push(Span<DrawPrimitive const> primitives, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
 	std::size_t const start = this->m_primitives.size();
 	m_primitives.reserve(m_primitives.size() + primitives.size());
-	for (auto const primitive : primitives) {
+	for (auto const& primitive : primitives) {
 		if (primitive) { m_primitives.push_back(primitive); }
 	}
 	return push(start, matrix, scissor);
@@ -13,15 +13,15 @@ DrawList& DrawList::push(Span<DrawPrimitive const> primitives, glm::mat4 matrix,
 
 DrawList& DrawList::push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
 	if (primitiveStart >= m_primitives.size()) { return *this; }
-	Entry renderable;
-	renderable.primitives = {primitiveStart, m_primitives.size() - primitiveStart};
-	renderable.matrix = m_matrices.size();
+	Entry entry;
+	entry.primitives = {primitiveStart, m_primitives.size() - primitiveStart};
+	entry.matrix = m_matrices.size();
 	m_matrices.push_back(matrix);
 	if (scissor) {
-		renderable.scissor = m_scissors.size();
+		entry.scissor = m_scissors.size();
 		m_scissors.push_back(*scissor);
 	}
-	m_entries.push_back(renderable);
+	m_entries.push_back(entry);
 	return *this;
 }
 

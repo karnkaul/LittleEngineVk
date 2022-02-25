@@ -17,7 +17,7 @@ class DrawList {
 	template <typename T>
 	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {}) {
 		auto const start = m_primitives.size();
-		DrawPrimitiveAdder<T>{}(t, std::back_inserter(m_primitives));
+		AddDrawPrimitives<T>{}(t, std::back_inserter(m_primitives));
 		return push(start, matrix, scissor);
 	}
 
@@ -73,7 +73,4 @@ class DrawList::iterator {
 
 	friend class DrawList;
 };
-
-enum struct RenderOrder : s64 { eDefault };
-
 } // namespace le::graphics

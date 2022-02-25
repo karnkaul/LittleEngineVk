@@ -142,7 +142,7 @@ class Renderer : public ListRenderer {
 		}
 		auto& drawMap = data.custom;
 		fill(drawMap, store, registry);
-		ListRenderer::render(out_rp, std::move(drawMap));
+		ListRenderer::render(out_rp, store, std::move(drawMap));
 	}
 
   private:
@@ -156,9 +156,9 @@ class Renderer : public ListRenderer {
 				for (auto const& primitive : drawable.mesh.mesh2) {
 					auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
 					auto set2 = drawable.mesh.set(map, 2);
-					set2.update(0, primitive.texture(graphics::MatTexType::eDiffuse));
-					set2.update(1, primitive.texture(graphics::MatTexType::eAlpha));
-					set2.update(2, primitive.texture(graphics::MatTexType::eSpecular), TextureFallback::eBlack);
+					set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
+					set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
+					set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
 					drawable.set(map, 3).update(0, smat);
 				}
 			} else {
@@ -228,7 +228,7 @@ class Renderer2 : public ListRenderer2 {
 		}
 		auto& map = data.custom;
 		fill(map, store, registry);
-		ListRenderer2::render(out_rp, std::move(map));
+		ListRenderer2::render(out_rp, store, std::move(map));
 	}
 
   private:
@@ -241,9 +241,9 @@ class Renderer2 : public ListRenderer2 {
 			for (auto const& primitive : obj.primitives) {
 				auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
 				auto set2 = map.set(2);
-				set2.update(0, primitive.texture(graphics::MatTexType::eDiffuse));
-				set2.update(1, primitive.texture(graphics::MatTexType::eAlpha));
-				set2.update(2, primitive.texture(graphics::MatTexType::eSpecular), TextureFallback::eBlack);
+				set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
+				set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
+				set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
 				map.set(3).update(0, smat);
 			}
 		}

@@ -1,11 +1,8 @@
-#include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/gameplay/scene/draw_list_gen.hpp>
 #include <levk/gameplay/scene/list_renderer.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 #include <unordered_set>
-
-#include <levk/core/log.hpp>
 
 namespace le {
 namespace {
@@ -35,17 +32,17 @@ void ListRenderer::fill(DrawableMap& out_map, AssetStore const& store, dens::reg
 	DebugDrawListGen{}(out_map, store, registry);
 }
 
-void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {
+void ListRenderer::render(RenderPass& out_rp, AssetStore const& store, DrawableMap map) {
 	EXPECT(!out_rp.commandBuffers().empty());
 	if (out_rp.commandBuffers().empty()) { return; }
 	std::vector<DrawList> drawLists;
 	drawLists.reserve(map.size());
 	for (auto& [rpipe, list] : map) {
 		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
-			drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order});
+			drawLists.push_back(DrawList{{}, std::move(list), pipe, s64(rpipe.layer.order)});
 		}
 	}
-	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
+	auto const cache = DescriptorHelper::Cache::make(&store);
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
@@ -75,9 +72,8 @@ void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::C
 	}
 }
 
-void ListRenderer2::add(RenderMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, Span<Primitive const> primitives,
-						std::optional<DrawScissor> scissor) {
-	if (!primitives.empty()) { out_map[rp].push(primitives, model, cast(scissor)); }
+void ListRenderer2::add(RenderMap& out_map, RenderPipeline const& rp, glm::mat4 const& mat, Span<Primitive const> prims, std::optional<DrawScissor> scissor) {
+	out_map[rp].push(prims, mat, cast(scissor));
 }
 
 graphics::PipelineSpec ListRenderer2::pipelineSpec(RenderPipeline const& rp) {
@@ -95,17 +91,17 @@ void ListRenderer2::fill(RenderMap& out_map, AssetStore const& store, dens::regi
 	// DebugDrawListGen{}(out_map, store, registry);
 }
 
-void ListRenderer2::render(RenderPass& out_rp, RenderMap map) {
+void ListRenderer2::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {
 	EXPECT(!out_rp.commandBuffers().empty());
 	if (out_rp.commandBuffers().empty()) { return; }
 	std::vector<RenderList> drawLists;
 	drawLists.reserve(map.size());
 	for (auto& [rpipe, list] : map) {
 		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
-			drawLists.push_back(RenderList{pipe, std::move(list), graphics::RenderOrder{rpipe.layer.order}});
+			drawLists.push_back(RenderList{pipe, std::move(list), rpipe.layer.order});
 		}
 	}
-	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
+	auto const cache = DescriptorHelper::Cache::make(&store);
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());

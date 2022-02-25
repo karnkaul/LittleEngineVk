@@ -38,7 +38,7 @@ RenderFlags Jsonify<RenderFlags>::operator()(dj::json const& json) const {
 
 dj::json Jsonify<RenderLayer>::operator()(RenderLayer const& layer) const {
 	dj::json ret;
-	insert(ret, "mode", polygonModes[layer.mode], "topology", topologies[layer.topology], "line_width", layer.lineWidth, "order", layer.order);
+	insert(ret, "mode", polygonModes[layer.mode], "topology", topologies[layer.topology], "line_width", layer.lineWidth, "order", s64(layer.order));
 	ret.insert("flags", to(layer.flags));
 	return ret;
 }
@@ -49,7 +49,7 @@ RenderLayer Jsonify<RenderLayer>::operator()(dj::json const& json) const {
 	if (auto top = json.get_as<std::string_view>("topology"); !top.empty()) { ret.topology = topologies[top]; }
 	ret.flags = to<RenderFlags>(json.get("flags"));
 	ret.lineWidth = json.get_as<f32>("line_width", ret.lineWidth);
-	ret.order = json.get_as<s64>("order");
+	ret.order = RenderOrder{json.get_as<s64>("order")};
 	return ret;
 }
 } // namespace le::io

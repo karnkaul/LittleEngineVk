@@ -214,10 +214,10 @@ void Engine::addDefaultAssets() {
 		RenderLayer layer;
 		m_impl->store.add("render_layers/default", layer);
 		layer.flags = RenderFlag::eAlphaBlend;
-		layer.order = 100;
+		layer.order = RenderOrder{100};
 		m_impl->store.add("render_layers/ui", layer);
 		layer.flags = {};
-		layer.order = -100;
+		layer.order = RenderOrder{-100};
 		m_impl->store.add("render_layers/skybox", layer);
 	}
 }

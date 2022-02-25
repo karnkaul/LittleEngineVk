@@ -9,17 +9,16 @@ class Texture;
 using MaterialTextures = TMatTexArray<Opt<Texture const>>;
 
 struct DrawPrimitive {
+	MaterialTextures textures{};
 	Opt<MeshPrimitive const> primitive{};
-	Opt<MaterialTextures const> textures{};
 	Opt<BPMaterialData const> blinnPhong{};
 	Opt<PBRMaterialData const> pbr{};
 
-	explicit operator bool() const noexcept { return primitive && textures && (blinnPhong || pbr); }
-	Opt<Texture const> texture(MatTexType type) const noexcept { return textures ? (*textures)[type] : nullptr; }
+	explicit operator bool() const noexcept { return primitive && (blinnPhong || pbr); }
 };
 
 template <typename T>
-struct DrawPrimitiveAdder {
+struct AddDrawPrimitives {
 	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(T const& t, It it) const;
 };

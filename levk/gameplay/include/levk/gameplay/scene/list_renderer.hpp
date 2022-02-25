@@ -5,7 +5,7 @@
 #include <levk/graphics/render/pipeline_factory.hpp>
 #include <levk/graphics/render/renderer.hpp>
 
-#include <levk/graphics/render/render_list.hpp>
+#include <levk/engine/render/render_list.hpp>
 
 namespace dens {
 class registry;
@@ -23,7 +23,7 @@ class ListRenderer {
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
 	static void add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, std::optional<DrawScissor> scissor = {});
 
-	void render(RenderPass& out_rp, DrawableMap map);
+	void render(RenderPass& out_rp, AssetStore const& store, DrawableMap map);
 
   protected:
 	virtual void fill(DrawableMap& out_map, AssetStore const& store, dens::registry const& registry);
@@ -34,14 +34,6 @@ class ListRenderer {
 
 class ListRenderer2 {
   public:
-	struct RenderList {
-		graphics::Pipeline pipeline;
-		graphics::DrawList drawList;
-		graphics::RenderOrder order = graphics::RenderOrder::eDefault;
-
-		auto operator<=>(RenderList const& rhs) const { return order <=> rhs.order; }
-	};
-
 	using PipelineFactory = graphics::PipelineFactory;
 	using Pipeline = graphics::Pipeline;
 	using RenderPass = graphics::RenderPass;
@@ -52,10 +44,9 @@ class ListRenderer2 {
 		return rect ? std::optional<vk::Rect2D>({{rect->offset.x, rect->offset.y}, {rect->extent.x, rect->extent.y}}) : std::nullopt;
 	}
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
-	static void add(RenderMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, Span<Primitive const> primitives,
-					std::optional<DrawScissor> scissor = {});
+	static void add(RenderMap& out_map, RenderPipeline const& rp, glm::mat4 const& mat, Span<Primitive const> prims, std::optional<DrawScissor> scissor = {});
 
-	void render(RenderPass& out_rp, RenderMap map);
+	void render(RenderPass& out_rp, AssetStore const& store, RenderMap map);
 
   protected:
 	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry);

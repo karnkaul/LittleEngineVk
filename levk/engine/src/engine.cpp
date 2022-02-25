@@ -16,6 +16,7 @@
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
+#include <levk/graphics/material_data.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
@@ -209,7 +210,11 @@ void Engine::addDefaultAssets() {
 		auto wf_cube = m_impl->store.add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
-	/* materials */ { m_impl->store.add("materials/default", Material{}); }
+	/* materials */ {
+		m_impl->store.add("materials/default", Material{});
+		m_impl->store.add("materials/bp/default", graphics::BPMaterialData{});
+		m_impl->store.add("materials/pbr/default", graphics::PBRMaterialData{});
+	}
 	/* render layers */ {
 		RenderLayer layer;
 		m_impl->store.add("render_layers/default", layer);

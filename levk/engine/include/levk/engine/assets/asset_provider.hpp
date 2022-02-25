@@ -10,19 +10,18 @@ template <typename T>
 class AssetProvider {
   public:
 	AssetProvider() = default;
-	AssetProvider(std::string uri) noexcept { this->uri(std::move(uri)); }
+	AssetProvider(Hash assetURI) noexcept : m_uri(assetURI) {}
 
-	std::string_view uri() const noexcept { return m_uri; }
-	void uri(std::string assetURI) noexcept;
+	Hash uri() const noexcept { return m_uri; }
+	void uri(Hash assetURI) noexcept { m_uri = assetURI; }
 
-	bool empty() const noexcept { return m_hash == Hash(); }
+	bool empty() const noexcept { return m_uri == Hash(); }
 	bool ready(AssetStore const& store) const;
 	T const& get(AssetStore const& store, T const& fallback = T{}) const;
 	Opt<T const> find(AssetStore const& store) const;
 
   private:
-	std::string m_uri;
-	Hash m_hash;
+	Hash m_uri;
 };
 
 using RenderLayerProvider = AssetProvider<RenderLayer>;
@@ -32,7 +31,7 @@ using RenderPipeProvider = AssetProvider<RenderPipeline>;
 
 template <typename T>
 bool AssetProvider<T>::ready(AssetStore const& store) const {
-	return store.exists<T>(m_hash);
+	return store.exists<T>(m_uri);
 }
 
 template <typename T>
@@ -43,12 +42,6 @@ T const& AssetProvider<T>::get(AssetStore const& store, T const& fallback) const
 
 template <typename T>
 Opt<T const> AssetProvider<T>::find(AssetStore const& store) const {
-	return store.find<T>(m_hash);
-}
-
-template <typename T>
-void AssetProvider<T>::uri(std::string assetURI) noexcept {
-	m_uri = std::move(assetURI);
-	m_hash = m_uri;
+	return store.find<T>(m_uri);
 }
 } // namespace le

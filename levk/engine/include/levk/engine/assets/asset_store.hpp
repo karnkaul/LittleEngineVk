@@ -27,6 +27,8 @@ class AssetStore : public NoCopy {
 	bool exists(Hash uri) const;
 	template <typename T>
 	bool exists(Hash uri) const;
+	template <typename T>
+	std::string_view uri(Hash hash) const;
 	bool unload(Hash uri);
 	template <typename T>
 	bool unload(Hash uri);
@@ -61,6 +63,8 @@ class AssetStore : public NoCopy {
 
 	template <typename T>
 	Opt<T> add(std::unique_ptr<TAsset<T>>&& tasset);
+	template <typename T>
+	Opt<TAsset<T>> findImpl(Hash uri) const;
 	void modified(Hash uri);
 
 	template <typename T>
@@ -141,17 +145,20 @@ Opt<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
 
 template <typename T>
 Opt<T> AssetStore::find(Hash uri) const {
-	ktl::klock lock(m_assets);
-	if (auto it = lock->find(uri); it != lock->end()) {
-		EXPECT(it->second);
-		if (it->second->sign == sign<T>()) { return toT<T>(*it->second); }
-	}
+	auto t = findImpl<T>(uri);
+	if (t && t->t) { return &*t->t; }
 	return {};
 }
 
 template <typename T>
 bool AssetStore::exists(Hash uri) const {
-	return find<T>(uri) != nullptr;
+	return findImpl<T>(uri) != nullptr;
+}
+
+template <typename T>
+std::string_view AssetStore::uri(Hash hash) const {
+	if (auto t = findImpl<T>(hash)) { return t->uri; }
+	return {};
 }
 
 template <typename T>
@@ -186,11 +193,23 @@ template <typename T>
 Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
 	Hash const key = tasset->uri;
+	if (key == Hash()) { return {}; }
 	ktl::klock lock(m_assets);
 	auto const [it, b] = lock->insert_or_assign(key, std::move(tasset));
 	if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", it->second->uri); }
 	logI(LC_EndUser, "== [Asset] [{}] added", it->second->uri);
 	return toT<T>(*it->second);
+}
+
+template <typename T>
+auto AssetStore::findImpl(Hash uri) const -> Opt<TAsset<T>> {
+	if (uri == Hash()) { return {}; }
+	ktl::klock lock(m_assets);
+	if (auto it = lock->find(uri); it != lock->end()) {
+		EXPECT(it->second);
+		if (it->second->sign == sign<T>()) { return &toTAsset<T>(*it->second); }
+	}
+	return {};
 }
 
 template <typename T>

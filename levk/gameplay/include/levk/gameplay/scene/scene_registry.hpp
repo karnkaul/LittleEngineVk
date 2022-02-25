@@ -27,13 +27,13 @@ class SceneRegistry : public utils::VBase {
 
 	dens::entity spawnNode(std::string name);
 
-	dens::entity spawnMesh(std::string name, MeshViewProvider&& provider, std::string pipeURI);
-	dens::entity spawnMesh(std::string name, DynamicMeshView&& dynMesh, std::string pipeURI);
+	dens::entity spawnMesh(std::string name, MeshViewProvider&& provider, Hash pipeURI);
+	dens::entity spawnMesh(std::string name, DynamicMeshView&& dynMesh, Hash pipeURI);
 	template <MeshViewAPI T>
-	dens::entity spawnMesh(std::string name, std::string assetURI, std::string pipeURI);
+	dens::entity spawnMesh(std::string name, std::string assetURI, Hash pipeURI);
 
 	template <typename T, typename... Args>
-	dens::entity spawn(std::string name, std::string pipeURI, Args&&... args);
+	dens::entity spawn(std::string name, Hash pipeURI, Args&&... args);
 
 	void updateSystems(Time_s dt, Engine::Service const& engine);
 	Material const* defaultMaterial() const;
@@ -50,15 +50,15 @@ class SceneRegistry : public utils::VBase {
 // impl
 
 template <MeshViewAPI T>
-dens::entity SceneRegistry::spawnMesh(std::string name, std::string assetURI, std::string pipeURI) {
-	return spawnMesh(std::move(name), MeshViewProvider::make<T>(std::move(assetURI)), std::move(pipeURI));
+dens::entity SceneRegistry::spawnMesh(std::string name, std::string assetURI, Hash pipeURI) {
+	return spawnMesh(std::move(name), MeshViewProvider::make<T>(std::move(assetURI)), pipeURI);
 }
 
 template <typename T, typename... Args>
-dens::entity SceneRegistry::spawn(std::string name, std::string pipeURI, Args&&... args) {
+dens::entity SceneRegistry::spawn(std::string name, Hash pipeURI, Args&&... args) {
 	auto ret = m_registry.make_entity(std::move(name));
 	auto& t = m_registry.attach<T>(ret, std::forward<Args>(args)...);
-	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
+	m_registry.attach(ret, RenderPipeProvider(pipeURI));
 	return ret;
 }
 } // namespace le

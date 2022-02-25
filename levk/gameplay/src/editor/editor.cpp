@@ -130,12 +130,12 @@ void inspectMP(Inspect<MeshViewProvider> provider) {
 }
 
 void inspectRLP(Inspect<RenderPipeProvider> provider) {
-	Text uri(provider.get().uri());
+	Text uri(Services::get<AssetStore>()->uri<RenderPipeline>(provider.get().uri()));
 	if (auto popup = Popup("RenderPipeline##inspect_pipe_provider")) {
 		static ktl::stack_string<128> s_search;
 		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<RenderPipeline>(s_search)) {
-			provider.get() = std::string(select.item);
+			provider.get().uri(select.item);
 			popup.close();
 		}
 	}

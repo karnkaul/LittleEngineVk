@@ -4,7 +4,7 @@
 #include <ktl/fixed_vector.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/engine/render/mesh_view.hpp>
-#include <levk/graphics/mesh_view.hpp>
+#include <levk/graphics/primitive_view.hpp>
 #include <optional>
 
 namespace le {

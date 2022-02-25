@@ -7,6 +7,11 @@ struct DrawListGen {
 	void operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const;
 };
 
+struct DrawListGen2 {
+	// Populates DrawGroup + [DynamicMesh, MeshProvider, gui::ViewStack]
+	void operator()(ListRenderer2::RenderMap& map, AssetStore const& store, dens::registry const& registry) const;
+};
+
 struct DebugDrawListGen {
 	inline static bool populate_v = levk_debug;
 

@@ -1,6 +1,6 @@
 #pragma once
 #include <levk/graphics/mesh_primitive.hpp>
-#include <levk/graphics/mesh_view.hpp>
+#include <levk/graphics/primitive_view.hpp>
 
 namespace le::graphics {
 class Skybox {
@@ -15,5 +15,13 @@ class Skybox {
   private:
 	MaterialTextures m_materialTextures{};
 	MeshPrimitive m_mesh;
+};
+
+template <>
+struct PrimitiveAdder<Skybox> {
+	template <std::output_iterator<PrimitiveView> It>
+	void operator()(Skybox const& skybox, It it) const {
+		if (auto primitive = skybox.primitive()) { *it++ = skybox.primitive(); }
+	}
 };
 } // namespace le::graphics

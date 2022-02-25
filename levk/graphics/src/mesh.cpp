@@ -214,13 +214,7 @@ std::optional<Mesh> Mesh::fromObjMtl(io::Path const& jsonURI, io::Media const& m
 std::vector<PrimitiveView> Mesh::primitiveViews() const {
 	std::vector<PrimitiveView> ret;
 	ret.reserve(primitives.size());
-	for (auto const& primitive : primitives) {
-		auto const& material = materials[primitive.m_material];
-		for (std::size_t i = 0; i < std::size_t(MatTexType::eCOUNT_); ++i) {
-			materialTextures.arr[i] = material.textures.arr[i] ? &textures[*material.textures.arr[i]] : nullptr;
-		}
-		ret.push_back({&primitive, &materialTextures, material.data.get_if<BPMaterialData>(), material.data.get_if<PBRMaterialData>()});
-	}
+	PrimitiveAdder<Mesh>{}(*this, std::back_inserter(ret));
 	return ret;
 }
 } // namespace le::graphics

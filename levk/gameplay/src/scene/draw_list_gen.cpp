@@ -75,12 +75,43 @@ void DrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& s
 	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>()) {
 		auto& [rp, skybox] = c;
 		if (rp.ready(store)) {
-			if (auto mesh = skybox.primitive()) { map[rp.get(store)].push_back(fromMeshView(mesh, modelMat(e))); }
+			graphics::PrimitiveView primitive;
+			graphics::PrimitiveAdder<graphics::Skybox>{}(skybox, &primitive);
+			if (primitive) { map[rp.get(store)].push_back(fromMeshView(primitive, modelMat(e))); }
+			// if (auto mesh = skybox.primitive()) { map[rp.get(store)].push_back(fromMeshView(mesh, modelMat(e))); }
 		}
 	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
 		auto& [rp, mesh] = c;
 		if (rp.ready(store) && mesh.ready(store)) { map[rp.get(store)].push_back(fromMesh(mesh.get(store), modelMat(e))); }
+	}
+}
+
+void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& store, dens::registry const& registry) const {
+	static constexpr auto exclude = dens::exclude<NoDraw>();
+	auto modelMat = [&registry](dens::entity e) {
+		if (auto n = registry.find<SceneNode>(e)) {
+			return n->model(registry);
+		} else if (auto t = registry.find<Transform>(e)) {
+			return t->matrix();
+		}
+		return glm::mat4(1.0f);
+	};
+	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
+		auto& [rp, stack] = c;
+		// for (auto const& view : stack.views()) { addNodes(map, rp, store, *view); }
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>()) {
+		auto& [rp, skybox] = c;
+		map[rp.get(store)].add(skybox, modelMat(e));
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>()) {
+		auto& [rp, skybox] = c;
+		if (auto s = skybox.find(store); s && rp.ready(store)) { map[rp.get(store)].add(*s, modelMat(e)); }
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
+		auto& [rp, mesh] = c;
+		if (auto m = mesh.find(store); m && rp.ready(store)) { map[rp.get(store)].add(*m, modelMat(e)); }
 	}
 }
 

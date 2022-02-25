@@ -74,4 +74,49 @@ void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::C
 		}
 	}
 }
+
+void ListRenderer2::add(RenderMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, Span<Primitive const> primitives,
+						std::optional<DrawScissor> scissor) {
+	if (!primitives.empty()) { out_map[rp].push(primitives, model, cast(scissor)); }
+}
+
+graphics::PipelineSpec ListRenderer2::pipelineSpec(RenderPipeline const& rp) {
+	graphics::ShaderSpec ss;
+	for (auto const& uri : rp.shaderURIs) { ss.moduleURIs.push_back(uri); }
+	graphics::PipelineSpec ret = graphics::PipelineFactory::spec(ss, rp.layer.flags);
+	ret.fixedState.lineWidth = rp.layer.lineWidth;
+	ret.fixedState.mode = polygonModes[rp.layer.mode];
+	ret.fixedState.topology = topologies[rp.layer.topology];
+	return ret;
+}
+
+void ListRenderer2::fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) {
+	DrawListGen2{}(out_map, store, registry);
+	// DebugDrawListGen{}(out_map, store, registry);
+}
+
+void ListRenderer2::render(RenderPass& out_rp, RenderMap map) {
+	EXPECT(!out_rp.commandBuffers().empty());
+	if (out_rp.commandBuffers().empty()) { return; }
+	std::vector<RenderList> drawLists;
+	drawLists.reserve(map.size());
+	for (auto& [rpipe, list] : map) {
+		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
+			drawLists.push_back(RenderList{pipe, std::move(list), graphics::RenderOrder{rpipe.layer.order}});
+		}
+	}
+	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
+	std::unordered_set<graphics::ShaderInput*> pipes;
+	auto const& cb = out_rp.commandBuffers().front();
+	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
+	std::sort(drawLists.begin(), drawLists.end());
+	for (auto const& list : drawLists) {
+		EXPECT(list.pipeline.valid());
+		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
+		pipes.insert(list.pipeline.shaderInput);
+		writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list.drawList);
+		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list.drawList, cb);
+	}
+	for (auto pipe : pipes) { pipe->swap(); }
+}
 } // namespace le

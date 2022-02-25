@@ -204,6 +204,68 @@ class Renderer : public ListRenderer {
 	graphics::ShaderBuffer* m_lights{};
 };
 
+class Renderer2 : public ListRenderer2 {
+  public:
+	using Camera = graphics::Camera;
+
+	struct SceneData {
+		RenderMap custom;
+		ShaderSceneView view;
+		Span<DirLight const> lights;
+	};
+
+	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, AssetStore const& store, dens::registry const& registry) {
+		m_mats = &sbMap.get("mats");
+		m_mats->write(data.view);
+		m_lights = &sbMap.get("lights");
+		if (!data.lights.empty()) {
+			DirLights dl;
+			for (std::size_t idx = 0; idx < data.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = data.lights[idx]; }
+			dl.count = std::min((u32)data.lights.size(), (u32)dl.lights.size());
+			m_lights->write(dl);
+		} else {
+			m_lights->write(DirLights());
+		}
+		auto& map = data.custom;
+		fill(map, store, registry);
+		ListRenderer2::render(out_rp, std::move(map));
+	}
+
+  private:
+	void writeSets(DescriptorMap map, graphics::DrawList const& list) override {
+		auto set0 = map.set(0);
+		set0.update(0, *m_mats);
+		set0.update(1, *m_lights);
+		for (auto const& obj : list) {
+			map.set(1).update(0, *obj.matrix);
+			for (auto const& primitive : obj.primitives) {
+				auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
+				auto set2 = map.set(2);
+				set2.update(0, primitive.texture(graphics::MatTexType::eDiffuse));
+				set2.update(1, primitive.texture(graphics::MatTexType::eAlpha));
+				set2.update(2, primitive.texture(graphics::MatTexType::eSpecular), TextureFallback::eBlack);
+				map.set(3).update(0, smat);
+			}
+		}
+	}
+
+	void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const override {
+		bind(0);
+		for (auto const& d : list) {
+			bind(1);
+			if (d.scissor) { cb.setScissor(*d.scissor); }
+			for (auto const& primitive : d.primitives) {
+				bind(2);
+				bind(3);
+				primitive.primitive->draw(cb);
+			}
+		}
+	}
+
+	graphics::ShaderBuffer* m_mats{};
+	graphics::ShaderBuffer* m_lights{};
+};
+
 class TestView : public gui::View {
   public:
 	TestView(not_null<gui::ViewStack*> parent, std::string name, Hash fontURI = gui::defaultFontURI) : gui::View(parent, std::move(name)) {

@@ -18,6 +18,7 @@ class AssetProvider {
 	bool empty() const noexcept { return m_hash == Hash(); }
 	bool ready(AssetStore const& store) const;
 	T const& get(AssetStore const& store, T const& fallback = T{}) const;
+	Opt<T const> find(AssetStore const& store) const;
 
   private:
 	std::string m_uri;
@@ -36,8 +37,13 @@ bool AssetProvider<T>::ready(AssetStore const& store) const {
 
 template <typename T>
 T const& AssetProvider<T>::get(AssetStore const& store, T const& fallback) const {
-	if (auto t = store.find<T>(m_hash)) { return *t; }
+	if (auto t = find(store)) { return *t; }
 	return fallback;
+}
+
+template <typename T>
+Opt<T const> AssetProvider<T>::find(AssetStore const& store) const {
+	return store.find<T>(m_hash);
 }
 
 template <typename T>

@@ -12,7 +12,7 @@ class Quad : public TreeNode {
 
 	void onUpdate(input::Space const& space) override;
 	MeshView mesh() const noexcept override { return MeshObj{&m_primitive, &m_material}; }
-	void addPrimitives(DrawList& out) const override;
+	void addDrawPrimitives(DrawList& out) const override;
 
 	inline static u16 s_cornerPoints = 16;
 

@@ -32,7 +32,7 @@ void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, Asse
 
 void addNodes(ListRenderer2::RenderMap& map, RenderPipeline const& rp, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
-		if (node->m_active) { node->addPrimitives(map[rp]); }
+		if (node->m_active) { node->addDrawPrimitives(map[rp]); }
 	}
 	for (auto& node : root.nodes()) {
 		if (node->m_active) { addNodes(map, rp, *node); }

@@ -21,14 +21,14 @@ struct BPMaterialData {
 };
 
 struct PBRMaterialData {
-	enum class Mode : u8 { Opaque, Mask, Blend };
+	enum class Mode : u8 { eOpaque, eMask, eBlend };
 
 	RGBA baseColourFactor = colours::white;
 	RGBA emissiveFactor = colours::white;
 	f32 metallicFactor = 1.0f;
 	f32 roughnessFactor = 1.0f;
 	f32 alphaCutoff = 0.5f;
-	Mode mode = Mode::Opaque;
+	Mode mode = Mode::eOpaque;
 };
 
 struct BPMaterialData::Std140 {

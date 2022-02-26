@@ -9,25 +9,22 @@ namespace le {
 class PrimitiveProvider {
   public:
 	using DrawPrimitive = graphics::DrawPrimitive;
-	using MatTexType = graphics::MatTexType;
 
 	inline static Hash const default_material_v = "materials/bp/default";
 
 	PrimitiveProvider() = default;
-	PrimitiveProvider(Hash meshPrimitiveURI, Hash materialURI = default_material_v);
+	PrimitiveProvider(Hash meshPrimitiveURI, Hash materialURI = default_material_v, Hash matTexRefsURI = {});
 
-	void texture(MatTexType type, Hash uri) { m_textures[type] = uri; }
-	Hash texture(MatTexType type) const { return m_textures[type]; }
 	Hash meshPrimitiveURI() const { return m_meshURI; }
 	Hash materialURI() const { return m_materialURI; }
+	Hash matTexRefsURI() const { return m_matTexRefsURI; }
 
-	bool ready(AssetStore const& store) const;
 	bool addDrawPrimitives(AssetStore const& store, graphics::DrawList& out, glm::mat4 const& matrix);
 
   private:
-	graphics::TMatTexArray<Hash> m_textures{};
 	Hash m_meshURI{};
 	Hash m_materialURI{};
+	Hash m_matTexRefsURI{};
 };
 
 // class DynamicMeshView {

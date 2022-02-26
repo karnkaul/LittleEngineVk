@@ -113,9 +113,15 @@
 	],
 	"materials": [
 		{
-			"uri": "materials/player/cube",
-			"map_Kd": "textures/container2/diffuse",
-			"map_Ks": "textures/container2/specular"
+			"uri": "materials/bp/player/cube",
+			"Ks": "#777777ff"
+		}
+	],
+	"texture_refs": [
+		{
+			"uri": "texture_uris/player/cube",
+			"diffuse": "textures/container2/diffuse",
+			"specular": "textures/container2/specular"
 		}
 	],
 	"skyboxes": [

@@ -36,9 +36,9 @@ MeshView InputField::mesh() const noexcept {
 	return MeshObjView(m_meshes);
 }
 
-void InputField::addPrimitives(DrawList& out) const {
-	m_outline->addPrimitives(out);
-	Quad::addPrimitives(out);
+void InputField::addDrawPrimitives(DrawList& out) const {
+	m_outline->addDrawPrimitives(out);
+	Quad::addDrawPrimitives(out);
 	pushPrimitive(out, m_textMesh.drawPrimitive());
 	pushPrimitive(out, m_cursor.drawPrimitive());
 }

@@ -78,7 +78,7 @@ class TreeNode : public TreeRoot {
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
 	virtual MeshView mesh() const noexcept { return {}; }
-	virtual void addPrimitives(DrawList&) const {}
+	virtual void addDrawPrimitives(DrawList&) const {}
 
 	DrawScissor m_scissor;
 	glm::quat m_orientation = graphics::identity;

@@ -17,7 +17,7 @@ void Quad::onUpdate(input::Space const&) {
 	}
 }
 
-void Quad::addPrimitives(DrawList& out) const {
+void Quad::addDrawPrimitives(DrawList& out) const {
 	DrawPrimitive dp;
 	dp.primitive = &m_primitive;
 	dp.blinnPhong = &m_bpMaterial;

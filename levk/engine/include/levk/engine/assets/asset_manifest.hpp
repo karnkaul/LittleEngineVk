@@ -3,12 +3,14 @@
 #include <dumb_tasks/executor.hpp>
 #include <levk/engine/assets/asset_loaders_store.hpp>
 #include <levk/engine/engine.hpp>
+#include <levk/engine/render/texture_refs.hpp>
+#include <levk/graphics/draw_primitive.hpp>
 #include <map>
 
 namespace le {
 namespace graphics {
 struct Mesh;
-}
+} // namespace graphics
 struct RenderPipeline;
 class Skybox;
 class Model;
@@ -93,7 +95,7 @@ constexpr bool any_same_v = (... || std::is_same_v<T, Compare>);
 template <typename T>
 constexpr AssetManifest::Parser::Order AssetManifest::Parser::order(Order fallback) noexcept {
 	using namespace graphics;
-	if constexpr (detail::any_same_v<T, Sampler, SpirV, RenderLayer>) {
+	if constexpr (detail::any_same_v<T, Sampler, SpirV, RenderLayer, BPMaterialData, PBRMaterialData, TextureRefs>) {
 		return Order::eZeroth;
 	} else if constexpr (detail::any_same_v<T, Texture, RenderPipeline>) {
 		return Order::eFirst;

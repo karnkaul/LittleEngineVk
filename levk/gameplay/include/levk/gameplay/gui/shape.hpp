@@ -12,7 +12,7 @@ class Shape : public TreeNode {
 
 	void set(graphics::Geometry geometry) { m_primitive.construct(std::move(geometry)); }
 	MeshView mesh() const noexcept override { return MeshObj{&m_primitive, &m_material}; }
-	void addPrimitives(DrawList& out) const override;
+	void addDrawPrimitives(DrawList& out) const override;
 
 	graphics::BPMaterialData m_bpMaterial;
 	Material m_material;

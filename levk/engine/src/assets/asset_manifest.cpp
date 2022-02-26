@@ -117,8 +117,8 @@ static graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
 	return fallback;
 }
 
-ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
-	Material mat;
+ktl::kfunction<void()> bpMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	graphics::BPMaterialData mat;
 	mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
 	mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
 	mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
@@ -126,17 +126,37 @@ ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj
 	mat.Ns = json->get_as<f32>("Ns", mat.Ns);
 	mat.d = json->get_as<f32>("d", mat.d);
 	mat.illum = json->get_as<int>("illum", mat.illum);
-	Hash const map_Kd = json->get_as<std::string_view>("map_Kd");
-	Hash const map_Ks = json->get_as<std::string_view>("map_Ks");
-	Hash const map_d = json->get_as<std::string_view>("map_d");
-	Hash const map_bump = json->get_as<std::string_view>("map_bump");
-	return [uri = std::move(uri), engine, mat, map_Kd, map_Ks, map_d, map_bump]() mutable {
-		mat.map_Kd = engine.store().find<graphics::Texture>(map_Kd);
-		mat.map_Ks = engine.store().find<graphics::Texture>(map_Ks);
-		mat.map_d = engine.store().find<graphics::Texture>(map_d);
-		mat.map_Bump = engine.store().find<graphics::Texture>(map_bump);
-		engine.store().add(std::move(uri), mat);
-	};
+	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
+}
+
+ktl::kfunction<void()> pbrMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	graphics::PBRMaterialData mat;
+	mat.alphaCutoff = json->get_as<f32>("alpha_cutoff", mat.alphaCutoff);
+	mat.baseColourFactor = parseRGBA(json->get("base_colour_factor"), mat.baseColourFactor);
+	mat.emissiveFactor = parseRGBA(json->get("emissive_factor"), mat.emissiveFactor);
+	mat.metallicFactor = json->get_as<f32>("metallic_factor", mat.metallicFactor);
+	mat.roughnessFactor = json->get_as<f32>("roughness_factor", mat.roughnessFactor);
+	if (auto mode = json->find_as<std::string_view>("mode")) {
+		if (*mode == "blend") {
+			mat.mode = graphics::PBRMaterialData::Mode::eBlend;
+		} else if (*mode == "mask") {
+			mat.mode = graphics::PBRMaterialData::Mode::eMask;
+		}
+	}
+	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
+}
+
+ktl::kfunction<void()> textureRefsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	TextureRefs texRefs;
+	texRefs.textures[graphics::MatTexType::eDiffuse] = json->get_as<std::string_view>("diffuse");
+	texRefs.textures[graphics::MatTexType::eSpecular] = json->get_as<std::string_view>("specular");
+	texRefs.textures[graphics::MatTexType::eAlpha] = json->get_as<std::string_view>("alpha");
+	texRefs.textures[graphics::MatTexType::eBump] = json->get_as<std::string_view>("bump");
+	texRefs.textures[graphics::MatTexType::eMetalRough] = json->get_as<std::string_view>("metal_rough");
+	texRefs.textures[graphics::MatTexType::eOcclusion] = json->get_as<std::string_view>("occlusion");
+	texRefs.textures[graphics::MatTexType::eNormal] = json->get_as<std::string_view>("normal");
+	texRefs.textures[graphics::MatTexType::eEmissive] = json->get_as<std::string_view>("emissive");
+	return [uri = std::move(uri), texRefs, engine] { engine.store().add(std::move(uri), texRefs); };
 }
 
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {
@@ -176,6 +196,7 @@ struct DefaultParser : AssetManifest::Parser {
 		if (name == "textures") { return textures(group); }
 		if (name == "render_pipelines") { return renderPipelines(group); }
 		if (name == "materials") { return materials(group); }
+		if (name == "texture_refs") { return textureRefs(group); }
 		if (name == "fonts") { return fonts(group); }
 		if (name == "skyboxes") { return skyboxes(group); }
 		if (name == "models") { return models(group); }
@@ -241,7 +262,20 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t materials(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			enqueue(order<Material>(), materialsFunc(m_engine, std::move(uri), json));
+			if (json->get_as<std::string_view>("type") == "pbr") {
+				enqueue(order<graphics::PBRMaterialData>(), pbrMaterialFunc(m_engine, std::move(uri), json));
+			} else {
+				enqueue(order<graphics::BPMaterialData>(), bpMaterialFunc(m_engine, std::move(uri), json));
+			}
+			++ret;
+		}
+		return ret;
+	}
+
+	std::size_t textureRefs(Group const& group) const {
+		std::size_t ret{};
+		for (auto& [uri, json] : group) {
+			enqueue(order<TextureRefs>(), textureRefsFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;

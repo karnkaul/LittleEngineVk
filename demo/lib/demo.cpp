@@ -486,13 +486,7 @@ class App : public input::Receiver, public Scene {
 		}
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
-			// TODO: move to manifest
-			graphics::BPMaterialData playerMat;
-			playerMat.Ks = Colour(0x777777ff);
-			engine().store().add("materials/bp/player", playerMat);
-			PrimitiveProvider provider("mesh_primitives/cube", "materials/bp/player");
-			provider.texture(graphics::MatTexType::eDiffuse, "textures/container2/diffuse");
-			provider.texture(graphics::MatTexType::eSpecular, "textures/container2/specular");
+			PrimitiveProvider provider("mesh_primitives/cube", "materials/bp/player/cube", "texture_uris/player/cube");
 			m_data.player = spawnMesh("player", MeshViewProvider::make("mesh_primitives/cube", "materials/player/cube"), "render_pipelines/lit");
 			m_registry.attach(m_data.player, std::move(provider));
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});

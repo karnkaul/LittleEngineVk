@@ -479,6 +479,11 @@ class App : public input::Receiver, public Scene {
 		editor::Inspector::attach<PlayerController>(ipc);
 		editor::Inspector::attach<gui::Dialogue>([](editor::Inspect<gui::Dialogue>) { editor::Text("Dialogue found!"); });
 
+		{
+			auto skybox = spawnNode("skybox");
+			m_registry.attach(skybox, AssetProvider<graphics::Skybox>("skyboxes/sky_dusk"));
+			m_registry.attach(skybox, RenderPipeProvider("render_pipelines/skybox"));
+		}
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
 			// TODO: move to manifest
@@ -622,13 +627,6 @@ class App : public input::Receiver, public Scene {
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
 			m_registry.attach(triggerDebug, RenderPipeProvider("render_pipelines/wireframe"));
-		}
-
-		{
-			auto sky2 = spawnNode("skybox2");
-			auto& skybox = m_registry.attach(sky2, graphics::Skybox(&engine().vram()));
-			skybox.cubemap(engine().store().find<graphics::Texture>("cubemaps/sky_dusk"));
-			m_registry.attach(sky2, RenderPipeProvider("render_pipelines/skybox"));
 		}
 
 		if (auto font = engine().store().find<graphics::Font>("fonts/vera_serif")) {

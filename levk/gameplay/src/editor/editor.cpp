@@ -20,6 +20,7 @@
 #include <levk/gameplay/editor/resizer.hpp>
 #include <levk/gameplay/editor/scene_tree.hpp>
 #include <levk/graphics/render/renderer.hpp>
+#include <levk/graphics/skybox.hpp>
 #endif
 
 namespace le::editor {
@@ -64,17 +65,14 @@ void inspectMP(Inspect<MeshViewProvider> provider) {
 	} else if (th == AssetStore::sign<Skybox>()) {
 		type = "Skybox";
 	}
-	auto store = Services::find<AssetStore>();
 	Text typeStr(CStr<64>("Type: {}", type));
 	Text uri(provider.get().assetURI());
-	if (store) {
-		if (type == "Mesh Primitive") {
-			std::string_view const matURI = provider.get().materialURI();
-			inspectMat(store->find<Material>(matURI), matURI, -1);
-		} else if (type == "Model") {
-			if (auto model = store->find<Model>(provider.get().assetURI())) {
-				for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }
-			}
+	if (type == "Mesh Primitive") {
+		std::string_view const matURI = provider.get().materialURI();
+		inspectMat(provider.store.find<Material>(matURI), matURI, -1);
+	} else if (type == "Model") {
+		if (auto model = provider.store.find<Model>(provider.get().assetURI())) {
+			for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }
 		}
 	}
 	static ktl::stack_string<128> s_search;
@@ -129,8 +127,21 @@ void inspectMP(Inspect<MeshViewProvider> provider) {
 	}
 }
 
+void inspectSkyboxP(Inspect<AssetProvider<graphics::Skybox>> provider) {
+	Text uri(provider.store.uri<graphics::Skybox>(provider.get().uri()));
+	if (auto popup = Popup("Skybox##inspect_skybox_provider")) {
+		static ktl::stack_string<128> s_search;
+		TWidget<char*> search("Search##inspect_skybox_provider", s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<graphics::Skybox>(s_search)) {
+			provider.get().uri(select.item);
+			popup.close();
+		}
+	}
+	if (Button("Edit...")) { Popup::open("Skybox##inspect_skybox_provider"); }
+}
+
 void inspectRLP(Inspect<RenderPipeProvider> provider) {
-	Text uri(Services::get<AssetStore>()->uri<RenderPipeline>(provider.get().uri()));
+	Text uri(provider.store.uri<RenderPipeline>(provider.get().uri()));
 	if (auto popup = Popup("RenderPipeline##inspect_pipe_provider")) {
 		static ktl::stack_string<128> s_search;
 		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
@@ -236,6 +247,7 @@ Instance Instance::make(Engine::Service engine) {
 	impl->storage.right.tab = std::make_unique<EditorTab<Inspector>>();
 	Inspector::attach<MeshViewProvider>(&inspectMP, {}, "Mesh");
 	Inspector::attach<RenderPipeProvider>(&inspectRLP, {}, "RenderPipeline");
+	Inspector::attach<AssetProvider<graphics::Skybox>>(&inspectSkyboxP, {}, "Skybox");
 #endif
 	g_state.gameView = g_comboView;
 	return Instance(std::move(impl));

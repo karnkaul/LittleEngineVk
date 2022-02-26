@@ -1,8 +1,8 @@
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/render/pipeline.hpp>
-#include <levk/engine/render/skybox.hpp>
 #include <levk/graphics/mesh.hpp>
+#include <levk/graphics/skybox.hpp>
 
 namespace le {
 namespace {
@@ -142,7 +142,7 @@ ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {
 	return [engine, cb = std::move(cubemap), uri = std::move(uri)] {
 		if (auto cube = engine.store().find<graphics::Texture>(cb); cube && cube->type() == graphics::Texture::Type::eCube) {
-			engine.store().add(std::move(uri), Skybox(&*cube));
+			engine.store().add(std::move(uri), graphics::Skybox(&engine.vram(), cube));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to find cubemap Texture [{}] for Skybox [{}]", cb, uri);
 		}

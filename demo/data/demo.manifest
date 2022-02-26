@@ -128,19 +128,21 @@
 			"cubemap": "cubemaps/test"
 		}
 	],
-	"models": [
+	"meshes": [
 		{
-			"uri": "models/plant"
+			"uri": "meshes/plant",
+			"file": "models/plant/plant.json"
 		},
 		{
-			"uri": "models/teapot"
+			"uri": "meshes/teapot",
+			"file": "models/teapot/teapot.json"
 		},
 		{
-			"uri": "models/nanosuit",
+			"uri": "meshes/nanosuit",
 			"file": "models/test/nanosuit/nanosuit.json"
 		},
 		{
-			"uri": "models/fox",
+			"uri": "meshes/fox",
 			"file": "models/test/fox/fox.json"
 		}
 	],

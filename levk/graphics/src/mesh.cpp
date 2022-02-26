@@ -52,7 +52,6 @@ struct ObjMtlData {
 		if (obj.empty()) { return {}; }
 		auto objStr = media.string(dir / obj);
 		if (!objStr) { return {}; }
-		ret.obj = std::move(*objStr);
 		if (auto mtl = json.find_as<std::string_view>("mtl")) {
 			if (auto mtlStr = media.string(dir / *mtl)) { ret.mtl = std::move(*mtlStr); }
 		} else {
@@ -60,6 +59,7 @@ struct ObjMtlData {
 			mtlStr += ".mtl";
 			if (auto str = media.string(dir / mtlStr)) { ret.mtl = std::move(*str); }
 		}
+		ret.obj = std::move(*objStr);
 		ret.scale = json.get_as<float>("scale", 1.0f);
 		ret.origin = vec3(json, "origin");
 		ret.dir = std::move(dir);

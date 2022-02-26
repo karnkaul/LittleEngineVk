@@ -6,6 +6,9 @@
 #include <map>
 
 namespace le {
+namespace graphics {
+struct Mesh;
+}
 struct RenderPipeline;
 class Skybox;
 class Model;
@@ -94,7 +97,7 @@ constexpr AssetManifest::Parser::Order AssetManifest::Parser::order(Order fallba
 		return Order::eZeroth;
 	} else if constexpr (detail::any_same_v<T, Texture, RenderPipeline>) {
 		return Order::eFirst;
-	} else if constexpr (detail::any_same_v<T, Material, Font, Skybox, Model>) {
+	} else if constexpr (detail::any_same_v<T, Material, Font, Skybox, Model, Mesh>) {
 		return Order::eSecond;
 	}
 	return fallback;

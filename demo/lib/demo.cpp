@@ -462,13 +462,6 @@ class App : public input::Receiver, public Scene {
 	void open() override {
 		Scene::open();
 
-		{
-			auto mesh = graphics::Mesh::fromObjMtl("models/test/nanosuit/nanosuit.json", engine().store().resources().media(), &engine().vram());
-			if (mesh) { engine().store().add("mesh_primitives/test", std::move(*mesh)); }
-			auto node = spawnNode("test_mesh");
-			m_registry.attach(node, RenderPipeProvider("render_pipelines/lit"));
-			m_registry.attach(node, AssetProvider<graphics::Mesh>("mesh_primitives/test"));
-		}
 		m_manifest.load("demo.manifest");
 		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 
@@ -504,21 +497,21 @@ class App : public input::Receiver, public Scene {
 			m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
 		{
-			auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "render_pipelines/lit");
+			auto ent0 = spawn("model_0_0", AssetProvider<graphics::Mesh>("meshes/plant"), "render_pipelines/lit");
 			m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 			m_data.entities["model_0_0"] = ent0;
 
-			auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "render_pipelines/lit");
+			auto ent1 = spawn("model_0_1", AssetProvider<graphics::Mesh>("meshes/plant"), "render_pipelines/lit");
 			auto& node = m_registry.get<Transform>(ent1);
 			node.position({-2.0f, -1.0f, 5.0f});
 			m_data.entities["model_0_1"] = ent1;
 			m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
 		}
 		{
-			auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "render_pipelines/lit");
+			auto ent0 = spawn("model_1_0", AssetProvider<graphics::Mesh>("meshes/teapot"), "render_pipelines/lit");
 			m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
 			m_data.entities["model_1_0"] = ent0;
-			auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "render_pipelines/lit");
+			auto ent = spawn("model_1", AssetProvider<graphics::Mesh>("meshes/nanosuit"), "render_pipelines/lit");
 			m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
 			m_data.entities["model_1"] = ent;
 		}
@@ -664,7 +657,9 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach(ent1, RenderPipeProvider("render_pipelines/ui"));
 		}
 
-		if (auto model = engine().store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
+		if (auto teapot = engine().store().find<graphics::Mesh>("meshes/teapot")) {
+			teapot->materials[0].data.get<graphics::BPMaterialData>().Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+		}
 		m_data.init = true;
 
 		if (auto tex = engine().store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }

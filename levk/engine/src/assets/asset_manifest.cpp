@@ -2,6 +2,7 @@
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/engine/render/skybox.hpp>
+#include <levk/graphics/mesh.hpp>
 
 namespace le {
 namespace {
@@ -148,6 +149,23 @@ ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::
 	};
 }
 
+ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	std::string meshJSON = json->get_as<std::string>("file");
+	if (meshJSON.empty()) {
+		io::Path path = uri;
+		path / path.filename();
+		path += ".json";
+		meshJSON = path.generic_string();
+	}
+	return [engine, json = std::move(meshJSON), uri = std::move(uri)] {
+		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().resources().media(), &engine.vram())) {
+			engine.store().add(std::move(uri), std::move(*mesh));
+		} else {
+			logW(LC_LibUser, "[Asset] Failed to load Mesh from OBJ [{}]", json);
+		}
+	};
+}
+
 struct DefaultParser : AssetManifest::Parser {
 	using Parser::Parser;
 
@@ -161,6 +179,7 @@ struct DefaultParser : AssetManifest::Parser {
 		if (name == "fonts") { return fonts(group); }
 		if (name == "skyboxes") { return skyboxes(group); }
 		if (name == "models") { return models(group); }
+		if (name == "meshes") { return meshes(group); }
 		return std::nullopt;
 	}
 
@@ -254,6 +273,15 @@ struct DefaultParser : AssetManifest::Parser {
 		for (auto& [uri, json] : group) {
 			auto data = modelData(m_engine.vram(), uri, json);
 			load(order<Model>(), std::move(uri), std::move(data));
+			++ret;
+		}
+		return ret;
+	}
+
+	std::size_t meshes(Group const& group) const {
+		std::size_t ret{};
+		for (auto& [uri, json] : group) {
+			enqueue(order<graphics::Mesh>(), objMeshFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;

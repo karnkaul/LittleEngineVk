@@ -527,12 +527,12 @@ class App : public input::Receiver, public Scene {
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 		}
 		{
-			auto ent = spawnMesh("prop_1", MeshViewProvider::make("mesh_primitives/cube"), "render_pipelines/basic");
+			auto ent = spawn("prop_1", PrimitiveProvider("mesh_primitives/cube"), "render_pipelines/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnMesh("prop_2", MeshViewProvider::make("mesh_primitives/cone"), "render_pipelines/tex");
+			auto ent = spawn("prop_2", PrimitiveProvider("mesh_primitives/cone"), "render_pipelines/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
@@ -542,13 +542,20 @@ class App : public input::Receiver, public Scene {
 				m_registry.attach(m_data.roundedQuad, RenderPipeProvider("render_pipelines/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
+				auto const mat = engine().store().find<graphics::BPMaterialData>("materials/bp/default");
+				auto addDrawPrims = [this, primitive, mat](graphics::DrawList& out, glm::mat4 const& matrix) {
+					graphics::MaterialTextures matTex;
+					matTex[graphics::MatTexType::eDiffuse] = &m_testTex;
+					out.push(graphics::DrawPrimitive{matTex, primitive, mat}, matrix);
+				};
+				m_registry.attach(m_data.roundedQuad, PrimitiveGenerator(addDrawPrims));
 			}
 		}
 		{
-			Material mat;
+			graphics::BPMaterialData mat;
 			mat.Tf = colours::yellow;
-			engine().store().add("materials/yellow", mat);
-			auto node = spawnMesh("trigger/cube", MeshViewProvider::make("mesh_primitives/cube", "materials/yellow"), "render_pipelines/basic");
+			engine().store().add("materials/bp/yellow", mat);
+			auto node = spawn("trigger/cube", PrimitiveProvider("mesh_primitives/cube", "materials/bp/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);

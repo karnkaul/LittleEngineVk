@@ -130,16 +130,12 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 	}
 }
 
-void DebugDrawListGen::operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const {
+void DebugDrawListGen::operator()(ListRenderer2::RenderMap& map, AssetStore const& store, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	if (populate_v) {
 		for (auto [_, c] : registry.view<RenderPipeProvider, physics::Trigger::Debug>(exclude)) {
 			auto& [rp, physics] = c;
-			if (rp.ready(store)) {
-				if (auto drawables = physics.drawables(registry); !drawables.empty()) {
-					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[rp.get(store)]));
-				}
-			}
+			if (rp.ready(store)) { physics.addDrawPrimitives(store, registry, map[rp.get(store)]); }
 		}
 	}
 }

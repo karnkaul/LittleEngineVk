@@ -29,7 +29,7 @@ graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 
 void ListRenderer::fill(DrawableMap& out_map, AssetStore const& store, dens::registry const& registry) {
 	DrawListGen{}(out_map, store, registry);
-	DebugDrawListGen{}(out_map, store, registry);
+	// DebugDrawListGen{}(out_map, store, registry);
 }
 
 void ListRenderer::render(RenderPass& out_rp, AssetStore const& store, DrawableMap map) {
@@ -88,7 +88,7 @@ graphics::PipelineSpec ListRenderer2::pipelineSpec(RenderPipeline const& rp) {
 
 void ListRenderer2::fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) {
 	DrawListGen2{}(out_map, store, registry);
-	// DebugDrawListGen{}(out_map, store, registry);
+	DebugDrawListGen{}(out_map, store, registry);
 }
 
 void ListRenderer2::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {

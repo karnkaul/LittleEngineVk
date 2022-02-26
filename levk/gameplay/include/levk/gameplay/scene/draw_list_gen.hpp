@@ -16,6 +16,6 @@ struct DebugDrawListGen {
 	inline static bool populate_v = levk_debug;
 
 	// Populates DrawGroup + [physics::Trigger::Debug]
-	void operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const;
+	void operator()(ListRenderer2::RenderMap& map, AssetStore const& store, dens::registry const& registry) const;
 };
 } // namespace le

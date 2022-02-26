@@ -4,7 +4,7 @@
 #include <ktl/delegate.hpp>
 #include <levk/core/std_types.hpp>
 #include <levk/engine/render/drawable.hpp>
-#include <levk/engine/render/material.hpp>
+#include <levk/graphics/material_data.hpp>
 
 namespace dens {
 class registry;
@@ -12,6 +12,10 @@ class registry;
 
 namespace le {
 class Transform;
+class AssetStore;
+namespace graphics {
+class DrawList;
+}
 
 namespace physics {
 struct Trigger;
@@ -29,7 +33,7 @@ struct Trigger {
 	CFlags cflags = all_flags;
 
 	struct {
-		Material material;
+		graphics::BPMaterialData material;
 	} data;
 
 	void channels(u32 set, u32 unset = 0) noexcept {
@@ -41,7 +45,7 @@ struct Trigger {
 };
 
 struct Trigger::Debug {
-	std::vector<Drawable> drawables(dens::registry const& registry) const;
+	bool addDrawPrimitives(AssetStore const& store, dens::registry const& registry, graphics::DrawList& out) const;
 };
 } // namespace physics
 } // namespace le

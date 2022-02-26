@@ -14,7 +14,7 @@ Skybox::Skybox(not_null<graphics::Texture const*> cubemap) : m_cubemap(cubemap) 
 
 MeshView Skybox::mesh() const {
 	if (auto store = Services::find<AssetStore>()) {
-		auto cube = store->find<MeshPrimitive>("meshes/cube");
+		auto cube = store->find<MeshPrimitive>("mesh_primitives/cube");
 		if (!cube) { return {}; }
 		if (!m_cubemap->ready()) { return {}; }
 		m_material.map_Kd = m_cubemap;

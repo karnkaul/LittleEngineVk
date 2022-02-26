@@ -9,6 +9,7 @@
 #include <levk/graphics/mesh.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
+#include <levk/engine/render/primitive_provider.hpp>
 #include <levk/graphics/skybox.hpp>
 
 namespace le {
@@ -122,6 +123,10 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
 		auto& [rp, mesh] = c;
 		if (auto m = mesh.find(store); m && rp.ready(store)) { map[rp.get(store)].add(*m, modelMat(e)); }
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, PrimitiveProvider>(exclude)) {
+		auto& [rp, mesh] = c;
+		if (rp.ready(store)) { mesh.addDrawPrimitives(store, map[rp.get(store)], modelMat(e)); }
 	}
 }
 

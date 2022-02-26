@@ -3,6 +3,7 @@
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/render/mesh_view_provider.hpp>
+#include <levk/engine/render/primitive_provider.hpp>
 #include <levk/gameplay/ecs/systems/system_groups.hpp>
 #include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
@@ -10,7 +11,8 @@
 namespace le {
 namespace graphics {
 struct Camera;
-}
+struct Mesh;
+} // namespace graphics
 
 namespace editor {
 class SceneRef;
@@ -31,6 +33,9 @@ class SceneRegistry : public utils::VBase {
 	dens::entity spawnMesh(std::string name, DynamicMeshView&& dynMesh, Hash pipeURI);
 	template <MeshViewAPI T>
 	dens::entity spawnMesh(std::string name, std::string assetURI, Hash pipeURI);
+
+	dens::entity spawn(std::string name, PrimitiveProvider provider, Hash renderPipeline);
+	dens::entity spawn(std::string name, AssetProvider<graphics::Mesh> provider, Hash renderPipeline);
 
 	template <typename T, typename... Args>
 	dens::entity spawn(std::string name, Hash pipeURI, Args&&... args);

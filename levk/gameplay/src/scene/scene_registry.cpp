@@ -9,6 +9,7 @@
 #include <levk/gameplay/ecs/systems/system_groups.hpp>
 #include <levk/gameplay/editor/scene_ref.hpp>
 #include <levk/gameplay/scene/scene_registry.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 #include <levk/graphics/render/camera.hpp>
 
@@ -45,6 +46,20 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 dens::entity SceneRegistry::spawnMesh(std::string name, MeshViewProvider&& provider, Hash pipeURI) {
 	auto ret = spawnNode(std::move(name));
 	m_registry.attach(ret, RenderPipeProvider(pipeURI));
+	m_registry.attach(ret, std::move(provider));
+	return ret;
+}
+
+dens::entity SceneRegistry::spawn(std::string name, PrimitiveProvider provider, Hash renderPipeline) {
+	auto ret = spawnNode(std::move(name));
+	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
+	m_registry.attach(ret, std::move(provider));
+	return ret;
+}
+
+dens::entity SceneRegistry::spawn(std::string name, AssetProvider<graphics::Mesh> provider, Hash renderPipeline) {
+	auto ret = spawnNode(std::move(name));
+	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
 	m_registry.attach(ret, std::move(provider));
 	return ret;
 }

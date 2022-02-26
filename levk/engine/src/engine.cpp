@@ -203,9 +203,9 @@ void Engine::addDefaultAssets() {
 		m_impl->store.add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
-		auto cube = m_impl->store.add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(vram));
+		auto cube = m_impl->store.add<graphics::MeshPrimitive>("mesh_primitives/cube", graphics::MeshPrimitive(vram));
 		cube->construct(graphics::makeCube());
-		auto cone = m_impl->store.add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(vram));
+		auto cone = m_impl->store.add<graphics::MeshPrimitive>("mesh_primitives/cone", graphics::MeshPrimitive(vram));
 		cone->construct(graphics::makeCone());
 		auto wf_cube = m_impl->store.add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));

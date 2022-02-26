@@ -464,16 +464,16 @@ class App : public input::Receiver, public Scene {
 
 		{
 			auto mesh = graphics::Mesh::fromObjMtl("models/test/nanosuit/nanosuit.json", engine().store().resources().media(), &engine().vram());
-			if (mesh) { engine().store().add("meshes/test", std::move(*mesh)); }
+			if (mesh) { engine().store().add("mesh_primitives/test", std::move(*mesh)); }
 			auto node = spawnNode("test_mesh");
 			m_registry.attach(node, RenderPipeProvider("render_pipelines/lit"));
-			m_registry.attach(node, AssetProvider<graphics::Mesh>("meshes/test"));
+			m_registry.attach(node, AssetProvider<graphics::Mesh>("mesh_primitives/test"));
 		}
 		m_manifest.load("demo.manifest");
 		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = engine().store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&engine().vram()));
+			auto rQuad = engine().store().add<graphics::MeshPrimitive>("mesh_primitives/rounded_quad", graphics::MeshPrimitive(&engine().vram()));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
@@ -488,7 +488,15 @@ class App : public input::Receiver, public Scene {
 
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
-			m_data.player = spawnMesh("player", MeshViewProvider::make("meshes/cube", "materials/player/cube"), "render_pipelines/lit");
+			// TODO: move to manifest
+			graphics::BPMaterialData playerMat;
+			playerMat.Ks = Colour(0x777777ff);
+			engine().store().add("materials/bp/player", playerMat);
+			PrimitiveProvider provider("mesh_primitives/cube", "materials/bp/player");
+			provider.texture(graphics::MatTexType::eDiffuse, "textures/container2/diffuse");
+			provider.texture(graphics::MatTexType::eSpecular, "textures/container2/specular");
+			m_data.player = spawnMesh("player", MeshViewProvider::make("mesh_primitives/cube", "materials/player/cube"), "render_pipelines/lit");
+			m_registry.attach(m_data.player, std::move(provider));
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
 			m_registry.attach<PlayerController>(m_data.player);
 			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
@@ -527,17 +535,17 @@ class App : public input::Receiver, public Scene {
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 		}
 		{
-			auto ent = spawnMesh("prop_1", MeshViewProvider::make("meshes/cube"), "render_pipelines/basic");
+			auto ent = spawnMesh("prop_1", MeshViewProvider::make("mesh_primitives/cube"), "render_pipelines/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnMesh("prop_2", MeshViewProvider::make("meshes/cone"), "render_pipelines/tex");
+			auto ent = spawnMesh("prop_2", MeshViewProvider::make("mesh_primitives/cone"), "render_pipelines/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			m_testMat.map_Kd = &m_testTex;
-			if (auto primitive = engine().store().find<MeshPrimitive>("meshes/rounded_quad")) {
+			if (auto primitive = engine().store().find<MeshPrimitive>("mesh_primitives/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
 				m_registry.attach(m_data.roundedQuad, RenderPipeProvider("render_pipelines/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
@@ -548,7 +556,7 @@ class App : public input::Receiver, public Scene {
 			Material mat;
 			mat.Tf = colours::yellow;
 			engine().store().add("materials/yellow", mat);
-			auto node = spawnMesh("trigger/cube", MeshViewProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
+			auto node = spawnMesh("trigger/cube", MeshViewProvider::make("mesh_primitives/cube", "materials/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);

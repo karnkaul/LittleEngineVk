@@ -438,7 +438,8 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 namespace le::demo {
 struct EmitMesh {
 	MeshPrimitive primitive;
-	Material material;
+	TextureRefs textures;
+	graphics::BPMaterialData material;
 	QuadEmitter emitter;
 
 	EmitMesh(not_null<graphics::VRAM*> vram, EmitterInfo info = {}) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic) { emitter.create(info); }
@@ -448,7 +449,11 @@ struct EmitMesh {
 		primitive.construct(emitter.geometry());
 	}
 
-	MeshView mesh() const { return MeshObj{&primitive, &material}; }
+	void addDrawPrimitives(AssetStore const& store, graphics::DrawList& out, glm::mat4 const& matrix) const {
+		graphics::MaterialTextures matTex;
+		textures.fill(store, matTex);
+		out.push(graphics::DrawPrimitive{matTex, &primitive, &material}, matrix);
+	}
 };
 
 class App : public input::Receiver, public Scene {
@@ -567,7 +572,9 @@ class App : public input::Receiver, public Scene {
 		}
 		{
 			auto ent = spawnNode("emitter");
-			m_registry.attach(ent, DynamicMeshView::make(&m_emitter));
+			m_emitter.textures.textures[graphics::MatTexType::eDiffuse] = "textures/awesomeface.png";
+			auto addPrims = [this](graphics::DrawList& out, glm::mat4 const& matrix) { m_emitter.addDrawPrimitives(engine().store(), out, matrix); };
+			m_registry.attach(ent, PrimitiveGenerator(addPrims));
 			m_registry.attach(ent, RenderPipeProvider("render_pipelines/ui"));
 		}
 		{
@@ -660,8 +667,6 @@ class App : public input::Receiver, public Scene {
 			teapot->materials[0].data.get<graphics::BPMaterialData>().Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 		}
 		m_data.init = true;
-
-		if (auto tex = engine().store().find<graphics::Texture>("textures/awesomeface.png")) { m_emitter.material.map_Kd = &*tex; }
 	}
 
 	void tick(Time_s dt) override {

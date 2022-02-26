@@ -106,12 +106,6 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 		}
 		return glm::mat4(1.0f);
 	};
-	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
-		auto& [rp, stack] = c;
-		if (auto r = rp.find(store)) {
-			for (auto const& view : stack.views()) { addNodes(map, *r, *view); }
-		}
-	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>(exclude)) {
 		auto& [rp, skybox] = c;
 		if (auto s = skybox.find(store); s && rp.ready(store)) { map[rp.get(store)].add(*s, modelMat(e)); }
@@ -127,6 +121,12 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 	for (auto& [e, c] : registry.view<RenderPipeProvider, PrimitiveGenerator>(exclude)) {
 		auto& [rp, prim] = c;
 		if (rp.ready(store)) { prim.addDrawPrimitives(map[rp.get(store)], modelMat(e)); }
+	}
+	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
+		auto& [rp, stack] = c;
+		if (auto r = rp.find(store)) {
+			for (auto const& view : stack.views()) { addNodes(map, *r, *view); }
+		}
 	}
 }
 

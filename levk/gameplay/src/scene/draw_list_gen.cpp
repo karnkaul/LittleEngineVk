@@ -112,10 +112,6 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 			for (auto const& view : stack.views()) { addNodes(map, *r, *view); }
 		}
 	}
-	for (auto& [e, c] : registry.view<RenderPipeProvider, graphics::Skybox>(exclude)) {
-		auto& [rp, skybox] = c;
-		map[rp.get(store)].add(skybox, modelMat(e));
-	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>(exclude)) {
 		auto& [rp, skybox] = c;
 		if (auto s = skybox.find(store); s && rp.ready(store)) { map[rp.get(store)].add(*s, modelMat(e)); }
@@ -125,8 +121,12 @@ void DrawListGen2::operator()(ListRenderer2::RenderMap& map, AssetStore const& s
 		if (auto m = mesh.find(store); m && rp.ready(store)) { map[rp.get(store)].add(*m, modelMat(e)); }
 	}
 	for (auto& [e, c] : registry.view<RenderPipeProvider, PrimitiveProvider>(exclude)) {
-		auto& [rp, mesh] = c;
-		if (rp.ready(store)) { mesh.addDrawPrimitives(store, map[rp.get(store)], modelMat(e)); }
+		auto& [rp, prim] = c;
+		if (rp.ready(store)) { prim.addDrawPrimitives(store, map[rp.get(store)], modelMat(e)); }
+	}
+	for (auto& [e, c] : registry.view<RenderPipeProvider, PrimitiveGenerator>(exclude)) {
+		auto& [rp, prim] = c;
+		if (rp.ready(store)) { prim.addDrawPrimitives(map[rp.get(store)], modelMat(e)); }
 	}
 }
 

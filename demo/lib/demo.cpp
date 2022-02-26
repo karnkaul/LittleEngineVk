@@ -254,7 +254,7 @@ class Renderer2 : public ListRenderer2 {
 		bind(0);
 		for (auto const& d : list) {
 			bind(1);
-			if (d.scissor) { cb.setScissor(*d.scissor); }
+			cb.setScissor(d.scissor ? *d.scissor : m_scissor);
 			for (auto const& primitive : d.primitives) {
 				bind(2);
 				bind(3);
@@ -633,7 +633,7 @@ class App : public input::Receiver, public Scene {
 			line.line = "Hello!";
 			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
-			m_registry.attach(ent, DynamicMeshView::make(&*m_data.text));
+			m_registry.attach(ent, PrimitiveGenerator::make(&*m_data.text));
 			m_registry.attach(ent, RenderPipeProvider("render_pipelines/ui"));
 
 			m_data.cursor.emplace(font->m_vram);
@@ -645,7 +645,7 @@ class App : public input::Receiver, public Scene {
 			m_data.cursor->m_line = "Hello!";
 			m_data.text->m_info = m_data.cursor->generateText();
 			auto ent1 = spawnNode("text_cursor");
-			m_registry.attach(ent1, DynamicMeshView::make(&*m_data.cursor));
+			m_registry.attach(ent1, PrimitiveGenerator::make(&*m_data.cursor));
 			m_registry.attach(ent1, RenderPipeProvider("render_pipelines/ui"));
 		}
 

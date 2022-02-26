@@ -13,18 +13,42 @@ class PrimitiveProvider {
 	inline static Hash const default_material_v = "materials/bp/default";
 
 	PrimitiveProvider() = default;
-	PrimitiveProvider(Hash meshPrimitiveURI, Hash materialURI = default_material_v, Hash matTexRefsURI = {});
+	PrimitiveProvider(Hash meshPrimitiveURI, Hash materialURI = default_material_v, Hash textureRefsURI = {});
 
 	Hash meshPrimitiveURI() const { return m_meshURI; }
 	Hash materialURI() const { return m_materialURI; }
-	Hash matTexRefsURI() const { return m_matTexRefsURI; }
+	Hash matTexRefsURI() const { return m_texRefsURI; }
 
 	bool addDrawPrimitives(AssetStore const& store, graphics::DrawList& out, glm::mat4 const& matrix);
 
   private:
 	Hash m_meshURI{};
 	Hash m_materialURI{};
-	Hash m_matTexRefsURI{};
+	Hash m_texRefsURI{};
+};
+
+class PrimitiveGenerator {
+  public:
+	using AddPrims = ktl::kfunction<void(graphics::DrawList&, glm::mat4 const&)>;
+
+	PrimitiveGenerator() = default;
+	PrimitiveGenerator(AddPrims&& addPrims) noexcept : m_addPrims(std::move(addPrims)) {}
+
+	template <graphics::DrawPrimitiveAPI T>
+	static PrimitiveGenerator make(T* source) {
+		return PrimitiveGenerator([source](graphics::DrawList& out, glm::mat4 const& matrix) {
+			if (source) { out.add(*source, matrix); }
+		});
+	}
+
+	explicit operator bool() const { return m_addPrims.has_value(); }
+
+	void addDrawPrimitives(graphics::DrawList& out, glm::mat4 const& matrix) {
+		if (m_addPrims) { m_addPrims(out, matrix); }
+	}
+
+  private:
+	AddPrims m_addPrims;
 };
 
 // class DynamicMeshView {

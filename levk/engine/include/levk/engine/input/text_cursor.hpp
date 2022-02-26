@@ -1,11 +1,12 @@
 #pragma once
 #include <levk/engine/render/text_mesh.hpp>
 
-namespace le::graphics {
+namespace le {
+namespace graphics {
 class Font;
 }
 
-namespace le::input {
+namespace input {
 struct State;
 using graphics::Font;
 using graphics::RGBA;
@@ -122,4 +123,15 @@ class TextCursor {
 	Opt<Font> m_font{};
 	bool m_drawCursor = true;
 };
-} // namespace le::input
+} // namespace input
+
+namespace graphics {
+template <>
+struct AddDrawPrimitives<input::TextCursor> {
+	template <std::output_iterator<DrawPrimitive> It>
+	void operator()(input::TextCursor const& cursor, It it) {
+		if (auto prim = cursor.drawPrimitive()) { *it++ = std::move(prim); }
+	}
+};
+} // namespace graphics
+} // namespace le

@@ -49,9 +49,11 @@ class ListRenderer2 {
 	void render(RenderPass& out_rp, AssetStore const& store, RenderMap map);
 
   protected:
-	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry);
-
 	virtual void writeSets(DescriptorMap map, graphics::DrawList const& list) = 0;
 	virtual void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const = 0;
+
+	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry);
+
+	vk::Rect2D m_scissor{};
 };
 } // namespace le

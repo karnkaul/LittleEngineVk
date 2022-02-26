@@ -104,6 +104,7 @@ void ListRenderer2::render(RenderPass& out_rp, AssetStore const& store, RenderMa
 	auto const cache = DescriptorHelper::Cache::make(&store);
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
+	m_scissor = out_rp.scissor();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
 	std::sort(drawLists.begin(), drawLists.end());
 	for (auto const& list : drawLists) {

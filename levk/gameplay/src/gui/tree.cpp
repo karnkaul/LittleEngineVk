@@ -29,5 +29,7 @@ void TreeNode::update(input::Space const& space) {
 	for (auto& node : m_ts) { node->update(space); }
 }
 
-void TreeNode::pushPrimitive(DrawList& out_list, DrawPrimitive primitive) const { out_list.push(primitive, matrix(), graphics::utils::scissor(m_scissor)); }
+void TreeNode::pushDrawPrimitives(DrawList& out_list, Span<DrawPrimitive const> primitives) const {
+	out_list.push(primitives, matrix(), graphics::utils::scissor(m_scissor));
+}
 } // namespace le::gui

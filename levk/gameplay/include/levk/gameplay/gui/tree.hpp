@@ -87,7 +87,7 @@ class TreeNode : public TreeRoot {
 	not_null<TreeRoot*> m_parent;
 
   protected:
-	void pushPrimitive(DrawList& out_list, DrawPrimitive primitive) const;
+	void pushDrawPrimitives(DrawList& out_list, Span<DrawPrimitive const> primitives) const;
 
   private:
 	virtual void onUpdate(input::Space const&) {}

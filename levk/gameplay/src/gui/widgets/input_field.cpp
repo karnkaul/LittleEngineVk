@@ -30,10 +30,12 @@ InputField::Status InputField::onInput(input::State const& state) {
 }
 
 void InputField::addDrawPrimitives(DrawList& out) const {
-	m_outline->addDrawPrimitives(out);
-	Quad::addDrawPrimitives(out);
-	pushPrimitive(out, m_textMesh.drawPrimitive());
-	pushPrimitive(out, m_cursor.drawPrimitive());
+	graphics::DrawPrimitive primitives[4];
+	primitives[0] = m_outline->drawPrimitive();
+	primitives[1] = Quad::drawPrimitive();
+	primitives[2] = m_textMesh.drawPrimitive();
+	primitives[3] = m_cursor.drawPrimitive();
+	pushDrawPrimitives(out, primitives);
 }
 
 bool InputField::block(input::State const& state) {

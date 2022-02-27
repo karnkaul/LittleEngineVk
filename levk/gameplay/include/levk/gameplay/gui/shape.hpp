@@ -11,6 +11,8 @@ class Shape : public TreeNode {
 	void set(graphics::Geometry geometry) { m_primitive.construct(std::move(geometry)); }
 	void addDrawPrimitives(DrawList& out) const override;
 
+	DrawPrimitive drawPrimitive() const;
+
 	graphics::BPMaterialData m_bpMaterial;
 
   private:

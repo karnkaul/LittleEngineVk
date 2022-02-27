@@ -10,7 +10,9 @@ class Quad : public TreeNode {
 	Quad(not_null<TreeRoot*> root, bool hitTest = true) noexcept;
 
 	void onUpdate(input::Space const& space) override;
-	void addDrawPrimitives(DrawList& out) const override;
+	void addDrawPrimitives(DrawList& out) const override { pushDrawPrimitives(out, drawPrimitive()); }
+
+	DrawPrimitive drawPrimitive() const;
 
 	inline static u16 s_cornerPoints = 16;
 

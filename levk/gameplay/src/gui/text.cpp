@@ -16,5 +16,6 @@ void Text::onUpdate(input::Space const& space) {
 	m_textMesh.m_info.get<Line>().layout.origin.z = m_zIndex;
 }
 
-void Text::addDrawPrimitives(DrawList& out) const { pushPrimitive(out, m_textMesh.drawPrimitive()); }
+void Text::addDrawPrimitives(DrawList& out) const { pushDrawPrimitives(out, drawPrimitive()); }
+graphics::DrawPrimitive Text::drawPrimitive() const { return m_textMesh.drawPrimitive(); }
 } // namespace le::gui

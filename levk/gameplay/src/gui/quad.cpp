@@ -17,10 +17,10 @@ void Quad::onUpdate(input::Space const&) {
 	}
 }
 
-void Quad::addDrawPrimitives(DrawList& out) const {
+graphics::DrawPrimitive Quad::drawPrimitive() const {
 	DrawPrimitive dp;
 	dp.primitive = &m_primitive;
 	dp.blinnPhong = &m_bpMaterial;
-	pushPrimitive(out, dp);
+	return dp;
 }
 } // namespace le::gui

@@ -6,7 +6,7 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
-#include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/input/driver.hpp>
@@ -17,6 +17,8 @@
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
 #include <levk/graphics/material_data.hpp>
+#include <levk/graphics/mesh.hpp>
+#include <levk/graphics/render/context.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
@@ -172,8 +174,8 @@ void Engine::saveConfig() const {
 }
 
 void Engine::addDefaultAssets() {
-	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
-	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
+	// static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
+	// static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
 	auto device = m_impl->gfx->device.get();
 	auto vram = m_impl->gfx->vram.get();
 	auto sampler = m_impl->store.add("samplers/default", graphics::Sampler(device, {vk::Filter::eLinear, vk::Filter::eLinear}));
@@ -211,7 +213,6 @@ void Engine::addDefaultAssets() {
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 	/* materials */ {
-		m_impl->store.add("materials/default", Material{});
 		m_impl->store.add("materials/bp/default", graphics::BPMaterialData{});
 		m_impl->store.add("materials/pbr/default", graphics::PBRMaterialData{});
 	}

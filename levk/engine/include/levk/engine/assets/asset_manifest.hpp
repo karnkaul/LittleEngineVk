@@ -1,7 +1,7 @@
 #pragma once
 #include <dumb_json/json.hpp>
 #include <dumb_tasks/executor.hpp>
-#include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/texture_refs.hpp>
 #include <levk/graphics/draw_primitive.hpp>
@@ -10,7 +10,12 @@
 namespace le {
 namespace graphics {
 struct Mesh;
+class Sampler;
+class Texture;
+struct SpirV;
+class Font;
 } // namespace graphics
+struct RenderLayer;
 struct RenderPipeline;
 class Skybox;
 class Model;
@@ -99,7 +104,7 @@ constexpr AssetManifest::Parser::Order AssetManifest::Parser::order(Order fallba
 		return Order::eZeroth;
 	} else if constexpr (detail::any_same_v<T, Texture, RenderPipeline>) {
 		return Order::eFirst;
-	} else if constexpr (detail::any_same_v<T, Material, Font, Skybox, Model, Mesh>) {
+	} else if constexpr (detail::any_same_v<T, Font, Skybox, Model, Mesh>) {
 		return Order::eSecond;
 	}
 	return fallback;

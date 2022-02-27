@@ -1,10 +1,51 @@
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
+#include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/pipeline.hpp>
+#include <levk/graphics/font/font.hpp>
 #include <levk/graphics/mesh.hpp>
 #include <levk/graphics/skybox.hpp>
+#include <levk/graphics/texture.hpp>
+#include <levk/graphics/utils/utils.hpp>
 
 namespace le {
+namespace {
+bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
+
+template <bool D = levk_debug>
+io::Path spirvPath(io::Path const& glsl, io::FSMedia const& media);
+
+template <>
+[[maybe_unused]] io::Path spirvPath<true>(io::Path const& glsl, io::FSMedia const& media) {
+	auto dbg = graphics::utils::spirVpath(glsl);
+	if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) {
+		dbg = *res;
+	} else {
+		if (media.present(dbg)) {
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", dbg.generic_string());
+			return dbg;
+		}
+		if (auto rel = graphics::utils::spirVpath(glsl, false); media.present(rel)) {
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
+			return rel;
+		}
+		ENSURE(false, "Failed to compile GLSL");
+	}
+	// compile Release shader too
+	graphics::utils::compileGlsl(media.fullPath(glsl), {}, {}, false);
+	return dbg;
+}
+
+template <>
+[[maybe_unused]] io::Path spirvPath<false>(io::Path const& glsl, io::FSMedia const& media) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (!media.present(spv, std::nullopt)) {
+		if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) { spv = *res; }
+	}
+	return spv;
+}
+} // namespace
+
 namespace {
 graphics::ShaderType parseShaderType(std::string_view str) noexcept {
 	if (str == "vert" || str == "vertex") {
@@ -35,58 +76,134 @@ vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
 	return ret;
 }
 
-AssetLoadData<graphics::SpirV> spirVData(std::string_view uri, dj::ptr<dj::json> const& json) {
+// AssetLoadData<graphics::SpirV> spirVData(std::string_view uri, dj::ptr<dj::json> const& json) {
+// 	AssetLoadData<graphics::SpirV> data;
+// 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
+// 		data.type = parseShaderType(type);
+// 	} else {
+// 		data.type = shaderTypeFromExt(io::Path(uri).extension());
+// 	}
+// 	data.uri = uri;
+// 	return data;
+// }
+
+ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::ptr<dj::json> const& json) {
 	AssetLoadData<graphics::SpirV> data;
+	graphics::ShaderType shaderType{};
 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
-		data.type = parseShaderType(type);
+		shaderType = parseShaderType(type);
 	} else {
-		data.type = shaderTypeFromExt(io::Path(uri).extension());
+		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
 	data.uri = uri;
-	return data;
+	io::Path path = uri;
+	return [path = std::move(path), uri = std::move(uri), engine, shaderType]() mutable {
+		if (isGlsl(uri)) {
+			if (auto fm = dynamic_cast<io::FSMedia const*>(&engine.store().resources().media())) {
+				path = spirvPath(path, *fm);
+			} else {
+				// cannot compile shaders without FSMedia
+				path = graphics::utils::spirVpath(path);
+			}
+		} else {
+			// fallback to previously compiled shader
+			path = graphics::utils::spirVpath(path);
+		}
+		auto res = engine.store().resources().media().bytes(path);
+		if (!res) { return; }
+		graphics::SpirV spirV;
+		spirV.spirV = std::vector<u32>(res->size() / 4);
+		spirV.type = shaderType;
+		std::memcpy(spirV.spirV.data(), res->data(), res->size());
+		engine.store().add(std::move(uri), std::move(spirV));
+	};
 }
 
-AssetLoadData<graphics::Texture> textureData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	using Payload = graphics::Texture::Payload;
-	AssetLoadData<graphics::Texture> ret(&vram);
-	if (auto files = json->find_as<std::vector<std::string>>("files")) {
-		ret.imageURIs = {files->begin(), files->end()};
-	} else if (auto file = json->find_as<std::string>("file")) {
-		ret.imageURIs = {std::move(*file)};
-	} else {
-		ret.imageURIs = {uri};
+// AssetLoadData<graphics::Texture> textureData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
+// 	using Payload = graphics::Texture::Payload;
+// 	AssetLoadData<graphics::Texture> ret(&vram);
+// 	if (auto files = json->find_as<std::vector<std::string>>("files")) {
+// 		ret.imageURIs = {files->begin(), files->end()};
+// 	} else if (auto file = json->find_as<std::string>("file")) {
+// 		ret.imageURIs = {std::move(*file)};
+// 	} else {
+// 		ret.imageURIs = {uri};
+// 	}
+// 	ret.prefix = json->get_as<std::string>("prefix");
+// 	ret.ext = json->get_as<std::string>("ext");
+// 	ret.samplerURI = json->get_as<std::string_view>("sampler");
+// 	if (auto payload = json->find_as<std::string_view>("payload")) { ret.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
+// 	return ret;
+// }
+
+ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	std::vector<std::string> files = json->get_as<std::vector<std::string>>("files");
+	if (files.empty()) {
+		if (auto file = json->find_as<std::string>("file")) {
+			files.push_back(std::move(*file));
+		} else {
+			files.push_back(uri);
+		}
 	}
-	ret.prefix = json->get_as<std::string>("prefix");
-	ret.ext = json->get_as<std::string>("ext");
-	ret.samplerURI = json->get_as<std::string_view>("sampler");
-	if (auto payload = json->find_as<std::string_view>("payload")) { ret.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
-	return ret;
+	Hash samplerURI = json->get_as<std::string>("sampler", "samplers/default");
+	io::Path prefix = json->get_as<std::string>("prefix");
+	return [uri, samplerURI, prefix, files, engine]() {
+		using CubeData = std::array<ImageData, 6>;
+		auto sampler = engine.store().find<graphics::Sampler>(samplerURI);
+		if (!sampler) { return; }
+		if (files.size() > 1) {
+			CubeData cube;
+			std::size_t idx = 0;
+			for (auto const& p : files) {
+				auto path = prefix / p;
+				auto res = engine.store().resources().load(path, Resource::Type::eBinary);
+				if (!res) { return; }
+				cube[idx++] = res->bytes();
+			}
+			graphics::Texture texture(&engine.vram(), sampler->sampler());
+			if (texture.construct(std::move(cube))) { engine.store().add(std::move(uri), std::move(texture)); }
+		} else {
+			auto res = engine.store().resources().load(files[0], Resource::Type::eBinary);
+			if (!res) { return; }
+			graphics::Texture texture(&engine.vram(), sampler->sampler());
+			if (texture.construct(res->bytes())) { engine.store().add(std::move(uri), std::move(texture)); }
+		}
+	};
 }
 
-AssetLoadData<graphics::Font> fontData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	AssetLoadData<graphics::Font> ret(&vram);
+// AssetLoadData<graphics::Font> fontData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
+// 	AssetLoadData<graphics::Font> ret(&vram);
+// 	if (auto file = json->find("file"); file && file->is_string()) {
+// 		ret.ttfURI = file->as<std::string_view>();
+// 	} else {
+// 		io::Path path(uri);
+// 		ret.ttfURI = path / path.filename() + ".ttf";
+// 	}
+// 	ret.info.atlas.mipMaps = json->get_as<bool>("mip_maps", ret.info.atlas.mipMaps);
+// 	ret.info.height = graphics::Font::Height{json->get_as<u32>("height", u32(ret.info.height))};
+// 	return ret;
+// }
+
+ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	io::Path ttfURI;
 	if (auto file = json->find("file"); file && file->is_string()) {
-		ret.ttfURI = file->as<std::string_view>();
+		ttfURI = file->as<std::string_view>();
 	} else {
 		io::Path path(uri);
-		ret.ttfURI = path / path.filename() + ".ttf";
+		ttfURI = path / path.filename() + ".ttf";
 	}
-	ret.info.atlas.mipMaps = json->get_as<bool>("mip_maps", ret.info.atlas.mipMaps);
-	ret.info.height = graphics::Font::Height{json->get_as<u32>("height", u32(ret.info.height))};
-	return ret;
-}
-
-AssetLoadData<Model> modelData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	AssetLoadData<Model> data(&vram);
-	data.modelURI = uri;
-	if (auto file = json->find("file"); file && file->is_string()) {
-		data.jsonURI = file->as<std::string_view>();
-	} else {
-		io::Path path(uri);
-		data.jsonURI = path / path.filename() + ".json";
-	}
-	data.samplerURI = json->get_as<std::string_view>("sampler");
-	return data;
+	bool mipMaps = json->get_as<bool>("mip_maps", true);
+	auto height = graphics::Font::Height{json->get_as<u32>("height", u32(graphics::Font::Height::eDefault))};
+	return [uri, ttfURI, mipMaps, height, engine] {
+		auto ttf = engine.store().resources().load(ttfURI, Resource::Type::eBinary);
+		if (!ttf) { return; }
+		graphics::Font::Info fi;
+		fi.name = ttfURI.filename().string();
+		fi.ttf = ttf->bytes();
+		fi.height = height;
+		fi.atlas.mipMaps = mipMaps;
+		engine.store().add(std::move(uri), graphics::Font(&engine.vram(), std::move(fi)));
+	};
 }
 
 ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string uri, std::string layer, std::vector<std::string> shaders) {
@@ -199,7 +316,6 @@ struct DefaultParser : AssetManifest::Parser {
 		if (name == "texture_refs") { return textureRefs(group); }
 		if (name == "fonts") { return fonts(group); }
 		if (name == "skyboxes") { return skyboxes(group); }
-		if (name == "models") { return models(group); }
 		if (name == "meshes") { return meshes(group); }
 		return std::nullopt;
 	}
@@ -219,8 +335,9 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t spirV(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = spirVData(uri, json);
-			load(order<graphics::SpirV>(), std::move(uri), std::move(data));
+			// auto data = spirVData(uri, json);
+			// load(order<graphics::SpirV>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::SpirV>(), spirVFunc(std::move(uri), m_engine, json));
 			++ret;
 		}
 		return ret;
@@ -239,8 +356,9 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t textures(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = textureData(m_engine.vram(), uri, json);
-			load(order<graphics::Texture>(), std::move(uri), std::move(data));
+			// auto data = textureData(m_engine.vram(), uri, json);
+			// load(order<graphics::Texture>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::Texture>(), textureFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -284,8 +402,9 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t fonts(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = fontData(m_engine.vram(), uri, json);
-			load(order<graphics::Font>(), std::move(uri), std::move(data));
+			// auto data = fontData(m_engine.vram(), uri, json);
+			// load(order<graphics::Font>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::Font>(), fontFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -298,16 +417,6 @@ struct DefaultParser : AssetManifest::Parser {
 				enqueue(depend<graphics::Texture>(), skyboxFunc(m_engine, std::move(uri), std::move(*cubemap)));
 				++ret;
 			}
-		}
-		return ret;
-	}
-
-	std::size_t models(Group const& group) const {
-		std::size_t ret{};
-		for (auto& [uri, json] : group) {
-			auto data = modelData(m_engine.vram(), uri, json);
-			load(order<Model>(), std::move(uri), std::move(data));
-			++ret;
 		}
 		return ret;
 	}

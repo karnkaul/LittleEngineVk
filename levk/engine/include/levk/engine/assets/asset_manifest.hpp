@@ -58,8 +58,6 @@ class AssetManifest::Parser : public utils::VBase {
 	void enqueue(Order order, dts::task_t task) const;
 	template <typename T>
 	void add(Order order, std::string uri, T asset) const;
-	template <typename T>
-	void load(Order order, std::string uri, AssetLoadData<T> data) const;
 
 	Engine::Service m_engine;
 	not_null<Stages*> m_stages;
@@ -75,7 +73,7 @@ class ManifestLoader {
 	std::size_t preload(dj::json const& root, Opt<Parser const> custom = {});
 	void loadAsync();
 	void loadBlocking();
-	void load(io::Path jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
+	void load(io::Path const& jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
 	std::size_t unload();
 
 	AssetManifest const& manifest() const noexcept { return m_manifest; }
@@ -125,15 +123,8 @@ constexpr AssetManifest::Parser::Order AssetManifest::Parser::maxOrder(std::span
 	return ret;
 }
 
-inline void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
-
 template <typename T>
 void AssetManifest::Parser::add(Order order, std::string uri, T asset) const {
 	enqueue(order, [e = m_engine, uri = std::move(uri), asset = std::move(asset)]() mutable { e.store().add(std::move(uri), std::move(asset)); });
-}
-
-template <typename T>
-void AssetManifest::Parser::load(Order order, std::string uri, AssetLoadData<T> data) const {
-	enqueue(order, [e = m_engine, uri = std::move(uri), data = std::move(data)] { e.store().load(std::move(uri), std::move(data)); });
 }
 } // namespace le

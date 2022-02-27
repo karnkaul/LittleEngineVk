@@ -88,18 +88,16 @@ vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
 // }
 
 ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::ptr<dj::json> const& json) {
-	AssetLoadData<graphics::SpirV> data;
 	graphics::ShaderType shaderType{};
 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
 		shaderType = parseShaderType(type);
 	} else {
 		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
-	data.uri = uri;
 	io::Path path = uri;
 	return [path = std::move(path), uri = std::move(uri), engine, shaderType]() mutable {
 		if (isGlsl(uri)) {
-			if (auto fm = dynamic_cast<io::FSMedia const*>(&engine.store().resources().media())) {
+			if (auto fm = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
 				path = spirvPath(path, *fm);
 			} else {
 				// cannot compile shaders without FSMedia
@@ -109,7 +107,7 @@ ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::pt
 			// fallback to previously compiled shader
 			path = graphics::utils::spirVpath(path);
 		}
-		auto res = engine.store().resources().media().bytes(path);
+		auto res = engine.store().media().bytes(path);
 		if (!res) { return; }
 		graphics::SpirV spirV;
 		spirV.spirV = std::vector<u32>(res->size() / 4);
@@ -148,25 +146,27 @@ ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::
 	Hash samplerURI = json->get_as<std::string>("sampler", "samplers/default");
 	io::Path prefix = json->get_as<std::string>("prefix");
 	return [uri, samplerURI, prefix, files, engine]() {
-		using CubeData = std::array<ImageData, 6>;
 		auto sampler = engine.store().find<graphics::Sampler>(samplerURI);
 		if (!sampler) { return; }
-		if (files.size() > 1) {
-			CubeData cube;
+		if (files.size() > 1U) {
+			EXPECT(files.size() == 6U);
+			bytearray bytes[6];
+			ImageData cube[6];
 			std::size_t idx = 0;
 			for (auto const& p : files) {
 				auto path = prefix / p;
-				auto res = engine.store().resources().load(path, Resource::Type::eBinary);
+				auto res = engine.store().media().bytes(path);
 				if (!res) { return; }
-				cube[idx++] = res->bytes();
+				bytes[idx] = std::move(*res);
+				cube[idx++] = bytes[idx];
 			}
 			graphics::Texture texture(&engine.vram(), sampler->sampler());
 			if (texture.construct(std::move(cube))) { engine.store().add(std::move(uri), std::move(texture)); }
 		} else {
-			auto res = engine.store().resources().load(files[0], Resource::Type::eBinary);
+			auto res = engine.store().media().bytes(files[0]);
 			if (!res) { return; }
 			graphics::Texture texture(&engine.vram(), sampler->sampler());
-			if (texture.construct(res->bytes())) { engine.store().add(std::move(uri), std::move(texture)); }
+			if (texture.construct(*res)) { engine.store().add(std::move(uri), std::move(texture)); }
 		}
 	};
 }
@@ -195,11 +195,11 @@ ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr
 	bool mipMaps = json->get_as<bool>("mip_maps", true);
 	auto height = graphics::Font::Height{json->get_as<u32>("height", u32(graphics::Font::Height::eDefault))};
 	return [uri, ttfURI, mipMaps, height, engine] {
-		auto ttf = engine.store().resources().load(ttfURI, Resource::Type::eBinary);
+		auto ttf = engine.store().media().bytes(ttfURI);
 		if (!ttf) { return; }
 		graphics::Font::Info fi;
 		fi.name = ttfURI.filename().string();
-		fi.ttf = ttf->bytes();
+		fi.ttf = *ttf;
 		fi.height = height;
 		fi.atlas.mipMaps = mipMaps;
 		engine.store().add(std::move(uri), graphics::Font(&engine.vram(), std::move(fi)));
@@ -295,7 +295,7 @@ ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::
 		meshJSON = path.generic_string();
 	}
 	return [engine, json = std::move(meshJSON), uri = std::move(uri)] {
-		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().resources().media(), &engine.vram())) {
+		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().media(), &engine.vram())) {
 			engine.store().add(std::move(uri), std::move(*mesh));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to load Mesh from OBJ [{}]", json);
@@ -442,6 +442,8 @@ std::size_t loaded(Engine::Service engine, AssetManifest const& manifest) {
 }
 } // namespace
 
+void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
+
 AssetManifest& AssetManifest::include(List add) {
 	for (auto& [uri, group] : add) { list.insert_or_assign(std::move(uri), std::move(group)); }
 	return *this;
@@ -505,11 +507,11 @@ void ManifestLoader::loadBlocking() {
 	if (auto const l = loaded(m_engine, m_manifest); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
 }
 
-void ManifestLoader::load(io::Path jsonURI, Opt<Parser> custom, bool async, bool reload) {
+void ManifestLoader::load(io::Path const& jsonURI, Opt<Parser> custom, bool async, bool reload) {
 	if (reload || m_manifest.list.empty()) {
-		if (auto json = m_engine.store().resources().load(std::move(jsonURI), Resource::Type::eText, Resources::Flag::eReload)) {
+		if (auto json = m_engine.store().media().string(jsonURI)) {
 			dj::json root;
-			if (root.read(json->string())) { preload(root, custom); }
+			if (root.read(*json)) { preload(root, custom); }
 		}
 	}
 	if (async) {

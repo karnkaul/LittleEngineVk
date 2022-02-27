@@ -17,7 +17,7 @@ class PrimitiveProvider {
 
 	Hash meshPrimitiveURI() const { return m_meshURI; }
 	Hash materialURI() const { return m_materialURI; }
-	Hash matTexRefsURI() const { return m_texRefsURI; }
+	Hash textureRefsURI() const { return m_texRefsURI; }
 
 	bool addDrawPrimitives(AssetStore const& store, graphics::DrawList& out, glm::mat4 const& matrix);
 

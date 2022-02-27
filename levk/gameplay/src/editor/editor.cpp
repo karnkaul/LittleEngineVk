@@ -8,6 +8,8 @@
 #include <editor/sudo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/render/pipeline.hpp>
+#include <levk/engine/render/primitive_provider.hpp>
+#include <levk/engine/render/texture_refs.hpp>
 #include <levk/gameplay/editor/asset_index.hpp>
 #include <levk/gameplay/editor/inspector.hpp>
 #include <levk/gameplay/editor/log_stats.hpp>
@@ -16,6 +18,7 @@
 #include <levk/gameplay/editor/palettes/settings.hpp>
 #include <levk/gameplay/editor/resizer.hpp>
 #include <levk/gameplay/editor/scene_tree.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/render/renderer.hpp>
 #include <levk/graphics/skybox.hpp>
 #endif
@@ -41,31 +44,57 @@ void displayScale([[maybe_unused]] f32 renderScale) {
 #endif
 }
 
-void inspectSkyboxP(Inspect<AssetProvider<graphics::Skybox>> provider) {
-	Text uri(provider.store.uri<graphics::Skybox>(provider.get().uri()));
-	if (auto popup = Popup("Skybox##inspect_skybox_provider")) {
+template <typename T>
+std::string_view inspectAsset(AssetStore const& store, std::string_view name, std::string_view uri) {
+	Text title(uri);
+	auto const id = CStr<128>("{}##inspect_{}", name, name);
+	std::string_view ret;
+	if (auto popup = Popup(id)) {
 		static ktl::stack_string<128> s_search;
-		TWidget<char*> search("Search##inspect_skybox_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<graphics::Skybox>(s_search)) {
-			provider.get().uri(select.item);
+		TWidget<char*> search(CStr<128>("Search##inspect_{}", name), s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<T>(store, s_search)) {
+			ret = select.item;
 			popup.close();
 		}
 	}
-	if (Button("Edit...")) { Popup::open("Skybox##inspect_skybox_provider"); }
+	if (Button("Edit...")) { Popup::open(id); }
+	return ret;
 }
 
-void inspectRLP(Inspect<RenderPipeProvider> provider) {
-	Text uri(provider.store.uri<RenderPipeline>(provider.get().uri()));
-	if (auto popup = Popup("RenderPipeline##inspect_pipe_provider")) {
-		static ktl::stack_string<128> s_search;
-		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<RenderPipeline>(s_search)) {
-			provider.get().uri(select.item);
-			popup.close();
+template <typename T>
+void inspectProvider(std::string_view name, Inspect<AssetProvider<T>> provider) {
+	if (auto select = inspectAsset<T>(provider.store, name, provider.store.template uri<T>(provider.get().uri())); !select.empty()) {
+		provider.get().uri(select);
+	}
+}
+
+void inspectPrimitiveP(Inspect<PrimitiveProvider> primitive) {
+	auto mesh = primitive.get().meshPrimitiveURI();
+	auto mat = primitive.get().materialURI();
+	auto tex = primitive.get().textureRefsURI();
+	if (auto tn = TreeNode(CStr<64>("MeshPrimitive"))) {
+		auto const uri = primitive.store.uri<graphics::MeshPrimitive>(mesh);
+		if (auto select = inspectAsset<graphics::MeshPrimitive>(primitive.store, "MeshPrimitive", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(select, mat, tex);
 		}
 	}
-	if (Button("Edit...")) { Popup::open("RenderPipeline##inspect_pipe_provider"); }
+	if (auto tn = TreeNode(CStr<64>("BPMaterial"))) {
+		auto const uri = primitive.store.uri<graphics::BPMaterialData>(mat);
+		if (auto select = inspectAsset<graphics::BPMaterialData>(primitive.store, "BPMaterial", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(mesh, select, tex);
+		}
+	}
+	if (auto tn = TreeNode(CStr<64>("TextureRefs"))) {
+		auto const uri = primitive.store.uri<TextureRefs>(tex);
+		if (auto select = inspectAsset<TextureRefs>(primitive.store, "TextureRefs", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(mesh, mat, select);
+		}
+	}
 }
+
+void inspectSkyboxP(Inspect<AssetProvider<graphics::Skybox>> provider) { inspectProvider<graphics::Skybox>("Skybox", provider); }
+void inspectMeshP(Inspect<AssetProvider<graphics::Mesh>> provider) { inspectProvider<graphics::Mesh>("Mesh", provider); }
+void inspectRLP(Inspect<RenderPipeProvider> provider) { inspectProvider<RenderPipeline>("RenderPipeline", provider); }
 #endif
 
 struct Rail {
@@ -161,6 +190,8 @@ Instance Instance::make(Engine::Service engine) {
 	impl->storage.right.tab = std::make_unique<EditorTab<Inspector>>();
 	Inspector::attach<RenderPipeProvider>(&inspectRLP, {}, "RenderPipeline");
 	Inspector::attach<AssetProvider<graphics::Skybox>>(&inspectSkyboxP, {}, "Skybox");
+	Inspector::attach<AssetProvider<graphics::Mesh>>(&inspectMeshP, {}, "Mesh");
+	Inspector::attach<PrimitiveProvider>(&inspectPrimitiveP, {}, "Primitive");
 #endif
 	g_state.gameView = g_comboView;
 	return Instance(std::move(impl));

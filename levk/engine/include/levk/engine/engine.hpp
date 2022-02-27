@@ -29,6 +29,7 @@ class ViewStack;
 }
 
 class AssetStore;
+class AssetMonitor;
 class Editor;
 
 namespace utils {
@@ -94,6 +95,7 @@ class Engine::Service {
 	Renderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept;
 	AssetStore& store() const noexcept;
+	AssetMonitor& monitor() const noexcept;
 	input::Receiver::Store& receiverStore() const noexcept;
 	Executor& executor() const noexcept;
 

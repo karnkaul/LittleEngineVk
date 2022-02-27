@@ -6,6 +6,7 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
+#include <levk/engine/assets/asset_monitor.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
@@ -99,6 +100,7 @@ struct Engine::Impl {
 	std::optional<Window> win;
 	std::optional<GFX> gfx;
 	AssetStore store;
+	AssetMonitor monitor;
 	dts::thread_pool threadPool;
 	Executor executor = Executor(&threadPool);
 	Delegates delegates;
@@ -152,6 +154,7 @@ bool Engine::unboot() noexcept {
 		saveConfig();
 		m_impl->executor.stop();
 		m_impl->store.clear();
+		m_impl->monitor.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
@@ -296,7 +299,7 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
-	// if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.checkModified(); }
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->monitor.update(m_impl->store); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
 	m_impl->executor.rethrow();
 }
@@ -314,6 +317,7 @@ Engine::Window& Engine::Service::window() const {
 }
 input::Frame const& Engine::Service::inputFrame() const noexcept { return m_impl->inputFrame; }
 AssetStore& Engine::Service::store() const noexcept { return m_impl->store; }
+AssetMonitor& Engine::Service::monitor() const noexcept { return m_impl->monitor; }
 input::Receiver::Store& Engine::Service::receiverStore() const noexcept { return m_impl->receivers; }
 dts::executor& Engine::Service::executor() const noexcept { return m_impl->executor; }
 

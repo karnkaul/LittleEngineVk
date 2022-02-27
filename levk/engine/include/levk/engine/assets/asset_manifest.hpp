@@ -68,6 +68,8 @@ class ManifestLoader {
 	using Parser = AssetManifest::Parser;
 	using Order = Parser::Order;
 
+	inline static bool s_attachMonitors = levk_debug;
+
 	ManifestLoader(Engine::Service engine) noexcept : m_engine(engine) {}
 
 	std::size_t preload(dj::json const& root, Opt<Parser const> custom = {});

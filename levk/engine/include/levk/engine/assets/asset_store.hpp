@@ -60,9 +60,6 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	static TAsset<T>& toTAsset(Base& base) noexcept;
 
-	template <typename T>
-	static Opt<T> toT(Base& base);
-
 	ktl::strict_tmutex<TAssets> m_assets;
 	io::FSMedia m_fsMedia{};
 	Opt<io::Media const> m_customMedia{};
@@ -146,7 +143,7 @@ Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
 	auto const [it, b] = lock->insert_or_assign(key, std::move(tasset));
 	if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", it->second->uri); }
 	logI(LC_EndUser, "== [Asset] [{}] added", it->second->uri);
-	return toT<T>(*it->second);
+	return &*toTAsset<T>(*it->second).t;
 }
 
 template <typename T>
@@ -163,12 +160,6 @@ auto AssetStore::findImpl(Hash uri) const -> Opt<TAsset<T>> {
 template <typename T>
 auto AssetStore::toTAsset(Base& base) noexcept -> TAsset<T>& {
 	return static_cast<TAsset<T>&>(base);
-}
-
-template <typename T>
-Opt<T> AssetStore::toT(Base& base) {
-	auto& t = toTAsset<T>(base).t;
-	return t ? &*t : nullptr;
 }
 
 template <typename T>

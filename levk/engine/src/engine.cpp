@@ -6,6 +6,7 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
+#include <levk/engine/assets/asset_monitor.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
@@ -99,6 +100,7 @@ struct Engine::Impl {
 	std::optional<Window> win;
 	std::optional<GFX> gfx;
 	AssetStore store;
+	AssetMonitor monitor;
 	dts::thread_pool threadPool;
 	Executor executor = Executor(&threadPool);
 	Delegates delegates;
@@ -152,6 +154,7 @@ bool Engine::unboot() noexcept {
 		saveConfig();
 		m_impl->executor.stop();
 		m_impl->store.clear();
+		m_impl->monitor.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
@@ -246,7 +249,7 @@ std::optional<Engine> Engine::Builder::operator()() {
 		return std::nullopt;
 	}
 	impl->wm = std::move(wm);
-	if (m_media) { impl->store.resources().media(m_media); }
+	if (m_media) { impl->store.customMedia(m_media); }
 	logI("LittleEngineVk v{} | {}", buildVersion().toString(levk_debug), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI(LC_EndUser, "Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	auto winInfo = m_windowInfo;
@@ -264,10 +267,15 @@ std::optional<Engine> Engine::Builder::operator()() {
 	impl->errorHandler.deleteFile();
 	impl->configPath = std::move(m_configPath);
 	if (!impl->errorHandler.activeHandler()) { impl->errorHandler.setActive(); }
+	std::vector<bytearray> iconBytes;
 	std::vector<graphics::utils::STBImg> icons;
+	iconBytes.reserve(m_iconURIs.size());
 	icons.reserve(m_iconURIs.size());
 	for (io::Path& uri : m_iconURIs) {
-		if (auto bytes = impl->store.resources().load(std::move(uri), Resource::Type::eBinary)) { icons.push_back(graphics::utils::STBImg(bytes->bytes())); }
+		if (auto bytes = impl->store.media().bytes(std::move(uri))) {
+			iconBytes.push_back(std::move(*bytes));
+			icons.push_back(graphics::utils::STBImg(iconBytes.back()));
+		}
 	}
 	if (!icons.empty()) {
 		std::vector<TBitmap<BmpView>> const views = {icons.begin(), icons.end()};
@@ -291,7 +299,7 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
-	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.checkModified(); }
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->monitor.update(m_impl->store); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
 	m_impl->executor.rethrow();
 }
@@ -309,6 +317,7 @@ Engine::Window& Engine::Service::window() const {
 }
 input::Frame const& Engine::Service::inputFrame() const noexcept { return m_impl->inputFrame; }
 AssetStore& Engine::Service::store() const noexcept { return m_impl->store; }
+AssetMonitor& Engine::Service::monitor() const noexcept { return m_impl->monitor; }
 input::Receiver::Store& Engine::Service::receiverStore() const noexcept { return m_impl->receivers; }
 dts::executor& Engine::Service::executor() const noexcept { return m_impl->executor; }
 

@@ -1,9 +1,11 @@
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
+#include <levk/engine/assets/asset_monitor.hpp>
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <levk/graphics/mesh.hpp>
+#include <levk/graphics/render/context.hpp>
 #include <levk/graphics/skybox.hpp>
 #include <levk/graphics/texture.hpp>
 #include <levk/graphics/utils/utils.hpp>
@@ -76,31 +78,19 @@ vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
 	return ret;
 }
 
-// AssetLoadData<graphics::SpirV> spirVData(std::string_view uri, dj::ptr<dj::json> const& json) {
-// 	AssetLoadData<graphics::SpirV> data;
-// 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
-// 		data.type = parseShaderType(type);
-// 	} else {
-// 		data.type = shaderTypeFromExt(io::Path(uri).extension());
-// 	}
-// 	data.uri = uri;
-// 	return data;
-// }
-
 ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::ptr<dj::json> const& json) {
-	AssetLoadData<graphics::SpirV> data;
 	graphics::ShaderType shaderType{};
 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
 		shaderType = parseShaderType(type);
 	} else {
 		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
-	data.uri = uri;
-	io::Path path = uri;
-	return [path = std::move(path), uri = std::move(uri), engine, shaderType]() mutable {
+	return [uri = std::move(uri), engine, shaderType]() mutable {
+		Opt<io::FSMedia const> fsMedia{};
+		io::Path path = uri;
 		if (isGlsl(uri)) {
-			if (auto fm = dynamic_cast<io::FSMedia const*>(&engine.store().resources().media())) {
-				path = spirvPath(path, *fm);
+			if (fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media()); fsMedia) {
+				path = spirvPath(path, *fsMedia);
 			} else {
 				// cannot compile shaders without FSMedia
 				path = graphics::utils::spirVpath(path);
@@ -109,32 +99,43 @@ ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::pt
 			// fallback to previously compiled shader
 			path = graphics::utils::spirVpath(path);
 		}
-		auto res = engine.store().resources().media().bytes(path);
+		auto res = engine.store().media().bytes(path);
 		if (!res) { return; }
 		graphics::SpirV spirV;
 		spirV.spirV = std::vector<u32>(res->size() / 4);
 		spirV.type = shaderType;
 		std::memcpy(spirV.spirV.data(), res->data(), res->size());
-		engine.store().add(std::move(uri), std::move(spirV));
+		engine.store().add(uri, std::move(spirV));
+		if (ManifestLoader::s_attachMonitors && fsMedia) {
+			engine.monitor().attach<graphics::SpirV>(uri, fsMedia->fullPath(uri), [uri, engine](graphics::SpirV& out) {
+				if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+					auto path = spirvPath(uri, *fsMedia);
+					if (auto res = fsMedia->bytes(path)) {
+						out.spirV = std::vector<u32>(res->size() / 4);
+						std::memcpy(out.spirV.data(), res->data(), res->size());
+						engine.context().pipelineFactory().markStale(uri);
+						return true;
+					}
+				}
+				return false;
+			});
+		}
 	};
 }
 
-// AssetLoadData<graphics::Texture> textureData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-// 	using Payload = graphics::Texture::Payload;
-// 	AssetLoadData<graphics::Texture> ret(&vram);
-// 	if (auto files = json->find_as<std::vector<std::string>>("files")) {
-// 		ret.imageURIs = {files->begin(), files->end()};
-// 	} else if (auto file = json->find_as<std::string>("file")) {
-// 		ret.imageURIs = {std::move(*file)};
-// 	} else {
-// 		ret.imageURIs = {uri};
-// 	}
-// 	ret.prefix = json->get_as<std::string>("prefix");
-// 	ret.ext = json->get_as<std::string>("ext");
-// 	ret.samplerURI = json->get_as<std::string_view>("sampler");
-// 	if (auto payload = json->find_as<std::string_view>("payload")) { ret.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
-// 	return ret;
-// }
+bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io::Media const& media, graphics::Texture& out) {
+	EXPECT(files.size() == 6U);
+	bytearray bytes[6];
+	ImageData cube[6];
+	std::size_t idx = 0;
+	for (auto const& file : files) {
+		auto res = media.bytes(prefix / file);
+		if (!res) { return false; }
+		bytes[idx] = std::move(*res);
+		cube[idx++] = bytes[idx];
+	}
+	return out.construct(cube);
+}
 
 ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
 	std::vector<std::string> files = json->get_as<std::vector<std::string>>("files");
@@ -148,41 +149,42 @@ ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::
 	Hash samplerURI = json->get_as<std::string>("sampler", "samplers/default");
 	io::Path prefix = json->get_as<std::string>("prefix");
 	return [uri, samplerURI, prefix, files, engine]() {
-		using CubeData = std::array<ImageData, 6>;
 		auto sampler = engine.store().find<graphics::Sampler>(samplerURI);
 		if (!sampler) { return; }
-		if (files.size() > 1) {
-			CubeData cube;
-			std::size_t idx = 0;
-			for (auto const& p : files) {
-				auto path = prefix / p;
-				auto res = engine.store().resources().load(path, Resource::Type::eBinary);
-				if (!res) { return; }
-				cube[idx++] = res->bytes();
+		graphics::Texture texture(&engine.vram(), sampler->sampler());
+		if (files.size() > 1U) {
+			if (constructCubemap(prefix, files, engine.store().media(), texture)) {
+				engine.store().add(std::move(uri), std::move(texture));
+				if (ManifestLoader::s_attachMonitors) {
+					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+						io::Path paths[6];
+						std::size_t idx{};
+						for (auto const& file : files) { paths[idx++] = fsMedia->fullPath(file); }
+						auto f = [engine, files = std::move(files), prefix](graphics::Texture& out) {
+							return constructCubemap(prefix, files, engine.store().media(), out);
+						};
+						engine.monitor().attach<graphics::Texture>(uri, paths, f);
+					}
+				}
 			}
-			graphics::Texture texture(&engine.vram(), sampler->sampler());
-			if (texture.construct(std::move(cube))) { engine.store().add(std::move(uri), std::move(texture)); }
 		} else {
-			auto res = engine.store().resources().load(files[0], Resource::Type::eBinary);
+			auto res = engine.store().media().bytes(files[0]);
 			if (!res) { return; }
-			graphics::Texture texture(&engine.vram(), sampler->sampler());
-			if (texture.construct(res->bytes())) { engine.store().add(std::move(uri), std::move(texture)); }
+			if (texture.construct(*res)) {
+				engine.store().add(uri, std::move(texture));
+				if (ManifestLoader::s_attachMonitors) {
+					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+						auto f = [engine, file = files[0]](graphics::Texture& out) {
+							if (auto res = engine.store().media().bytes(file)) { return out.construct(*res); }
+							return false;
+						};
+						engine.monitor().attach<graphics::Texture>(uri, fsMedia->fullPath(files[0]), f);
+					}
+				}
+			}
 		}
 	};
 }
-
-// AssetLoadData<graphics::Font> fontData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-// 	AssetLoadData<graphics::Font> ret(&vram);
-// 	if (auto file = json->find("file"); file && file->is_string()) {
-// 		ret.ttfURI = file->as<std::string_view>();
-// 	} else {
-// 		io::Path path(uri);
-// 		ret.ttfURI = path / path.filename() + ".ttf";
-// 	}
-// 	ret.info.atlas.mipMaps = json->get_as<bool>("mip_maps", ret.info.atlas.mipMaps);
-// 	ret.info.height = graphics::Font::Height{json->get_as<u32>("height", u32(ret.info.height))};
-// 	return ret;
-// }
 
 ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
 	io::Path ttfURI;
@@ -195,11 +197,11 @@ ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr
 	bool mipMaps = json->get_as<bool>("mip_maps", true);
 	auto height = graphics::Font::Height{json->get_as<u32>("height", u32(graphics::Font::Height::eDefault))};
 	return [uri, ttfURI, mipMaps, height, engine] {
-		auto ttf = engine.store().resources().load(ttfURI, Resource::Type::eBinary);
+		auto ttf = engine.store().media().bytes(ttfURI);
 		if (!ttf) { return; }
 		graphics::Font::Info fi;
 		fi.name = ttfURI.filename().string();
-		fi.ttf = ttf->bytes();
+		fi.ttf = *ttf;
 		fi.height = height;
 		fi.atlas.mipMaps = mipMaps;
 		engine.store().add(std::move(uri), graphics::Font(&engine.vram(), std::move(fi)));
@@ -295,7 +297,7 @@ ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::
 		meshJSON = path.generic_string();
 	}
 	return [engine, json = std::move(meshJSON), uri = std::move(uri)] {
-		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().resources().media(), &engine.vram())) {
+		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().media(), &engine.vram())) {
 			engine.store().add(std::move(uri), std::move(*mesh));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to load Mesh from OBJ [{}]", json);
@@ -335,8 +337,6 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t spirV(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			// auto data = spirVData(uri, json);
-			// load(order<graphics::SpirV>(), std::move(uri), std::move(data));
 			enqueue(order<graphics::SpirV>(), spirVFunc(std::move(uri), m_engine, json));
 			++ret;
 		}
@@ -356,8 +356,6 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t textures(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			// auto data = textureData(m_engine.vram(), uri, json);
-			// load(order<graphics::Texture>(), std::move(uri), std::move(data));
 			enqueue(order<graphics::Texture>(), textureFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -402,8 +400,6 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t fonts(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			// auto data = fontData(m_engine.vram(), uri, json);
-			// load(order<graphics::Font>(), std::move(uri), std::move(data));
 			enqueue(order<graphics::Font>(), fontFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -441,6 +437,8 @@ std::size_t loaded(Engine::Service engine, AssetManifest const& manifest) {
 	return ret;
 }
 } // namespace
+
+void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
 
 AssetManifest& AssetManifest::include(List add) {
 	for (auto& [uri, group] : add) { list.insert_or_assign(std::move(uri), std::move(group)); }
@@ -505,11 +503,11 @@ void ManifestLoader::loadBlocking() {
 	if (auto const l = loaded(m_engine, m_manifest); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
 }
 
-void ManifestLoader::load(io::Path jsonURI, Opt<Parser> custom, bool async, bool reload) {
+void ManifestLoader::load(io::Path const& jsonURI, Opt<Parser> custom, bool async, bool reload) {
 	if (reload || m_manifest.list.empty()) {
-		if (auto json = m_engine.store().resources().load(std::move(jsonURI), Resource::Type::eText, Resources::Flag::eReload)) {
+		if (auto json = m_engine.store().media().string(jsonURI)) {
 			dj::json root;
-			if (root.read(json->string())) { preload(root, custom); }
+			if (root.read(*json)) { preload(root, custom); }
 		}
 	}
 	if (async) {

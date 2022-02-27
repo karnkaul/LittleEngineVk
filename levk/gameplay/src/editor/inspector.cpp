@@ -3,7 +3,7 @@
 #include <levk/core/utils/algo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/render/drawable.hpp>
+#include <levk/engine/render/no_draw.hpp>
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/gameplay/editor/inspector.hpp>

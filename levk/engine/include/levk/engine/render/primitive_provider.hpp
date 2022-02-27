@@ -50,27 +50,4 @@ class PrimitiveGenerator {
   private:
 	AddPrims m_addPrims;
 };
-
-// class DynamicMeshView {
-//   public:
-// 	using GetMesh = ktl::kfunction<MeshView()>;
-
-// 	static DynamicMeshView make(GetMesh&& getMesh);
-// 	template <MeshViewAPI T>
-// 	static DynamicMeshView make(T const* source);
-
-// 	bool active() const noexcept { return m_getMesh.has_value(); }
-// 	MeshView mesh() const { return m_getMesh ? m_getMesh() : MeshView{}; }
-
-//   private:
-// 	GetMesh m_getMesh;
-// };
-
-// impl
-
-// template <MeshViewAPI T>
-// DynamicMeshView DynamicMeshView::make(T const* source) {
-// 	EXPECT(source);
-// 	return make([source]() { return source->mesh(); });
-// }
 } // namespace le

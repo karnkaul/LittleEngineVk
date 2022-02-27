@@ -7,10 +7,7 @@
 #if defined(LEVK_EDITOR)
 #include <editor/sudo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/render/mesh_view_provider.hpp>
-#include <levk/engine/render/model.hpp>
 #include <levk/engine/render/pipeline.hpp>
-#include <levk/engine/render/skybox.hpp>
 #include <levk/gameplay/editor/asset_index.hpp>
 #include <levk/gameplay/editor/inspector.hpp>
 #include <levk/gameplay/editor/log_stats.hpp>
@@ -42,89 +39,6 @@ void displayScale([[maybe_unused]] f32 renderScale) {
 	auto& ds = ImGui::GetIO().DisplayFramebufferScale;
 	ds = {ds.x * renderScale, ds.y * renderScale};
 #endif
-}
-
-void inspectMat(Material* out_mat, std::string_view name, int idx) {
-	auto const id = idx >= 0 ? CStr<64>("Material_{}", idx) : CStr<64>("Material");
-	if (auto tn = TreeNode(id, false, false, true, true)) {
-		if (!name.empty()) { Selectable name_(name); }
-		if (out_mat) {
-			TWidget<graphics::RGBA> Tf("Tf", out_mat->Tf, true);
-			TWidget<f32> d("d", out_mat->d);
-		}
-	}
-}
-
-void inspectMP(Inspect<MeshViewProvider> provider) {
-	std::string_view type = "Other";
-	auto const th = provider.get().sign();
-	if (th == AssetStore::sign<MeshPrimitive>()) {
-		type = "Mesh Primitive";
-	} else if (th == AssetStore::sign<Model>()) {
-		type = "Model";
-	} else if (th == AssetStore::sign<Skybox>()) {
-		type = "Skybox";
-	}
-	Text typeStr(CStr<64>("Type: {}", type));
-	Text uri(provider.get().assetURI());
-	if (type == "Mesh Primitive") {
-		std::string_view const matURI = provider.get().materialURI();
-		inspectMat(provider.store.find<Material>(matURI), matURI, -1);
-	} else if (type == "Model") {
-		if (auto model = provider.store.find<Model>(provider.get().assetURI())) {
-			for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }
-		}
-	}
-	static ktl::stack_string<128> s_search;
-	if (auto popup = Popup("Model##inspect_asset_provider")) {
-		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
-			provider.get() = MeshViewProvider::make<Model>(std::string(select.item));
-			popup.close();
-		}
-	}
-	if (auto popup = Popup("Skybox##inspect_asset_provider")) {
-		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<Skybox>(s_search, s_search)) {
-			provider.get() = MeshViewProvider::make<Skybox>(std::string(select.item));
-			popup.close();
-		}
-	}
-	{
-		static std::string_view s_mesh, s_mat = "materials/default";
-		if (auto popup = Popup("Mesh Primitive##inspect_asset_provider")) {
-			TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-			if (auto select = AssetIndex::list<MeshPrimitive>(s_search, s_mesh)) { s_mesh = select.item; }
-			if (auto select = AssetIndex::list<Material>(s_search, s_mat)) { s_mat = select.item; }
-			if (!s_mesh.empty() && !s_mat.empty() && Button("OK")) {
-				provider.get() = provider.get().make(std::string(s_mesh), std::string(s_mat));
-				popup.close();
-			}
-		}
-		std::string_view toPopup;
-		if (auto popup = Popup("Type##inspect_asset_provider")) {
-			if (Selectable("Mesh Primitive")) {
-				toPopup = "Mesh Primitive##inspect_asset_provider";
-				popup.close();
-			}
-			if (Selectable("Model")) {
-				toPopup = "Model##inspect_asset_provider";
-				popup.close();
-			}
-		}
-		if (!toPopup.empty()) {
-			s_mat = {};
-			s_mesh = {};
-			Popup::open(toPopup);
-		}
-	}
-	if (Button("Edit...")) {
-		if (type == "Skybox") {
-			Popup::open("Skybox##inspect_asset_provider");
-		} else {
-			Popup::open("Type##inspect_asset_provider");
-		}
-	}
 }
 
 void inspectSkyboxP(Inspect<AssetProvider<graphics::Skybox>> provider) {
@@ -245,7 +159,6 @@ Instance Instance::make(Engine::Service engine) {
 	impl->storage.left.tab = std::make_unique<EditorTab<SceneTree>>();
 	impl->storage.left.tab->attach<Settings>("Settings");
 	impl->storage.right.tab = std::make_unique<EditorTab<Inspector>>();
-	Inspector::attach<MeshViewProvider>(&inspectMP, {}, "Mesh");
 	Inspector::attach<RenderPipeProvider>(&inspectRLP, {}, "RenderPipeline");
 	Inspector::attach<AssetProvider<graphics::Skybox>>(&inspectSkyboxP, {}, "Skybox");
 #endif

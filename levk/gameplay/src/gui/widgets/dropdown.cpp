@@ -37,7 +37,7 @@ void Dropdown::init(CreateInfoBase info) {
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
-	m_cover->m_material.Tf = m_cover->m_bpMaterial.Tf = info.coverColours.cover;
+	m_cover->m_bpMaterial.Tf = info.coverColours.cover;
 	m_cover->m_rect.anchor.norm.x = 0.5f;
 	m_cover->m_rect.offset({m_rect.size.x * 0.12f, m_rect.size.y}, {-1.0f, 0.0f});
 	m_arrow = &m_cover->push<Shape>();

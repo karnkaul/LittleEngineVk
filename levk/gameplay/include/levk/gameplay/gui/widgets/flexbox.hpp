@@ -7,8 +7,7 @@ class Flexbox : public Widget {
 	enum class Axis { eHorz, eVert };
 
 	struct CreateInfo {
-		Material background;
-		graphics::BPMaterialData background2;
+		graphics::BPMaterialData background;
 		Axis axis = Axis::eHorz;
 		f32 pad = 5.0f;
 		Hash style;

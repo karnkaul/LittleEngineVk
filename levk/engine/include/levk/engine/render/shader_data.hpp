@@ -4,7 +4,8 @@
 namespace le {
 namespace graphics {
 struct Camera;
-}
+struct BPMaterialData;
+} // namespace graphics
 struct Material;
 
 struct ShaderSceneView {
@@ -22,6 +23,6 @@ struct ShaderMaterial {
 	alignas(16) glm::vec4 diffuse;
 	alignas(16) glm::vec4 specular;
 
-	static ShaderMaterial make(Material const& mtl) noexcept;
+	static ShaderMaterial make(graphics::BPMaterialData const& mtl) noexcept;
 };
 } // namespace le

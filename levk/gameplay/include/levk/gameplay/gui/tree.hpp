@@ -4,7 +4,6 @@
 #include <levk/core/span.hpp>
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/render/flex.hpp>
-#include <levk/engine/render/mesh_view.hpp>
 #include <levk/engine/utils/owner.hpp>
 #include <levk/gameplay/gui/rect.hpp>
 #include <levk/graphics/basis.hpp>
@@ -77,7 +76,6 @@ class TreeNode : public TreeRoot {
 	glm::mat4 matrix() const noexcept;
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
-	virtual MeshView mesh() const noexcept { return {}; }
 	virtual void addDrawPrimitives(DrawList&) const {}
 
 	DrawScissor m_scissor;

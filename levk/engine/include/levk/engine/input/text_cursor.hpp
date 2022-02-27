@@ -34,7 +34,6 @@ class TextCursor {
 
 	void font(not_null<Font*> font) noexcept { m_font = font; }
 	Opt<Font> font() const noexcept { return m_font; }
-	MeshView mesh() const noexcept;
 	graphics::DrawPrimitive drawPrimitive() const;
 
 	///
@@ -113,8 +112,7 @@ class TextCursor {
 	void refresh(graphics::Geometry* out, bool clearGeom, bool regen);
 
 	graphics::MeshPrimitive m_primitive;
-	mutable Material m_material;
-	mutable graphics::BPMaterialData m_material2;
+	mutable graphics::BPMaterialData m_material;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};
 	glm::vec2 m_size = {0.07f, 1.1f};

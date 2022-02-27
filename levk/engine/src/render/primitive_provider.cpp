@@ -23,10 +23,4 @@ bool PrimitiveProvider::addDrawPrimitives(AssetStore const& store, graphics::Dra
 	out.push(dp, matrix);
 	return true;
 }
-
-// DynamicMeshView DynamicMeshView::make(GetMesh&& getMesh) {
-// 	DynamicMeshView ret;
-// 	ret.m_getMesh = std::move(getMesh);
-// 	return ret;
-// }
 } // namespace le

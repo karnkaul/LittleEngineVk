@@ -1,7 +1,5 @@
 #pragma once
 #include <ktl/either.hpp>
-#include <levk/engine/render/material.hpp>
-#include <levk/engine/render/mesh_view.hpp>
 #include <levk/graphics/draw_primitive.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 
@@ -23,14 +21,11 @@ class TextMesh {
 	using Font = graphics::Font;
 
 	struct Obj {
-		MeshPrimitive primitive;
-		Material material;
+		graphics::MeshPrimitive primitive;
 		graphics::BPMaterialData bpMaterial;
 
 		static Obj make(not_null<graphics::VRAM*> vram);
-		MeshView mesh(Font& font, graphics::Geometry const& geometry, RGBA colour = colours::black);
 		graphics::DrawPrimitive drawPrimitive(Font& font, graphics::Geometry const& geometry, RGBA colour = colours::black);
-		MeshView mesh(Font& font, std::string_view line, RGBA colour = colours::black, TextLayout const& layout = {});
 		graphics::DrawPrimitive drawPrimitive(Font& font, std::string_view line, RGBA colour = colours::black, TextLayout const& layout = {});
 	};
 
@@ -45,7 +40,6 @@ class TextMesh {
 
 	void font(not_null<Font*> font) noexcept { m_font = font; }
 	Opt<Font> font() const noexcept { return m_font; }
-	MeshView mesh() const;
 	graphics::DrawPrimitive drawPrimitive() const;
 
 	Info m_info;

@@ -3,13 +3,11 @@
 #include <levk/core/utils/std_hash.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/input/control.hpp>
-#include <levk/engine/render/model.hpp>
 #include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <levk/graphics/utils/utils.hpp>
 
-#include <levk/engine/render/skybox.hpp>
 #include <levk/engine/utils/exec.hpp>
 #include <levk/gameplay/gui/quad.hpp>
 #include <levk/gameplay/gui/text.hpp>
@@ -124,92 +122,6 @@ class Renderer : public ListRenderer {
 	using Camera = graphics::Camera;
 
 	struct SceneData {
-		DrawableMap custom;
-		ShaderSceneView view;
-		Span<DirLight const> lights;
-	};
-
-	void render(RenderPass& out_rp, ShaderBufferMap& sbMap, SceneData data, AssetStore const& store, dens::registry const& registry) {
-		m_mats = &sbMap.get("mats");
-		m_mats->write(data.view);
-		m_lights = &sbMap.get("lights");
-		if (!data.lights.empty()) {
-			DirLights dl;
-			for (std::size_t idx = 0; idx < data.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = data.lights[idx]; }
-			dl.count = std::min((u32)data.lights.size(), (u32)dl.lights.size());
-			m_lights->write(dl);
-		} else {
-			m_lights->write(DirLights());
-		}
-		auto& drawMap = data.custom;
-		fill(drawMap, store, registry);
-		ListRenderer::render(out_rp, store, std::move(drawMap));
-	}
-
-  private:
-	void writeSets(DescriptorMap map, DrawList const& list) override {
-		auto set0 = list.set(map, 0);
-		set0.update(0, *m_mats);
-		set0.update(1, *m_lights);
-		for (Drawable const& drawable : list.drawables) {
-			drawable.set(map, 1).update(0, drawable.model);
-			if (!drawable.mesh.mesh2.empty()) {
-				for (auto const& primitive : drawable.mesh.mesh2) {
-					auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
-					auto set2 = drawable.mesh.set(map, 2);
-					set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
-					set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
-					set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
-					drawable.set(map, 3).update(0, smat);
-				}
-			} else {
-				DrawMesh const& drawMesh = drawable.mesh;
-				for (MeshObj const& mesh : drawable.meshViews()) {
-					if (mesh.primitive) {
-						static Material const s_blank;
-						Material const& mat = mesh.material ? *mesh.material : s_blank;
-						auto set2 = drawMesh.set(map, 2);
-						set2.update(0, mat.map_Kd);
-						set2.update(1, mat.map_d);
-						set2.update(2, mat.map_Ks, TextureFallback::eBlack);
-						drawMesh.set(map, 3).update(0, ShaderMaterial::make(mat));
-					}
-				}
-			}
-		}
-	}
-
-	void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const override {
-		for (u32 const set : list.sets) { bind(set); }
-		for (Drawable const& d : list.drawables) {
-			for (u32 const set : d.sets) { bind(set); }
-			if (d.scissor) { cb.setScissor(cast(*d.scissor)); }
-			if (!d.mesh.mesh2.empty()) {
-				for (auto const& primitive : d.mesh.mesh2) {
-					for (u32 const set : d.mesh.sets) { bind(set); }
-					primitive.primitive->draw(cb);
-				}
-			} else {
-				for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
-					EXPECT(mesh.primitive);
-					if (mesh.primitive) {
-						for (u32 const set : d.mesh.sets) { bind(set); }
-						mesh.primitive->draw(cb);
-					}
-				}
-			}
-		}
-	}
-
-	graphics::ShaderBuffer* m_mats{};
-	graphics::ShaderBuffer* m_lights{};
-};
-
-class Renderer2 : public ListRenderer2 {
-  public:
-	using Camera = graphics::Camera;
-
-	struct SceneData {
 		RenderMap custom;
 		ShaderSceneView view;
 		Span<DirLight const> lights;
@@ -229,7 +141,7 @@ class Renderer2 : public ListRenderer2 {
 		}
 		auto& map = data.custom;
 		fill(map, store, registry);
-		ListRenderer2::render(out_rp, store, std::move(map));
+		ListRenderer::render(out_rp, store, std::move(map));
 	}
 
   private:
@@ -275,18 +187,18 @@ class TestView : public gui::View {
 		auto& bg = push<gui::Quad>();
 		bg.m_rect.size = {200.0f, 100.0f};
 		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
-		bg.m_material.Tf = bg.m_bpMaterial.Tf = colours::cyan;
+		bg.m_bpMaterial.Tf = colours::cyan;
 		auto& centre = bg.push<gui::Quad>();
 		centre.m_rect.size = {50.0f, 50.0f};
-		centre.m_material.Tf = centre.m_bpMaterial.Tf = colours::red;
+		centre.m_bpMaterial.Tf = colours::red;
 		auto& dot = centre.push<gui::Quad>();
 		dot.offset({30.0f, 20.0f});
-		dot.m_material.Tf = dot.m_bpMaterial.Tf = Colour(0x333333ff);
+		dot.m_bpMaterial.Tf = Colour(0x333333ff);
 		dot.m_rect.anchor.norm = {-0.5f, -0.5f};
 		auto& topLeft = bg.push<gui::Quad>();
 		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
-		topLeft.m_material.Tf = topLeft.m_bpMaterial.Tf = colours::magenta;
+		topLeft.m_bpMaterial.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(fontURI);
 		text.set("click").height(60U);
 		m_button = &push<gui::Button>(fontURI);
@@ -382,12 +294,12 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
-	m_header.title->m_style.widget.quad2.base.Tf = info.header.background;
+	m_header.title->m_style.widget.quad.base.Tf = info.header.background;
 	m_header.title->m_text->set(info.header.text).height(info.header.textHeight);
-	m_header.title->m_style.widget.quad2.reset(InteractStatus::eHover);
+	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
 	m_header.close = &m_header.title->push<Button>(m_fontURI);
-	m_header.close->m_style.widget.quad2.base.Tf = colours::red;
+	m_header.close->m_style.widget.quad.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
 	m_header.close->m_text->set("x").height(20U);
 	m_header.close->m_rect.size = {20.0f, 20.0f};
@@ -398,7 +310,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 
 	m_footer.bg = &m_content->push<Widget>(info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
-	m_footer.bg->m_style.widget.quad2.base.Tf = info.footer.background;
+	m_footer.bg->m_style.widget.quad.base.Tf = info.footer.background;
 	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
 	m_footer.bg->m_rect.anchor.offset.y = info.footer.height * -0.5f;
 	m_footer.bg->m_interact = false;
@@ -437,7 +349,7 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 
 namespace le::demo {
 struct EmitMesh {
-	MeshPrimitive primitive;
+	graphics::MeshPrimitive primitive;
 	TextureRefs textures;
 	graphics::BPMaterialData material;
 	QuadEmitter emitter;
@@ -489,10 +401,9 @@ class App : public input::Receiver, public Scene {
 			m_registry.attach(skybox, AssetProvider<graphics::Skybox>("skyboxes/sky_dusk"));
 			m_registry.attach(skybox, RenderPipeProvider("render_pipelines/skybox"));
 		}
-		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
 			PrimitiveProvider provider("mesh_primitives/cube", "materials/bp/player/cube", "texture_uris/player/cube");
-			m_data.player = spawnMesh("player", MeshViewProvider::make("mesh_primitives/cube", "materials/player/cube"), "render_pipelines/lit");
+			m_data.player = spawn("player", provider, "render_pipelines/lit");
 			m_registry.attach(m_data.player, std::move(provider));
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
 			m_registry.attach<PlayerController>(m_data.player);
@@ -541,11 +452,9 @@ class App : public input::Receiver, public Scene {
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
-			m_testMat.map_Kd = &m_testTex;
-			if (auto primitive = engine().store().find<MeshPrimitive>("mesh_primitives/rounded_quad")) {
+			if (auto primitive = engine().store().find<graphics::MeshPrimitive>("mesh_primitives/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
 				m_registry.attach(m_data.roundedQuad, RenderPipeProvider("render_pipelines/tex"));
-				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 				auto const mat = engine().store().find<graphics::BPMaterialData>("materials/bp/default");
 				auto addDrawPrims = [this, primitive, mat](graphics::DrawList& out, glm::mat4 const& matrix) {
@@ -590,7 +499,7 @@ class App : public input::Receiver, public Scene {
 			auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
 			[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
 			gui::Dropdown::CreateInfo dci;
-			dci.flexbox.background2.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+			dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 			// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
 			dci.textHeight = 30U;
 			dci.options = {"zero", "one", "two", "/bthree", "four"};
@@ -737,10 +646,10 @@ class App : public input::Receiver, public Scene {
 
 	void render(graphics::RenderPass& renderPass, ShaderSceneView const& view) override {
 		// draw
-		Renderer2::SceneData scene;
+		Renderer::SceneData scene;
 		scene.view = view;
 		scene.lights = m_data.dirLights;
-		Renderer2{}.render(renderPass, shaderBufferMap(), scene, engine().store(), m_registry);
+		Renderer{}.render(renderPass, shaderBufferMap(), scene, engine().store(), m_registry);
 	}
 
   private:
@@ -762,7 +671,6 @@ class App : public input::Receiver, public Scene {
 
 	Data m_data;
 	ManifestLoader m_manifest;
-	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
 	EmitMesh m_emitter;

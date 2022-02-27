@@ -46,10 +46,7 @@ Widget::Status Widget::onInput(input::State const& state) {
 
 bool Widget::clickedImpl(bool style, Status st) noexcept {
 	bool const cooldown = m_previous.point != time::Point() && time::diff(m_previous.point) < m_debounce;
-	if (style && (!cooldown || st <= Status::eHover)) {
-		m_material = m_style.widget.quad[st];
-		m_bpMaterial = m_style.widget.quad2[st];
-	}
+	if (style && (!cooldown || st <= Status::eHover)) { m_bpMaterial = m_style.widget.quad[st]; }
 	auto const prev = std::exchange(m_previous.status, st);
 	bool const ret = !cooldown && st == Status::eRelease && (prev >= Status::ePress && prev <= Status::eHold);
 	if (ret) { m_previous.point = time::now(); }

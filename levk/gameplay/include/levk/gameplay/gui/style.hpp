@@ -2,7 +2,6 @@
 #include <glm/vec2.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/core/utils/error.hpp>
-#include <levk/engine/render/material.hpp>
 #include <levk/gameplay/gui/interact.hpp>
 #include <levk/graphics/material_data.hpp>
 #include <levk/graphics/rgba.hpp>
@@ -15,8 +14,7 @@ struct TextStyle {
 	u32 height = 40U;
 };
 
-constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept;
-constexpr InteractStyle<graphics::BPMaterialData> defaultQuadInteractStyle2() noexcept;
+constexpr InteractStyle<graphics::BPMaterialData> defaultQuadInteractStyle() noexcept;
 
 struct BaseStyle {
 	TextStyle text;
@@ -24,8 +22,7 @@ struct BaseStyle {
 };
 
 struct WidgetStyle {
-	InteractStyle<Material> quad = defaultQuadInteractStyle();
-	InteractStyle<graphics::BPMaterialData> quad2 = defaultQuadInteractStyle2();
+	InteractStyle<graphics::BPMaterialData> quad = defaultQuadInteractStyle();
 };
 
 struct Style {
@@ -56,14 +53,7 @@ class Styles {
 
 // impl
 
-constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept {
-	InteractStyle<Material> ret;
-	ret.at(InteractStatus::eHover).Tf = colours::cyan;
-	ret.at(InteractStatus::eHold).Tf = colours::yellow;
-	return ret;
-}
-
-constexpr InteractStyle<graphics::BPMaterialData> defaultQuadInteractStyle2() noexcept {
+constexpr InteractStyle<graphics::BPMaterialData> defaultQuadInteractStyle() noexcept {
 	InteractStyle<graphics::BPMaterialData> ret;
 	ret.at(InteractStatus::eHover).Tf = colours::cyan;
 	ret.at(InteractStatus::eHold).Tf = colours::yellow;

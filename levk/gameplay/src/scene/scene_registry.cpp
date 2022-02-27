@@ -1,7 +1,6 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/render/material.hpp>
 #include <levk/gameplay/ecs/systems/gui_system.hpp>
 #include <levk/gameplay/ecs/systems/physics_system.hpp>
 #include <levk/gameplay/ecs/systems/scene_clean_system.hpp>
@@ -43,13 +42,6 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, MeshViewProvider&& provider, Hash pipeURI) {
-	auto ret = spawnNode(std::move(name));
-	m_registry.attach(ret, RenderPipeProvider(pipeURI));
-	m_registry.attach(ret, std::move(provider));
-	return ret;
-}
-
 dens::entity SceneRegistry::spawn(std::string name, PrimitiveProvider provider, Hash renderPipeline) {
 	auto ret = spawnNode(std::move(name));
 	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
@@ -62,20 +54,6 @@ dens::entity SceneRegistry::spawn(std::string name, AssetProvider<graphics::Mesh
 	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
 	m_registry.attach(ret, std::move(provider));
 	return ret;
-}
-
-dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMeshView&& dynMesh, Hash pipeURI) {
-	auto ret = spawnNode(std::move(name));
-	m_registry.attach(ret, RenderPipeProvider(pipeURI));
-	m_registry.attach(ret, std::move(dynMesh));
-	return ret;
-}
-
-Material const* SceneRegistry::defaultMaterial() const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto mat = store->find<Material>("materials/default")) { return &*mat; }
-	}
-	return {};
 }
 
 void SceneRegistry::updateSystems(Time_s dt, Engine::Service const& engine) { m_systemGroupRoot.update(m_registry, SystemData{engine, dt}); }

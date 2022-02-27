@@ -10,8 +10,8 @@ InputField::InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fo
 	m_rect.size = info.size;
 	m_outline = Quad(this);
 	m_outline->m_rect.size = info.size + 5.0f;
-	m_outline->m_material.Tf = m_outline->m_bpMaterial.Tf = m_style.base.text.colour;
-	m_outline->m_material.d = m_outline->m_bpMaterial.d = m_cursor.m_alpha = info.alpha;
+	m_outline->m_bpMaterial.Tf = m_style.base.text.colour;
+	m_outline->m_bpMaterial.d = m_cursor.m_alpha = info.alpha;
 	m_offsetX = info.offsetX;
 	m_outline->update({});
 	m_cursor.m_colour = m_style.base.text.colour;
@@ -27,13 +27,6 @@ InputField::Status InputField::onInput(input::State const& state) {
 		if (ret == Status::eRelease) { setActive(true); }
 	}
 	return ret;
-}
-
-MeshView InputField::mesh() const noexcept {
-	m_meshes = {m_outline->mesh().front(), Quad::mesh().front()};
-	if (auto text = m_textMesh.mesh(); !text.empty()) { m_meshes.push_back(text.front()); }
-	if (auto cursor = m_cursor.mesh(); !cursor.empty()) { m_meshes.push_back(cursor.front()); }
-	return MeshObjView(m_meshes);
 }
 
 void InputField::addDrawPrimitives(DrawList& out) const {

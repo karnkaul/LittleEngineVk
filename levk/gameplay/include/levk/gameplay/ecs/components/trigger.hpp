@@ -3,7 +3,6 @@
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
 #include <levk/core/std_types.hpp>
-#include <levk/engine/render/drawable.hpp>
 #include <levk/graphics/material_data.hpp>
 
 namespace dens {

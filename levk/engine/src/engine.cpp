@@ -177,8 +177,6 @@ void Engine::saveConfig() const {
 }
 
 void Engine::addDefaultAssets() {
-	// static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
-	// static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
 	auto device = m_impl->gfx->device.get();
 	auto vram = m_impl->gfx->vram.get();
 	auto sampler = m_impl->store.add("samplers/default", graphics::Sampler(device, {vk::Filter::eLinear, vk::Filter::eLinear}));

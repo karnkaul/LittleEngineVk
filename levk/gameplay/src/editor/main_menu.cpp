@@ -86,7 +86,9 @@ void Panes::operator()() {
 	if (flag(Flag::eStats)) { showStats(); }
 	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
 	if (flag(Flag::eAssetIndex)) {
-		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &flag(Flag::eAssetIndex))) { AssetIndex::list(); }
+		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &flag(Flag::eAssetIndex))) {
+			if (auto store = Services::find<AssetStore>()) { AssetIndex::list(*store); }
+		}
 	}
 }
 } // namespace

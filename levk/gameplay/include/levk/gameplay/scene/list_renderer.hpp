@@ -1,7 +1,7 @@
 #pragma once
 #include <levk/engine/render/descriptor_helper.hpp>
-#include <levk/engine/render/draw_list.hpp>
 #include <levk/engine/render/pipeline.hpp>
+#include <levk/engine/render/render_list.hpp>
 #include <levk/graphics/render/pipeline_factory.hpp>
 #include <levk/graphics/render/renderer.hpp>
 
@@ -15,18 +15,31 @@ class ListRenderer {
 	using PipelineFactory = graphics::PipelineFactory;
 	using Pipeline = graphics::Pipeline;
 	using RenderPass = graphics::RenderPass;
-	using DrawableMap = std::unordered_map<RenderPipeline, std::vector<Drawable>, RenderPipeline::Hasher>;
+	using RenderMap = std::unordered_map<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
+	using Primitive = graphics::DrawPrimitive;
 
-	static constexpr vk::Rect2D cast(DrawScissor rect) noexcept { return {{rect.offset.x, rect.offset.y}, {rect.extent.x, rect.extent.y}}; }
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
-	static void add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor = {});
 
-	void render(RenderPass& out_rp, DrawableMap map);
+	void render(RenderPass& out_rp, AssetStore const& store, RenderMap map);
 
   protected:
-	virtual void fill(DrawableMap& out_map, dens::registry const& registry);
-	virtual void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const;
+	virtual void writeSets(DescriptorMap map, graphics::DrawList const& list) = 0;
+	virtual void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const = 0;
 
-	virtual void writeSets(DescriptorMap map, DrawList const& list) = 0;
+	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry);
+
+	vk::Rect2D m_scissor{};
+};
+
+struct DrawListGen {
+	// Populates DrawGroup + [DynamicMesh, MeshProvider, gui::ViewStack]
+	void operator()(ListRenderer::RenderMap& map, AssetStore const& store, dens::registry const& registry) const;
+};
+
+struct DebugDrawListGen {
+	inline static bool populate_v = levk_debug;
+
+	// Populates DrawGroup + [physics::Trigger::Debug]
+	void operator()(ListRenderer::RenderMap& map, AssetStore const& store, dens::registry const& registry) const;
 };
 } // namespace le

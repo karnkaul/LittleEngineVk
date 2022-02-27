@@ -7,10 +7,14 @@
 namespace le::io {
 namespace stdfs = std::filesystem;
 
+namespace {
 constexpr char fs = '/';
 constexpr char bs = '\\';
 constexpr char dot = '.';
 constexpr char cl = ':';
+
+constexpr bool is_extension(std::string_view str) { return str.size() > 1 && str[0] == dot && str[1] != dot; }
+} // namespace
 
 Path::Path(std::string_view str) {
 	while (!str.empty()) {
@@ -27,9 +31,11 @@ Path::Path(std::string_view str) {
 	if (!m_units.empty()) {
 		std::string ext;
 		auto& name = m_units.back();
-		if (auto search = name.find_last_of(dot); search > 0 && search < name.size()) {
-			ext = name.substr(search);
-			name = name.substr(0, search);
+		if (auto search = name.find_last_of(dot); search != std::string::npos) {
+			if (is_extension(std::string_view(name).substr(search))) {
+				ext = name.substr(search);
+				name = name.substr(0, search);
+			}
 		}
 		if (!ext.empty()) { m_units.push_back(std::move(ext)); }
 	}
@@ -123,7 +129,7 @@ std::string Path::to_string(char separator) const {
 	if (!m_units.empty()) {
 		auto copy = m_units;
 		std::string ext;
-		if (copy.back()[0] == dot) {
+		if (is_extension(copy.back())) {
 			ext = std::move(copy.back());
 			copy.pop_back();
 		}

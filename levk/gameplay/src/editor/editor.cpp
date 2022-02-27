@@ -7,10 +7,9 @@
 #if defined(LEVK_EDITOR)
 #include <editor/sudo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/render/mesh_view_provider.hpp>
-#include <levk/engine/render/model.hpp>
 #include <levk/engine/render/pipeline.hpp>
-#include <levk/engine/render/skybox.hpp>
+#include <levk/engine/render/primitive_provider.hpp>
+#include <levk/engine/render/texture_refs.hpp>
 #include <levk/gameplay/editor/asset_index.hpp>
 #include <levk/gameplay/editor/inspector.hpp>
 #include <levk/gameplay/editor/log_stats.hpp>
@@ -19,7 +18,9 @@
 #include <levk/gameplay/editor/palettes/settings.hpp>
 #include <levk/gameplay/editor/resizer.hpp>
 #include <levk/gameplay/editor/scene_tree.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/render/renderer.hpp>
+#include <levk/graphics/skybox.hpp>
 #endif
 
 namespace le::editor {
@@ -43,104 +44,57 @@ void displayScale([[maybe_unused]] f32 renderScale) {
 #endif
 }
 
-void inspectMat(Material* out_mat, std::string_view name, int idx) {
-	auto const id = idx >= 0 ? CStr<64>("Material_{}", idx) : CStr<64>("Material");
-	if (auto tn = TreeNode(id, false, false, true, true)) {
-		if (!name.empty()) { Selectable name_(name); }
-		if (out_mat) {
-			TWidget<graphics::RGBA> Tf("Tf", out_mat->Tf, true);
-			TWidget<f32> d("d", out_mat->d);
-		}
-	}
-}
-
-void inspectMP(Inspect<MeshProvider> provider) {
-	std::string_view type = "Other";
-	auto const th = provider.get().sign();
-	if (th == AssetStore::sign<MeshPrimitive>()) {
-		type = "Mesh Primitive";
-	} else if (th == AssetStore::sign<Model>()) {
-		type = "Model";
-	} else if (th == AssetStore::sign<Skybox>()) {
-		type = "Skybox";
-	}
-	auto store = Services::find<AssetStore>();
-	Text typeStr(CStr<64>("Type: {}", type));
-	Text uri(provider.get().assetURI());
-	if (store) {
-		if (type == "Mesh Primitive") {
-			std::string_view const matURI = provider.get().materialURI();
-			inspectMat(store->find<Material>(matURI), matURI, -1);
-		} else if (type == "Model") {
-			if (auto model = store->find<Model>(provider.get().assetURI())) {
-				for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }
-			}
-		}
-	}
-	static ktl::stack_string<128> s_search;
-	if (auto popup = Popup("Model##inspect_asset_provider")) {
-		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
-			provider.get() = MeshProvider::make<Model>(std::string(select.item));
-			popup.close();
-		}
-	}
-	if (auto popup = Popup("Skybox##inspect_asset_provider")) {
-		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<Skybox>(s_search, s_search)) {
-			provider.get() = MeshProvider::make<Skybox>(std::string(select.item));
-			popup.close();
-		}
-	}
-	{
-		static std::string_view s_mesh, s_mat = "materials/default";
-		if (auto popup = Popup("Mesh Primitive##inspect_asset_provider")) {
-			TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
-			if (auto select = AssetIndex::list<MeshPrimitive>(s_search, s_mesh)) { s_mesh = select.item; }
-			if (auto select = AssetIndex::list<Material>(s_search, s_mat)) { s_mat = select.item; }
-			if (!s_mesh.empty() && !s_mat.empty() && Button("OK")) {
-				provider.get() = provider.get().make(std::string(s_mesh), std::string(s_mat));
-				popup.close();
-			}
-		}
-		std::string_view toPopup;
-		if (auto popup = Popup("Type##inspect_asset_provider")) {
-			if (Selectable("Mesh Primitive")) {
-				toPopup = "Mesh Primitive##inspect_asset_provider";
-				popup.close();
-			}
-			if (Selectable("Model")) {
-				toPopup = "Model##inspect_asset_provider";
-				popup.close();
-			}
-		}
-		if (!toPopup.empty()) {
-			s_mat = {};
-			s_mesh = {};
-			Popup::open(toPopup);
-		}
-	}
-	if (Button("Edit...")) {
-		if (type == "Skybox") {
-			Popup::open("Skybox##inspect_asset_provider");
-		} else {
-			Popup::open("Type##inspect_asset_provider");
-		}
-	}
-}
-
-void inspectRLP(Inspect<RenderPipeProvider> provider) {
-	Text uri(provider.get().uri());
-	if (auto popup = Popup("RenderPipeline##inspect_pipe_provider")) {
+template <typename T>
+std::string_view inspectAsset(AssetStore const& store, std::string_view name, std::string_view uri) {
+	Text title(uri);
+	auto const id = CStr<128>("{}##inspect_{}", name, name);
+	std::string_view ret;
+	if (auto popup = Popup(id)) {
 		static ktl::stack_string<128> s_search;
-		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<RenderPipeline>(s_search)) {
-			provider.get() = std::string(select.item);
+		TWidget<char*> search(CStr<128>("Search##inspect_{}", name), s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<T>(store, s_search)) {
+			ret = select.item;
 			popup.close();
 		}
 	}
-	if (Button("Edit...")) { Popup::open("RenderPipeline##inspect_pipe_provider"); }
+	if (Button("Edit...")) { Popup::open(id); }
+	return ret;
 }
+
+template <typename T>
+void inspectProvider(std::string_view name, Inspect<AssetProvider<T>> provider) {
+	if (auto select = inspectAsset<T>(provider.store, name, provider.store.template uri<T>(provider.get().uri())); !select.empty()) {
+		provider.get().uri(select);
+	}
+}
+
+void inspectPrimitiveP(Inspect<PrimitiveProvider> primitive) {
+	auto mesh = primitive.get().meshPrimitiveURI();
+	auto mat = primitive.get().materialURI();
+	auto tex = primitive.get().textureRefsURI();
+	if (auto tn = TreeNode(CStr<64>("MeshPrimitive"))) {
+		auto const uri = primitive.store.uri<graphics::MeshPrimitive>(mesh);
+		if (auto select = inspectAsset<graphics::MeshPrimitive>(primitive.store, "MeshPrimitive", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(select, mat, tex);
+		}
+	}
+	if (auto tn = TreeNode(CStr<64>("BPMaterial"))) {
+		auto const uri = primitive.store.uri<graphics::BPMaterialData>(mat);
+		if (auto select = inspectAsset<graphics::BPMaterialData>(primitive.store, "BPMaterial", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(mesh, select, tex);
+		}
+	}
+	if (auto tn = TreeNode(CStr<64>("TextureRefs"))) {
+		auto const uri = primitive.store.uri<TextureRefs>(tex);
+		if (auto select = inspectAsset<TextureRefs>(primitive.store, "TextureRefs", uri); !select.empty()) {
+			primitive.get() = PrimitiveProvider(mesh, mat, select);
+		}
+	}
+}
+
+void inspectSkyboxP(Inspect<AssetProvider<graphics::Skybox>> provider) { inspectProvider<graphics::Skybox>("Skybox", provider); }
+void inspectMeshP(Inspect<AssetProvider<graphics::Mesh>> provider) { inspectProvider<graphics::Mesh>("Mesh", provider); }
+void inspectRLP(Inspect<RenderPipeProvider> provider) { inspectProvider<RenderPipeline>("RenderPipeline", provider); }
 #endif
 
 struct Rail {
@@ -234,8 +188,10 @@ Instance Instance::make(Engine::Service engine) {
 	impl->storage.left.tab = std::make_unique<EditorTab<SceneTree>>();
 	impl->storage.left.tab->attach<Settings>("Settings");
 	impl->storage.right.tab = std::make_unique<EditorTab<Inspector>>();
-	Inspector::attach<MeshProvider>(&inspectMP, {}, "Mesh");
 	Inspector::attach<RenderPipeProvider>(&inspectRLP, {}, "RenderPipeline");
+	Inspector::attach<AssetProvider<graphics::Skybox>>(&inspectSkyboxP, {}, "Skybox");
+	Inspector::attach<AssetProvider<graphics::Mesh>>(&inspectMeshP, {}, "Mesh");
+	Inspector::attach<PrimitiveProvider>(&inspectPrimitiveP, {}, "Primitive");
 #endif
 	g_state.gameView = g_comboView;
 	return Instance(std::move(impl));

@@ -5,6 +5,8 @@ target_sources(${PROJECT_NAME} PRIVATE
   image.cpp
   memory.cpp
   mesh_primitive.cpp
+  mesh.cpp
+  skybox.cpp
   texture.cpp
   texture_atlas.cpp
 
@@ -14,6 +16,9 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   ft/ft.cpp
   ft/ft.hpp
+
+  gltf/bytestream.cpp
+  gltf/gltf.cpp
 )
 
 add_subdirectory(device)

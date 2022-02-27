@@ -8,8 +8,8 @@
 #include <levk/graphics/render/pipeline_factory.hpp>
 #include <levk/graphics/render/pipeline_flags.hpp>
 #include <levk/graphics/render/renderer.hpp>
-#include <levk/graphics/render/rgba.hpp>
 #include <levk/graphics/render/surface.hpp>
+#include <levk/graphics/rgba.hpp>
 #include <levk/graphics/screen_rect.hpp>
 #include <memory>
 #include <string_view>

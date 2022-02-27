@@ -9,16 +9,16 @@ class AssetIndex {
 	using Select = TreeSelect::Select;
 	using Sign = AssetStore::Sign;
 
-	static Select list(Span<Sign const> types, std::string_view filter = {}, std::string_view selectedURI = {});
+	static Select list(AssetStore const& store, Span<Sign const> types, std::string_view filter = {}, std::string_view selectedURI = {});
 
 	template <typename... Types>
-	static Select list(std::string_view filter = {}, std::string_view selectedURI = {});
+	static Select list(AssetStore const& store, std::string_view filter = {}, std::string_view selectedURI = {});
 };
 
 // impl
 
 template <typename... Types>
-AssetIndex::Select AssetIndex::list(std::string_view filter, std::string_view selectedURI) {
-	return list(AssetStore::signs<Types...>(), filter, selectedURI);
+AssetIndex::Select AssetIndex::list(AssetStore const& store, std::string_view filter, std::string_view selectedURI) {
+	return list(store, store.signs<Types...>(), filter, selectedURI);
 }
 } // namespace le::editor

@@ -6,7 +6,8 @@
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
 #include <levk/core/utils/error.hpp>
-#include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/assets/asset_monitor.hpp>
+#include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/builder.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/input/driver.hpp>
@@ -16,6 +17,9 @@
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
 #include <levk/engine/utils/error_handler.hpp>
+#include <levk/graphics/material_data.hpp>
+#include <levk/graphics/mesh.hpp>
+#include <levk/graphics/render/context.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
@@ -96,6 +100,7 @@ struct Engine::Impl {
 	std::optional<Window> win;
 	std::optional<GFX> gfx;
 	AssetStore store;
+	AssetMonitor monitor;
 	dts::thread_pool threadPool;
 	Executor executor = Executor(&threadPool);
 	Delegates delegates;
@@ -149,6 +154,7 @@ bool Engine::unboot() noexcept {
 		saveConfig();
 		m_impl->executor.stop();
 		m_impl->store.clear();
+		m_impl->monitor.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
@@ -171,8 +177,6 @@ void Engine::saveConfig() const {
 }
 
 void Engine::addDefaultAssets() {
-	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
-	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
 	auto device = m_impl->gfx->device.get();
 	auto vram = m_impl->gfx->vram.get();
 	auto sampler = m_impl->store.add("samplers/default", graphics::Sampler(device, {vk::Filter::eLinear, vk::Filter::eLinear}));
@@ -202,22 +206,25 @@ void Engine::addDefaultAssets() {
 		m_impl->store.add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
-		auto cube = m_impl->store.add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(vram));
+		auto cube = m_impl->store.add<graphics::MeshPrimitive>("mesh_primitives/cube", graphics::MeshPrimitive(vram));
 		cube->construct(graphics::makeCube());
-		auto cone = m_impl->store.add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(vram));
+		auto cone = m_impl->store.add<graphics::MeshPrimitive>("mesh_primitives/cone", graphics::MeshPrimitive(vram));
 		cone->construct(graphics::makeCone());
 		auto wf_cube = m_impl->store.add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
-	/* materials */ { m_impl->store.add("materials/default", Material{}); }
+	/* materials */ {
+		m_impl->store.add("materials/bp/default", graphics::BPMaterialData{});
+		m_impl->store.add("materials/pbr/default", graphics::PBRMaterialData{});
+	}
 	/* render layers */ {
 		RenderLayer layer;
 		m_impl->store.add("render_layers/default", layer);
 		layer.flags = RenderFlag::eAlphaBlend;
-		layer.order = 100;
+		layer.order = RenderOrder{100};
 		m_impl->store.add("render_layers/ui", layer);
 		layer.flags = {};
-		layer.order = -100;
+		layer.order = RenderOrder{-100};
 		m_impl->store.add("render_layers/skybox", layer);
 	}
 }
@@ -240,7 +247,7 @@ std::optional<Engine> Engine::Builder::operator()() {
 		return std::nullopt;
 	}
 	impl->wm = std::move(wm);
-	if (m_media) { impl->store.resources().media(m_media); }
+	if (m_media) { impl->store.customMedia(m_media); }
 	logI("LittleEngineVk v{} | {}", buildVersion().toString(levk_debug), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI(LC_EndUser, "Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	auto winInfo = m_windowInfo;
@@ -258,10 +265,15 @@ std::optional<Engine> Engine::Builder::operator()() {
 	impl->errorHandler.deleteFile();
 	impl->configPath = std::move(m_configPath);
 	if (!impl->errorHandler.activeHandler()) { impl->errorHandler.setActive(); }
+	std::vector<bytearray> iconBytes;
 	std::vector<graphics::utils::STBImg> icons;
+	iconBytes.reserve(m_iconURIs.size());
 	icons.reserve(m_iconURIs.size());
 	for (io::Path& uri : m_iconURIs) {
-		if (auto bytes = impl->store.resources().load(std::move(uri), Resource::Type::eBinary)) { icons.push_back(graphics::utils::STBImg(bytes->bytes())); }
+		if (auto bytes = impl->store.media().bytes(std::move(uri))) {
+			iconBytes.push_back(std::move(*bytes));
+			icons.push_back(graphics::utils::STBImg(iconBytes.back()));
+		}
 	}
 	if (!icons.empty()) {
 		std::vector<TBitmap<BmpView>> const views = {icons.begin(), icons.end()};
@@ -285,7 +297,7 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
-	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.checkModified(); }
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->monitor.update(m_impl->store); }
 	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
 	m_impl->executor.rethrow();
 }
@@ -303,6 +315,7 @@ Engine::Window& Engine::Service::window() const {
 }
 input::Frame const& Engine::Service::inputFrame() const noexcept { return m_impl->inputFrame; }
 AssetStore& Engine::Service::store() const noexcept { return m_impl->store; }
+AssetMonitor& Engine::Service::monitor() const noexcept { return m_impl->monitor; }
 input::Receiver::Store& Engine::Service::receiverStore() const noexcept { return m_impl->receivers; }
 dts::executor& Engine::Service::executor() const noexcept { return m_impl->executor; }
 

@@ -2,7 +2,7 @@
 #include <dens/registry.hpp>
 #include <levk/core/utils/vbase.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
-#include <levk/engine/render/mesh_view_provider.hpp>
+#include <levk/engine/render/primitive_provider.hpp>
 #include <levk/gameplay/ecs/systems/system_groups.hpp>
 #include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
@@ -10,7 +10,8 @@
 namespace le {
 namespace graphics {
 struct Camera;
-}
+struct Mesh;
+} // namespace graphics
 
 namespace editor {
 class SceneRef;
@@ -27,16 +28,13 @@ class SceneRegistry : public utils::VBase {
 
 	dens::entity spawnNode(std::string name);
 
-	dens::entity spawnMesh(std::string name, MeshProvider&& provider, std::string pipeURI);
-	dens::entity spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string pipeURI);
-	template <MeshAPI T>
-	dens::entity spawnMesh(std::string name, std::string assetURI, std::string pipeURI);
+	dens::entity spawn(std::string name, PrimitiveProvider provider, Hash renderPipeline);
+	dens::entity spawn(std::string name, AssetProvider<graphics::Mesh> provider, Hash renderPipeline);
 
 	template <typename T, typename... Args>
-	dens::entity spawn(std::string name, std::string pipeURI, Args&&... args);
+	dens::entity spawn(std::string name, Hash pipeURI, Args&&... args);
 
 	void updateSystems(Time_s dt, Engine::Service const& engine);
-	Material const* defaultMaterial() const;
 
 	editor::SceneRef ediScene() noexcept;
 	graphics::Camera const& camera() const noexcept;
@@ -49,16 +47,11 @@ class SceneRegistry : public utils::VBase {
 
 // impl
 
-template <MeshAPI T>
-dens::entity SceneRegistry::spawnMesh(std::string name, std::string assetURI, std::string pipeURI) {
-	return spawnMesh(std::move(name), MeshProvider::make<T>(std::move(assetURI)), std::move(pipeURI));
-}
-
 template <typename T, typename... Args>
-dens::entity SceneRegistry::spawn(std::string name, std::string pipeURI, Args&&... args) {
+dens::entity SceneRegistry::spawn(std::string name, Hash pipeURI, Args&&... args) {
 	auto ret = m_registry.make_entity(std::move(name));
 	auto& t = m_registry.attach<T>(ret, std::forward<Args>(args)...);
-	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
+	m_registry.attach(ret, RenderPipeProvider(pipeURI));
 	return ret;
 }
 } // namespace le

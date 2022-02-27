@@ -5,11 +5,11 @@
 namespace le::input {
 TextCursor::TextCursor(not_null<graphics::VRAM*> vram, Flags flags, Opt<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
 
-MeshView TextCursor::mesh() const noexcept {
+graphics::DrawPrimitive TextCursor::drawPrimitive() const {
 	if (m_drawCursor) {
 		m_material.Tf = m_colour;
 		m_material.d = m_alpha;
-		return MeshObj{&m_primitive, &m_material};
+		return graphics::DrawPrimitive{{}, &m_primitive, &m_material};
 	}
 	return {};
 }

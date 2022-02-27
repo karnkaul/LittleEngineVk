@@ -5,6 +5,10 @@
 #include <levk/gameplay/editor/inspect.hpp>
 #include <levk/gameplay/editor/types.hpp>
 
+namespace le {
+class AssetStore;
+}
+
 namespace le::editor {
 class Inspector {
   public:
@@ -28,13 +32,13 @@ class Inspector {
 	static void update(SceneRef const& scene);
 	static void clear();
 
-	static void attach(dens::entity entity, dens::registry& registry);
+	static void attach(dens::entity entity, dens::registry& registry, AssetStore const& store);
 
 	struct GadgetBase {
 		virtual ~GadgetBase() = default;
 		virtual bool attachable() const noexcept = 0;
 		virtual void attach(dens::entity, dens::registry&) const = 0;
-		virtual bool inspect(std::string_view, dens::entity, dens::registry&, gui::TreeRoot* tree) const = 0;
+		virtual bool inspect(std::string_view, dens::entity, dens::registry&, AssetStore const& store, gui::TreeRoot* tree) const = 0;
 	};
 	template <typename T>
 	struct TGadget : GadgetBase {
@@ -45,7 +49,7 @@ class Inspector {
 		void attach(dens::entity e, dens::registry& r) const override {
 			if (attachable()) { r.attach<T>(e, attach_()); }
 		}
-		bool inspect(std::string_view id, dens::entity entity, dens::registry& registry, gui::TreeRoot* tree) const override;
+		bool inspect(std::string_view id, dens::entity entity, dens::registry& registry, AssetStore const& store, gui::TreeRoot* tree) const override;
 	};
 
 	using GadgetMap = std::unordered_map<std::string, std::unique_ptr<GadgetBase>>;
@@ -57,10 +61,10 @@ class Inspector {
 // impl
 
 template <typename T>
-bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, dens::registry& registry, gui::TreeRoot* tree) const {
+bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, dens::registry& registry, AssetStore const& store, gui::TreeRoot* tree) const {
 	if constexpr (std::is_base_of_v<gui::TreeRoot, T>) {
 		if (auto t = dynamic_cast<T*>(tree)) {
-			if (auto tn = TreeNode(id)) { inspect_(Inspect<T>{*t, registry, entity}); }
+			if (auto tn = TreeNode(id)) { inspect_(Inspect<T>{*t, registry, entity, store}); }
 			Styler s(Style::eSeparator);
 			return true;
 		}
@@ -70,7 +74,7 @@ bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, de
 			auto const detach = ktl::stack_string<64>("x##{}", id);
 			Styler s(getWindowWidth() - 30.0f);
 			if (Button(detach, 0.0f, true)) { registry.detach<T>(entity); }
-			if (tn) { inspect_(Inspect<T>{*t, registry, entity}); }
+			if (tn) { inspect_(Inspect<T>{*t, registry, entity, store}); }
 			s = Styler(Style::eSeparator);
 			return true;
 		}

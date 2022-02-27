@@ -1,11 +1,12 @@
 #pragma once
 #include <levk/engine/render/text_mesh.hpp>
 
-namespace le::graphics {
+namespace le {
+namespace graphics {
 class Font;
 }
 
-namespace le::input {
+namespace input {
 struct State;
 using graphics::Font;
 using graphics::RGBA;
@@ -33,7 +34,7 @@ class TextCursor {
 
 	void font(not_null<Font*> font) noexcept { m_font = font; }
 	Opt<Font> font() const noexcept { return m_font; }
-	MeshView mesh() const noexcept;
+	graphics::DrawPrimitive drawPrimitive() const;
 
 	///
 	/// \brief Erase character one behind cursor and decrement cursor
@@ -111,7 +112,7 @@ class TextCursor {
 	void refresh(graphics::Geometry* out, bool clearGeom, bool regen);
 
 	graphics::MeshPrimitive m_primitive;
-	mutable Material m_material;
+	mutable graphics::BPMaterialData m_material;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};
 	glm::vec2 m_size = {0.07f, 1.1f};
@@ -120,4 +121,5 @@ class TextCursor {
 	Opt<Font> m_font{};
 	bool m_drawCursor = true;
 };
-} // namespace le::input
+} // namespace input
+} // namespace le

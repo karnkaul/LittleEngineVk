@@ -3,7 +3,7 @@
 #include <levk/core/utils/algo.hpp>
 #include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/render/drawable.hpp>
+#include <levk/engine/render/no_draw.hpp>
 #include <levk/engine/render/pipeline.hpp>
 #include <levk/gameplay/cameras/freecam.hpp>
 #include <levk/gameplay/editor/inspector.hpp>
@@ -85,6 +85,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 #if defined(LEVK_USE_IMGUI)
 	if (scene.valid()) {
 		auto inspect = Sudo::inspect(scene);
+		auto store = Services::get<AssetStore>();
 		if (inspect->entity != dens::entity()) {
 			auto& reg = *Sudo::registry(scene);
 			if (!inspect->tree) {
@@ -96,7 +97,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 				}
 				Styler s{Style::eSeparator};
 				if (auto transform = reg.find<Transform>(inspect->entity)) { TransformWidget{}(*transform); }
-				attach(inspect->entity, reg);
+				attach(inspect->entity, reg, *store);
 			} else {
 				auto const name = CStr<128>("{} -> [GUI node]", reg.name(inspect->entity));
 				Text txt(name);
@@ -107,7 +108,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 					GuiNode{}(*node);
 					if (auto widget = dynamic_cast<gui::Widget*>(inspect->tree)) { GuiViewWidget{}(*widget); }
 				}
-				for (auto const& [id, gadget] : s_guiGadgets) { gadget->inspect(id, inspect->entity, reg, inspect->tree); }
+				for (auto const& [id, gadget] : s_guiGadgets) { gadget->inspect(id, inspect->entity, reg, *store, inspect->tree); }
 			}
 		}
 	}
@@ -119,12 +120,12 @@ void Inspector::clear() {
 	s_guiGadgets.clear();
 }
 
-void Inspector::attach(dens::entity entity, dens::registry& reg) {
+void Inspector::attach(dens::entity entity, dens::registry& reg, AssetStore const& store) {
 	std::vector<GadgetMap::const_iterator> attachable;
 	attachable.reserve(s_gadgets.size());
 	for (auto it = s_gadgets.cbegin(); it != s_gadgets.cend(); ++it) {
 		auto const& [id, gadget] = *it;
-		if (!gadget->inspect(id, entity, reg, {}) && gadget->attachable()) { attachable.push_back(it); }
+		if (!gadget->inspect(id, entity, reg, store, {}) && gadget->attachable()) { attachable.push_back(it); }
 	}
 	if (!attachable.empty()) {
 		Styler(glm::vec2{0.0f, 30.0f});

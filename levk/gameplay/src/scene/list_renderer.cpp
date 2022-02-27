@@ -1,11 +1,18 @@
-#include <levk/core/services.hpp>
+#include <dens/registry.hpp>
+#include <levk/engine/assets/asset_provider.hpp>
 #include <levk/engine/assets/asset_store.hpp>
-#include <levk/gameplay/scene/draw_list_gen.hpp>
+#include <levk/engine/render/no_draw.hpp>
+#include <levk/engine/render/primitive_provider.hpp>
+#include <levk/gameplay/ecs/components/trigger.hpp>
+#include <levk/gameplay/gui/tree.hpp>
+#include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/scene/list_renderer.hpp>
+#include <levk/gameplay/scene/scene_node.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
+#include <levk/graphics/skybox.hpp>
+#include <levk/graphics/utils/utils.hpp>
 #include <unordered_set>
-
-#include <levk/core/log.hpp>
 
 namespace le {
 namespace {
@@ -15,10 +22,6 @@ constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
 	vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleFan,
 };
 } // namespace
-
-void ListRenderer::add(DrawableMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
-	if (!mesh.empty()) { out_map[rp].push_back({{}, model, {{}, mesh}, scissor}); }
-}
 
 graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	graphics::ShaderSpec ss;
@@ -30,47 +33,88 @@ graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	return ret;
 }
 
-void ListRenderer::fill(DrawableMap& out_map, dens::registry const& registry) {
-	DrawListGen{}(out_map, registry);
-	DebugDrawListGen{}(out_map, registry);
+void ListRenderer::fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) {
+	DrawListGen{}(out_map, store, registry);
+	DebugDrawListGen{}(out_map, store, registry);
 }
 
-void ListRenderer::render(RenderPass& out_rp, DrawableMap map) {
+void ListRenderer::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {
 	EXPECT(!out_rp.commandBuffers().empty());
 	if (out_rp.commandBuffers().empty()) { return; }
-	std::vector<DrawList> drawLists;
+	std::vector<RenderList> drawLists;
 	drawLists.reserve(map.size());
 	for (auto& [rpipe, list] : map) {
 		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
-			drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order});
+			drawLists.push_back(RenderList{pipe, std::move(list), rpipe.layer.order});
 		}
 	}
-	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
+	auto const cache = DescriptorHelper::Cache::make(&store);
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
+	m_scissor = out_rp.scissor();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
 	std::sort(drawLists.begin(), drawLists.end());
 	for (auto const& list : drawLists) {
 		EXPECT(list.pipeline.valid());
 		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
 		pipes.insert(list.pipeline.shaderInput);
-		writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list);
-		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list, cb);
+		writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list.drawList);
+		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list.drawList, cb);
 	}
 	for (auto pipe : pipes) { pipe->swap(); }
 }
 
-void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const {
-	for (u32 const set : list.sets) { bind(set); }
-	for (Drawable const& d : list.drawables) {
-		for (u32 const set : d.sets) { bind(set); }
-		if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-		for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
-			EXPECT(mesh.primitive);
-			if (mesh.primitive) {
-				for (u32 const set : d.mesh.sets) { bind(set); }
-				mesh.primitive->draw(cb);
-			}
+namespace {
+void addNodes(ListRenderer::RenderMap& map, RenderPipeline const& rp, gui::TreeRoot const& root) {
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { node->addDrawPrimitives(map[rp]); }
+	}
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { addNodes(map, rp, *node); }
+	}
+}
+} // namespace
+
+void DrawListGen::operator()(ListRenderer::RenderMap& map, AssetStore const& store, dens::registry const& registry) const {
+	static constexpr auto exclude = dens::exclude<NoDraw>();
+	auto modelMat = [&registry](dens::entity e) {
+		if (auto n = registry.find<SceneNode>(e)) {
+			return n->model(registry);
+		} else if (auto t = registry.find<Transform>(e)) {
+			return t->matrix();
+		}
+		return glm::mat4(1.0f);
+	};
+	for (auto [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Skybox>>(exclude)) {
+		auto& [rp, skybox] = c;
+		if (auto s = skybox.find(store); s && rp.ready(store)) { map[rp.get(store)].add(*s, modelMat(e)); }
+	}
+	for (auto [e, c] : registry.view<RenderPipeProvider, AssetProvider<graphics::Mesh>>(exclude)) {
+		auto& [rp, mesh] = c;
+		if (auto m = mesh.find(store); m && rp.ready(store)) { map[rp.get(store)].add(*m, modelMat(e)); }
+	}
+	for (auto [e, c] : registry.view<RenderPipeProvider, PrimitiveProvider>(exclude)) {
+		auto& [rp, prim] = c;
+		if (rp.ready(store)) { prim.addDrawPrimitives(store, map[rp.get(store)], modelMat(e)); }
+	}
+	for (auto [e, c] : registry.view<RenderPipeProvider, PrimitiveGenerator>(exclude)) {
+		auto& [rp, prim] = c;
+		if (rp.ready(store)) { prim.addDrawPrimitives(map[rp.get(store)], modelMat(e)); }
+	}
+	for (auto [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
+		auto& [rp, stack] = c;
+		if (auto r = rp.find(store)) {
+			for (auto const& view : stack.views()) { addNodes(map, *r, *view); }
+		}
+	}
+}
+
+void DebugDrawListGen::operator()(ListRenderer::RenderMap& map, AssetStore const& store, dens::registry const& registry) const {
+	static constexpr auto exclude = dens::exclude<NoDraw>();
+	if (populate_v) {
+		for (auto [_, c] : registry.view<RenderPipeProvider, physics::Trigger::Debug>(exclude)) {
+			auto& [rp, physics] = c;
+			if (rp.ready(store)) { physics.addDrawPrimitives(store, registry, map[rp.get(store)]); }
 		}
 	}
 }

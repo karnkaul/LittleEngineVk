@@ -1,6 +1,6 @@
 #pragma once
 #include <levk/graphics/material_data.hpp>
-#include <iterator>
+#include <concepts>
 
 namespace le::graphics {
 class MeshPrimitive;
@@ -21,7 +21,21 @@ template <typename T>
 struct AddDrawPrimitives;
 
 template <typename T>
-concept DrawPrimitiveAPI = requires(T t, DrawPrimitive& p) {
-	AddDrawPrimitives<T>{}(t, &p);
+concept DrawPrimitiveAPI = requires(T t, DrawPrimitive* it) {
+	AddDrawPrimitives<T>{}(t, it);
+};
+
+template <typename T>
+concept GetDrawPrimitive = requires(T t) {
+	{ t.drawPrimitive() } -> std::convertible_to<DrawPrimitive>;
+};
+
+template <typename T>
+	requires GetDrawPrimitive<T>
+struct AddDrawPrimitives<T> {
+	template <std::output_iterator<DrawPrimitive> It>
+	void operator()(T const& t, It it) const {
+		if (auto prim = t.drawPrimitive()) { *it++ = prim; }
+	}
 };
 } // namespace le::graphics

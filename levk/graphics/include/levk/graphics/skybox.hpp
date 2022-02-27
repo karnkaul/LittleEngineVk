@@ -10,18 +10,10 @@ class Skybox {
 	Opt<Texture const> cubemap() const noexcept { return m_cubemap; }
 	void cubemap(Opt<Texture const> texture) noexcept;
 
-	DrawPrimitive primitive() const noexcept;
+	DrawPrimitive drawPrimitive() const noexcept;
 
   private:
 	Opt<Texture const> m_cubemap{};
 	MeshPrimitive m_mesh;
-};
-
-template <>
-struct AddDrawPrimitives<Skybox> {
-	template <std::output_iterator<DrawPrimitive> It>
-	void operator()(Skybox const& skybox, It it) const {
-		if (auto primitive = skybox.primitive()) { *it++ = skybox.primitive(); }
-	}
 };
 } // namespace le::graphics

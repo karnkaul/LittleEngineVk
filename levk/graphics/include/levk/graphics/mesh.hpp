@@ -26,21 +26,15 @@ struct Mesh {
 	static std::optional<Mesh> fromObjMtl(io::Path const& jsonURI, io::Media const& media, not_null<VRAM*> vram, vk::Sampler sampler = {});
 
 	Opt<Texture const> texture(std::optional<std::size_t> idx) const noexcept { return idx && *idx < textures.size() ? &textures[*idx] : nullptr; }
-	std::vector<DrawPrimitive> primitiveViews() const;
 };
 
 template <>
 struct AddDrawPrimitives<Mesh> {
+	static DrawPrimitive drawPrimitive(Mesh const& mesh, MeshPrimitive const& primitive) noexcept;
+
 	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(Mesh const& mesh, It it) const {
-		for (auto const& primitive : mesh.primitives) {
-			auto const& mat = mesh.materials[primitive.m_material];
-			MaterialTextures matTex;
-			for (std::size_t i = 0; i < std::size_t(MatTexType::eCOUNT_); ++i) {
-				matTex.arr[i] = mat.textures.arr[i] ? &mesh.textures[*mat.textures.arr[i]] : nullptr;
-			}
-			*it++ = DrawPrimitive{matTex, &primitive, mat.data.get_if<BPMaterialData>(), mat.data.get_if<PBRMaterialData>()};
-		}
+		for (auto const& primitive : mesh.primitives) { *it++ = drawPrimitive(mesh, primitive); }
 	}
 };
 } // namespace graphics

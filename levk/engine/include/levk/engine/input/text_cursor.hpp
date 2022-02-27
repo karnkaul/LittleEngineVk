@@ -124,14 +124,4 @@ class TextCursor {
 	bool m_drawCursor = true;
 };
 } // namespace input
-
-namespace graphics {
-template <>
-struct AddDrawPrimitives<input::TextCursor> {
-	template <std::output_iterator<DrawPrimitive> It>
-	void operator()(input::TextCursor const& cursor, It it) {
-		if (auto prim = cursor.drawPrimitive()) { *it++ = std::move(prim); }
-	}
-};
-} // namespace graphics
 } // namespace le

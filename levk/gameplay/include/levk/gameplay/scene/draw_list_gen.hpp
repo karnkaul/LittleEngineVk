@@ -1,7 +1,13 @@
 #pragma once
+#include <dens/registry.hpp>
 #include <levk/gameplay/scene/list_renderer.hpp>
 
 namespace le {
+class RenderPipeline;
+template <typename T>
+class AssetProvider;
+using RenderPipeProvider = AssetProvider<RenderPipeline>;
+
 struct DrawListGen {
 	// Populates DrawGroup + [DynamicMesh, MeshProvider, gui::ViewStack]
 	void operator()(ListRenderer::DrawableMap& map, AssetStore const& store, dens::registry const& registry) const;

@@ -21,8 +21,8 @@ class DrawList {
 		return push(start, matrix, scissor);
 	}
 
-	iterator begin() const;
-	iterator end() const;
+	const_iterator begin() const;
+	const_iterator end() const;
 
   private:
 	DrawList& push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor);

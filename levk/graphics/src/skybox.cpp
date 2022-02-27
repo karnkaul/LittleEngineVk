@@ -17,7 +17,7 @@ void Skybox::cubemap(Opt<Texture const> texture) noexcept {
 	m_cubemap = texture;
 }
 
-DrawPrimitive Skybox::primitive() const noexcept {
+DrawPrimitive Skybox::drawPrimitive() const noexcept {
 	static BPMaterialData const s_mat{};
 	MaterialTextures matTex;
 	matTex[MatTexType::eDiffuse] = m_cubemap;

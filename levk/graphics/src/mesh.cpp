@@ -211,10 +211,10 @@ std::optional<Mesh> Mesh::fromObjMtl(io::Path const& jsonURI, io::Media const& m
 	return ret;
 }
 
-std::vector<DrawPrimitive> Mesh::primitiveViews() const {
-	std::vector<DrawPrimitive> ret;
-	ret.reserve(primitives.size());
-	AddDrawPrimitives<Mesh>{}(*this, std::back_inserter(ret));
-	return ret;
+DrawPrimitive AddDrawPrimitives<Mesh>::drawPrimitive(Mesh const& mesh, MeshPrimitive const& primitive) noexcept {
+	auto const& mat = mesh.materials[primitive.m_material];
+	MaterialTextures matTex;
+	for (std::size_t i = 0; i < std::size_t(MatTexType::eCOUNT_); ++i) { matTex.arr[i] = mat.textures.arr[i] ? &mesh.textures[*mat.textures.arr[i]] : nullptr; }
+	return DrawPrimitive{matTex, &primitive, mat.data.get_if<BPMaterialData>(), mat.data.get_if<PBRMaterialData>()};
 }
 } // namespace le::graphics

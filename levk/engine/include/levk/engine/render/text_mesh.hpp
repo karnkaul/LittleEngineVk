@@ -55,14 +55,4 @@ class TextMesh {
 	mutable Obj m_obj;
 	Opt<Font> m_font{};
 };
-
-namespace graphics {
-template <>
-struct AddDrawPrimitives<TextMesh> {
-	template <std::output_iterator<DrawPrimitive> It>
-	void operator()(TextMesh const& textMesh, It it) {
-		if (auto prim = textMesh.drawPrimitive()) { *it++ = std::move(prim); }
-	}
-};
-} // namespace graphics
 } // namespace le

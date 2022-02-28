@@ -8,6 +8,34 @@
 #include <unordered_map>
 
 namespace le::graphics {
+// Manages multiple inputs for a shader via set numbers
+class ShaderInput {
+  public:
+	struct PoolData;
+
+	ShaderInput() = default;
+	ShaderInput(not_null<VRAM*> vram, PoolData data);
+
+	bool contains(u32 set) const noexcept;
+	DescriptorSet& set(u32 set, std::size_t index) const;
+	void swap();
+
+	VRAM* m_vram{};
+
+  private:
+	std::unordered_map<u32, DescriptorPool> m_setPools;
+};
+
+struct ShaderInput::PoolData {
+	struct Set {
+		ktl::fixed_vector<DescriptorSet::BindingData, 16> bindingData;
+		vk::DescriptorSetLayout layout;
+	};
+
+	std::vector<Set> sets;
+	Buffering buffering = Buffering::eDouble;
+};
+
 class PipelineFactory {
   public:
 	using Spec = PipelineSpec;
@@ -39,7 +67,7 @@ class PipelineFactory {
 		Pipeline pipe() const noexcept { return {&input, pipeline, layout}; }
 	};
 	struct Meta {
-		SetPoolsData spd;
+		ShaderInput::PoolData spd;
 		Defer<vk::PipelineLayout> layout;
 		std::vector<Defer<vk::DescriptorSetLayout>> setLayouts;
 		std::vector<ktl::fixed_vector<vk::DescriptorSetLayoutBinding, 16>> bindings;

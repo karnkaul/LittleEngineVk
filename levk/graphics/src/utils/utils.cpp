@@ -50,7 +50,7 @@ struct DescBinding {
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
 	vk::ImageViewType imageType = vk::ImageViewType::e2D;
 	vk::ShaderStageFlags stages;
-	bool bDummy = false;
+	bool dummy = false;
 };
 
 namespace spvc = spirv_cross;
@@ -166,9 +166,9 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 		if (auto it = sets.find(set); it != sets.end()) {
 			auto& bm = it->second;
 			for (u32 binding = 0; binding < bm.size(); ++binding) {
-				if (!le::utils::contains(bm, binding)) {
+				if (!bm.contains(binding)) {
 					DescBinding dummy;
-					dummy.bDummy = true;
+					dummy.dummy = true;
 					bm[binding] = dummy; // inactive binding: no descriptors needed
 				}
 			}
@@ -176,12 +176,12 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 			sets[set] = bind_map(); // inactive set: has no bindings
 		}
 	}
-	for (auto const& [s, bmap] : sets) {
+	for (auto& [s, bmap] : sets) {
 		auto& binds = ret.sets[s]; // register all set numbers whether active or not
-		for (auto const& [b, db] : bmap) {
+		for (auto& [b, db] : bmap) {
 			BindingInfo bindInfo;
 			bindInfo.binding.binding = b;
-			if (!db.bDummy) {
+			if (!db.dummy) {
 				bindInfo.binding.stageFlags = db.stages;
 				bindInfo.binding.descriptorCount = db.count;
 				bindInfo.binding.descriptorType = db.type;

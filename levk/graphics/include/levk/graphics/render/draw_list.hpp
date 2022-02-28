@@ -11,6 +11,8 @@
 namespace le::graphics {
 struct DrawBindings {
 	mutable std::optional<std::size_t> indices[max_bindings_v]{};
+
+	void bind(u32 set, std::size_t index) const { indices[set] = index; }
 };
 
 class DrawList {

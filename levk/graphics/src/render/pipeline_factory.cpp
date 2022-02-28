@@ -6,6 +6,33 @@
 #include <levk/core/services.hpp>
 
 namespace le::graphics {
+ShaderInput::ShaderInput(not_null<VRAM*> vram, PoolData data) : m_vram(vram) {
+	Buffering const buffering = data.buffering == Buffering::eNone ? Buffering::eDouble : data.buffering;
+	for (std::size_t set = 0; set < data.sets.size(); ++set) {
+		DescriptorPool::CreateInfo pci;
+		auto const& sld = data.sets[set];
+		pci.bindingData = sld.bindingData;
+		pci.buffering = buffering;
+		pci.layout = sld.layout;
+		pci.setNumber = (u32)set;
+		m_setPools.emplace(u32(set), DescriptorPool(m_vram, pci));
+	}
+}
+
+bool ShaderInput::contains(u32 set) const noexcept {
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return !it->second.unassigned(); }
+	return false;
+}
+
+DescriptorSet& ShaderInput::set(u32 set, std::size_t index) const {
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.set(index); }
+	ENSURE(false, "Nonexistent set");
+}
+
+void ShaderInput::swap() {
+	for (auto& [_, pool] : m_setPools) { pool.swap(); }
+}
+
 std::size_t PipelineFactory::Hasher::operator()(Spec const& spec) const {
 	utils::HashGen ret;
 	return ret << spec.vertexInput << spec.fixedState << spec.shader;
@@ -127,12 +154,12 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
-		ktl::fixed_vector<SetBindingData, max_bindings_v> bindingData;
-		for (auto& binding : binds) {
-			if (binding.binding.descriptorType != vk::DescriptorType()) {
-				bindings.push_back(binding.binding);
-				Texture::Type const texType = binding.imageType == vk::ImageViewType::eCube ? Texture::Type::eCube : Texture::Type::e2D;
-				bindingData.push_back({std::move(binding.name), binding.binding, texType});
+		ktl::fixed_vector<DescriptorSet::BindingData, max_bindings_v> bindingData;
+		for (auto& data : binds) {
+			if (data.binding.descriptorType != vk::DescriptorType()) {
+				bindings.push_back(data.binding);
+				Texture::Type const texType = data.imageType == vk::ImageViewType::eCube ? Texture::Type::eCube : Texture::Type::e2D;
+				bindingData.push_back({std::move(data.name), data.binding, texType});
 			}
 		}
 		auto const descLayout = m_vram->m_device->makeDescriptorSetLayout(bindings);
@@ -140,7 +167,7 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 		ret.bindings.push_back({bindings.begin(), bindings.end()});
 		layouts.push_back(descLayout);
 
-		SetLayoutData sld;
+		ShaderInput::PoolData::Set sld;
 		sld.bindingData = std::move(bindingData);
 		sld.layout = descLayout;
 		ret.spd.sets.push_back(std::move(sld));

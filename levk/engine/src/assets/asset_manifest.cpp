@@ -128,13 +128,11 @@ bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io:
 	EXPECT(files.size() == 6U);
 	bytearray bytes[6];
 	ImageData cube[6];
-	std::size_t idx = 0;
-	for (auto const& file : files) {
+	for (auto const& [file, idx] : utils::enumerate(files)) {
 		auto res = media.bytes(prefix / file);
 		if (!res) { return false; }
 		bytes[idx] = std::move(*res);
 		cube[idx] = bytes[idx];
-		++idx;
 	}
 	return out.construct(cube);
 }
@@ -160,8 +158,7 @@ ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::
 				if (ManifestLoader::s_attachMonitors) {
 					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
 						io::Path paths[6];
-						std::size_t idx{};
-						for (auto const& file : files) { paths[idx++] = fsMedia->fullPath(file); }
+						for (auto const& [file, idx] : utils::enumerate(files)) { paths[idx] = fsMedia->fullPath(file); }
 						auto f = [engine, files = std::move(files), prefix](graphics::Texture& out) {
 							return constructCubemap(prefix, files, engine.store().media(), out);
 						};

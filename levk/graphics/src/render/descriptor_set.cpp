@@ -1,3 +1,4 @@
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 #include <algorithm>
@@ -17,8 +18,7 @@ DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_v
 		poolSizes.reserve(max_bindings_v);
 		for (Buffering buf{}; buf < m_storage.buffering; ++buf) {
 			Set set;
-			std::size_t idx{};
-			for (auto const& binding : m_storage.bindingData) {
+			for (auto const& [binding, idx] : le::utils::enumerate(m_storage.bindingData)) {
 				if (binding.binding.descriptorType != vk::DescriptorType()) {
 					u32 const totalSize = binding.binding.descriptorCount * u32(m_storage.buffering);
 					poolSizes.push_back({binding.binding.descriptorType, totalSize});
@@ -26,7 +26,6 @@ DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_v
 					set.bindings[idx].count = binding.binding.descriptorCount;
 					set.bindings[idx].texType = binding.textureType;
 				}
-				++idx;
 			}
 			set.pool = set.pool.make(m_vram->m_device->makeDescriptorPool(poolSizes, 1U), m_vram->m_device);
 			set.set = m_vram->m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();

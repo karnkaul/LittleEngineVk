@@ -28,6 +28,7 @@ DrawList& DrawList::push(std::size_t primitiveStart, glm::mat4 matrix, std::opti
 		m_scissors.push_back(*scissor);
 	}
 	m_entries.push_back(entry);
+	m_entryBindings.push_back({});
 	return *this;
 }
 
@@ -54,13 +55,14 @@ DrawList::iterator DrawList::iterator::operator--(int) {
 }
 
 glm::mat4 const& DrawList::iterator::matrix() const { return m_list->m_matrices[m_list->m_entries[m_index].matrix]; }
+DescriptorBindings& DrawList::iterator::indices() const { return m_list->m_entryBindings[m_index]; }
 
 Opt<vk::Rect2D const> DrawList::iterator::scissor() const {
 	auto const& s = m_list->m_entries[m_index].scissor;
 	return s ? &m_list->m_scissors[*s] : nullptr;
 }
 
-Span<DrawPrimitive const> DrawList::iterator::prims() const {
+Span<DrawList::Obj const> DrawList::iterator::prims() const {
 	auto const& p = m_list->m_entries[m_index].primitives;
 	return Span(&m_list->m_drawPrimitives[p.first], p.second);
 }

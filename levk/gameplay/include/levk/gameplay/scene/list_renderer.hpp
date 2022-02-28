@@ -25,9 +25,9 @@ class ListRenderer {
 
   protected:
 	virtual void writeSets(DescriptorMap map, graphics::DrawList const& list) = 0;
-	virtual void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const = 0;
 
-	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry);
+	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) const;
+	virtual void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const;
 
 	vk::Rect2D m_scissor{};
 };

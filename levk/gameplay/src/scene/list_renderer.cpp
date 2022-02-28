@@ -33,9 +33,25 @@ graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	return ret;
 }
 
-void ListRenderer::fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) {
+void ListRenderer::fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) const {
 	DrawListGen{}(out_map, store, registry);
 	DebugDrawListGen{}(out_map, store, registry);
+}
+
+void ListRenderer::draw(DescriptorBinder binder, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const {
+	// binder.bindNext(0);
+	binder.bind(list.m_bindings);
+	for (auto const& drawObj : list) {
+		// binder.bindNext(1);
+		binder.bind(drawObj.bindings);
+		cb.setScissor(drawObj.scissor ? *drawObj.scissor : m_scissor);
+		for (auto const& obj : drawObj.objs) {
+			auto const& primitive = obj.primitive;
+			// binder.bindNext(2, 3);
+			binder.bind(obj.bindings);
+			primitive.primitive->draw(cb);
+		}
+	}
 }
 
 void ListRenderer::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {

@@ -1,6 +1,6 @@
 #pragma once
-#include <levk/engine/render/material.hpp>
 #include <levk/gameplay/gui/tree.hpp>
+#include <levk/graphics/material_data.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 
 namespace le::gui {
@@ -9,9 +9,11 @@ class Shape : public TreeNode {
 	Shape(not_null<TreeRoot*> root) noexcept;
 
 	void set(graphics::Geometry geometry) { m_primitive.construct(std::move(geometry)); }
-	MeshView mesh() const noexcept override { return MeshObj{&m_primitive, &m_material}; }
+	void addDrawPrimitives(DrawList& out) const override;
 
-	Material m_material;
+	DrawPrimitive drawPrimitive() const;
+
+	graphics::BPMaterialData m_bpMaterial;
 
   private:
 	graphics::MeshPrimitive m_primitive;

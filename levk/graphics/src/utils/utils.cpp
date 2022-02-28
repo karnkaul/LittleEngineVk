@@ -5,6 +5,7 @@
 #include <levk/core/maths.hpp>
 #include <levk/core/singleton.hpp>
 #include <levk/core/utils/algo.hpp>
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/graphics/common.hpp>
@@ -49,7 +50,7 @@ struct DescBinding {
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
 	vk::ImageViewType imageType = vk::ImageViewType::e2D;
 	vk::ShaderStageFlags stages;
-	bool bDummy = false;
+	bool dummy = false;
 };
 
 namespace spvc = spirv_cross;
@@ -165,9 +166,9 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 		if (auto it = sets.find(set); it != sets.end()) {
 			auto& bm = it->second;
 			for (u32 binding = 0; binding < bm.size(); ++binding) {
-				if (!le::utils::contains(bm, binding)) {
+				if (!bm.contains(binding)) {
 					DescBinding dummy;
-					dummy.bDummy = true;
+					dummy.dummy = true;
 					bm[binding] = dummy; // inactive binding: no descriptors needed
 				}
 			}
@@ -175,12 +176,12 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 			sets[set] = bind_map(); // inactive set: has no bindings
 		}
 	}
-	for (auto const& [s, bmap] : sets) {
+	for (auto& [s, bmap] : sets) {
 		auto& binds = ret.sets[s]; // register all set numbers whether active or not
-		for (auto const& [b, db] : bmap) {
+		for (auto& [b, db] : bmap) {
 			BindingInfo bindInfo;
 			bindInfo.binding.binding = b;
-			if (!db.bDummy) {
+			if (!db.dummy) {
 				bindInfo.binding.stageFlags = db.stages;
 				bindInfo.binding.descriptorCount = db.count;
 				bindInfo.binding.descriptorType = db.type;
@@ -363,12 +364,11 @@ void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept {
 
 std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageURIs const& ids) {
 	std::array<bytearray, 6> ret;
-	std::size_t idx = 0;
-	for (std::string_view id : ids) {
+	for (auto const& [id, idx] : le::utils::enumerate(ids)) {
 		io::Path const name = io::Path(id) + ext;
 		io::Path const path = prefix / name;
 		if (auto bytes = media.bytes(path)) {
-			ret[idx++] = std::move(*bytes);
+			ret[idx] = std::move(*bytes);
 		} else {
 			logW(LC_EndUser, "[{}] Failed to load bytes from [{}]", g_name, path.generic_string());
 		}

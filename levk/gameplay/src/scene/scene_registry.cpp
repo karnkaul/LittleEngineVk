@@ -1,7 +1,6 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
-#include <levk/engine/render/material.hpp>
 #include <levk/gameplay/ecs/systems/gui_system.hpp>
 #include <levk/gameplay/ecs/systems/physics_system.hpp>
 #include <levk/gameplay/ecs/systems/scene_clean_system.hpp>
@@ -9,6 +8,7 @@
 #include <levk/gameplay/ecs/systems/system_groups.hpp>
 #include <levk/gameplay/editor/scene_ref.hpp>
 #include <levk/gameplay/scene/scene_registry.hpp>
+#include <levk/graphics/mesh.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
 #include <levk/graphics/render/camera.hpp>
 
@@ -42,25 +42,18 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string pipeURI) {
+dens::entity SceneRegistry::spawn(std::string name, PrimitiveProvider provider, Hash renderPipeline) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
-	m_registry.attach<MeshProvider>(ret, std::move(provider));
+	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
+	m_registry.attach(ret, std::move(provider));
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string pipeURI) {
+dens::entity SceneRegistry::spawn(std::string name, AssetProvider<graphics::Mesh> provider, Hash renderPipeline) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderPipeProvider>(ret, std::move(pipeURI));
-	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
+	m_registry.attach(ret, RenderPipeProvider(renderPipeline));
+	m_registry.attach(ret, std::move(provider));
 	return ret;
-}
-
-Material const* SceneRegistry::defaultMaterial() const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto mat = store->find<Material>("materials/default")) { return &*mat; }
-	}
-	return {};
 }
 
 void SceneRegistry::updateSystems(Time_s dt, Engine::Service const& engine) { m_systemGroupRoot.update(m_registry, SystemData{engine, dt}); }

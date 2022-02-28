@@ -22,7 +22,7 @@ Path FSMedia::fullPath(Path const& uri) const {
 }
 
 bool FSMedia::mount(Path path) {
-	auto const pathStr = path.generic_string();
+	auto pathStr = absolute(path).generic_string();
 	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
 		if (!io::is_directory(path)) {
 			logE("[{}] directory not found on {} [{}]!", utils::tName<FSMedia>(), info_v.name, pathStr);

@@ -16,7 +16,7 @@ class InputField : public Widget, public input::Receiver {
 	InputField& operator=(InputField&&) = delete;
 
 	Status onInput(input::State const& state) override;
-	MeshView mesh() const noexcept override;
+	void addDrawPrimitives(DrawList& out) const override;
 
 	bool block(input::State const& state) override;
 
@@ -33,7 +33,6 @@ class InputField : public Widget, public input::Receiver {
 	void onUpdate(input::Space const& space) override;
 	void reposition() noexcept;
 
-	mutable ktl::fixed_vector<MeshObj, 4> m_meshes;
 	std::string m_exposed;
 	std::optional<Quad> m_outline;
 	f32 m_offsetX{};

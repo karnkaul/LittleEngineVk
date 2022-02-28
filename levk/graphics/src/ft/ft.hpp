@@ -34,7 +34,7 @@ struct FTFace {
 	bool setPixelSize(glm::uvec2 size = {0U, 16U}) const noexcept;
 
 	ID glyphIndex(u32 codepoint) const noexcept;
-	bool loadGlyph(ID index, FT_Render_Mode mode = FT_RENDER_MODE_NORMAL) const noexcept;
+	bool loadGlyph(ID index, FT_Render_Mode mode = FT_RENDER_MODE_NORMAL) const;
 	Extent2D glyphExtent() const;
 	std::vector<u8> buildGlyphImage() const;
 };

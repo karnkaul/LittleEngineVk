@@ -76,7 +76,7 @@ void CommandBuffer::bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> s
 	m_cb.bindDescriptorSets(bindPoint, layout, firstSet, sets, offsets);
 }
 
-void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const { bindSets(layout, set.get(), set.setNumber()); }
+void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const { bindSets(layout, set.descriptorSet(), set.setNumber()); }
 
 void CommandBuffer::bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const {
 	ENSURE(recording(), "Command buffer not recording!");

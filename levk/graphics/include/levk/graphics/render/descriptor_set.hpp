@@ -6,24 +6,11 @@
 namespace le::graphics {
 class ShaderBuffer;
 
-struct SetBindingData {
-	std::string name;
-	vk::DescriptorSetLayoutBinding binding;
-	Texture::Type textureType{};
-};
-
-struct SetLayoutData {
-	ktl::fixed_vector<SetBindingData, 16> bindingData;
-	vk::DescriptorSetLayout layout;
-};
-
-struct SetPoolsData {
-	std::vector<SetLayoutData> sets;
-	Buffering buffering = Buffering::eDouble;
-};
-
 static constexpr std::size_t max_bindings_v = 16;
 
+///
+/// \brief Ring buffered wrapper of a span of vk::DescriptorSets corresponding to a particular set layout
+///
 class DescriptorSet {
   public:
 	struct Img {
@@ -36,12 +23,18 @@ class DescriptorSet {
 	};
 	struct CreateInfo;
 
+	struct BindingData {
+		std::string name;
+		vk::DescriptorSetLayoutBinding layoutBinding;
+		Texture::Type textureType{};
+	};
+
 	DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info);
 	DescriptorSet(DescriptorSet&&) = default;
 	DescriptorSet& operator=(DescriptorSet&&) = default;
 
-	void swap();
-	vk::DescriptorSet get() const;
+	vk::DescriptorSet descriptorSet() const { return m_sets.get().set; }
+	void swap() { m_sets.next(); }
 
 	void updateBuffers(u32 binding, Span<Buf const> buffers);
 	void updateImages(u32 binding, Span<Img const> images);
@@ -50,17 +43,17 @@ class DescriptorSet {
 	void update(u32 binding, Buffer const& buffer);
 	void update(u32 binding, Texture const& texture);
 
-	u32 setNumber() const noexcept { return m_storage.setNumber; }
-	SetBindingData binding(u32 bind) const noexcept;
-	bool contains(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
-	bool unassigned() const noexcept;
+	Texture::Type textureType(u32 binding) const noexcept { return this->binding(binding).textureType; }
+	u32 setNumber() const noexcept { return m_setNumber; }
+	BindingData binding(u32 binding) const noexcept { return binding < max_bindings_v ? m_bindingData[binding] : BindingData(); }
+	bool contains(u32 binding, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
+	bool unassigned() const noexcept { return m_sets.empty(); }
 
   private:
 	static constexpr vk::BufferUsageFlags usage(vk::DescriptorType type) noexcept;
 	void updateBuffersImpl(u32 binding, Span<Buf const> buffers, vk::DescriptorType type);
 	template <typename T>
 	void update(u32 binding, vk::DescriptorType type, Span<T const> writes);
-	void update(vk::WriteDescriptorSet write) { m_vram->m_device->device().updateDescriptorSets(write, {}); }
 
 	struct Binding {
 		vk::DescriptorType type{};
@@ -70,59 +63,56 @@ class DescriptorSet {
 	struct Set {
 		Binding bindings[max_bindings_v];
 		std::optional<Buffer> buffer;
-		Defer<vk::DescriptorPool> pool;
 		vk::DescriptorSet set;
 	};
-	struct Storage {
-		SetBindingData bindingData[max_bindings_v];
-		TRotator<Set> sets;
-		vk::DescriptorSetLayout layout;
-		u32 setNumber = 0;
-		Buffering buffering{};
-	} m_storage;
+
+	BindingData m_bindingData[max_bindings_v]{};
+	TRotator<Set> m_sets{};
+	u32 m_setNumber = 0;
 	not_null<VRAM*> m_vram;
 
 	std::pair<Set&, Binding&> setBind(u32 bind, u32 count = 1, vk::DescriptorType const* type = {});
 };
 
 struct DescriptorSet::CreateInfo {
-	vk::DescriptorSetLayout layout;
-	Span<SetBindingData const> bindingData;
-	Buffering buffering = Buffering::eDouble;
+	Span<BindingData const> bindingData;
+	Span<vk::DescriptorSet> descriptorSets;
 	u32 setNumber = 0;
 };
 
-// Manages multiple inputs for a shader via set numbers
-class ShaderInput {
+class DescriptorPool {
   public:
-	ShaderInput() = default;
-	ShaderInput(not_null<VRAM*> vram, SetPoolsData data);
+	struct CreateInfo {
+		ktl::fixed_vector<DescriptorSet::BindingData, max_bindings_v> bindingData{};
+		vk::DescriptorSetLayout layout{};
+		Buffering buffering = Buffering::eDouble;
+		u32 setNumber = 0;
+		u32 setsPerPool = 32;
+	};
 
-	DescriptorSet& set(u32 set, std::size_t index);
+	DescriptorPool(not_null<VRAM*> vram, CreateInfo info);
+
+	DescriptorSet& set(std::size_t index) const;
+	bool unassigned() const noexcept { return m_info.bindingData.empty(); }
 	void swap();
-	bool empty() const noexcept;
-	bool contains(u32 set) const noexcept;
-	bool contains(u32 set, u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
-	Texture::Type textureType(u32 set, u32 bind) const noexcept;
-
-	void update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx);
-	void clear() noexcept;
-
-	VRAM* m_vram{};
 
   private:
-	struct Pool {
-		vk::DescriptorSetLayout layout;
-		ktl::fixed_vector<SetBindingData, max_bindings_v> bindingData;
-		mutable std::vector<DescriptorSet> descriptorSets;
-		u32 setNumber = 0;
-		Buffering buffering;
-		VRAM* vram{};
-
-		void push() const;
-		DescriptorSet& index(std::size_t i) const;
+	struct Binding {
+		vk::DescriptorType type{};
+		Texture::Type texType{};
+		u32 count = 1;
 	};
-	std::unordered_map<u32, Pool> m_setPools;
+
+	void makeSets() const;
+
+	Binding m_bindings[16]{};
+	CreateInfo m_info;
+	ktl::fixed_vector<vk::DescriptorPoolSize, max_bindings_v> m_poolSizes;
+	mutable std::vector<Defer<vk::DescriptorPool>> m_pools;
+	mutable std::vector<DescriptorSet> m_sets;
+	u32 m_maxSets{};
+	not_null<VRAM*> m_vram;
+	bool m_hasActiveBinding{};
 };
 
 // impl
@@ -147,7 +137,7 @@ void DescriptorSet::writeUpdate(T const& payload, u32 binding) {
 template <typename T>
 void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T const> writes) {
 	vk::WriteDescriptorSet write;
-	write.dstSet = get();
+	write.dstSet = descriptorSet();
 	write.dstBinding = binding;
 	write.dstArrayElement = 0;
 	write.descriptorType = type;
@@ -157,7 +147,7 @@ void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T const> w
 	} else {
 		write.pBufferInfo = writes.data();
 	}
-	update(write);
+	m_vram->m_device->device().updateDescriptorSets(write, {});
 }
 
 inline void DescriptorSet::update(u32 binding, Buffer const& buffer) { updateBuffers(binding, Buf{buffer.buffer(), (std::size_t)buffer.writeSize()}); }

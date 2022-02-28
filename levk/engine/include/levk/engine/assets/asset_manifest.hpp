@@ -1,11 +1,21 @@
 #pragma once
 #include <dumb_json/json.hpp>
 #include <dumb_tasks/executor.hpp>
-#include <levk/engine/assets/asset_loaders_store.hpp>
+#include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
+#include <levk/engine/render/texture_refs.hpp>
+#include <levk/graphics/draw_primitive.hpp>
 #include <map>
 
 namespace le {
+namespace graphics {
+struct Mesh;
+class Sampler;
+class Texture;
+struct SpirV;
+class Font;
+} // namespace graphics
+struct RenderLayer;
 struct RenderPipeline;
 class Skybox;
 class Model;
@@ -48,8 +58,6 @@ class AssetManifest::Parser : public utils::VBase {
 	void enqueue(Order order, dts::task_t task) const;
 	template <typename T>
 	void add(Order order, std::string uri, T asset) const;
-	template <typename T>
-	void load(Order order, std::string uri, AssetLoadData<T> data) const;
 
 	Engine::Service m_engine;
 	not_null<Stages*> m_stages;
@@ -60,12 +68,14 @@ class ManifestLoader {
 	using Parser = AssetManifest::Parser;
 	using Order = Parser::Order;
 
+	inline static bool s_attachMonitors = levk_debug;
+
 	ManifestLoader(Engine::Service engine) noexcept : m_engine(engine) {}
 
 	std::size_t preload(dj::json const& root, Opt<Parser const> custom = {});
 	void loadAsync();
 	void loadBlocking();
-	void load(io::Path jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
+	void load(io::Path const& jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
 	std::size_t unload();
 
 	AssetManifest const& manifest() const noexcept { return m_manifest; }
@@ -78,6 +88,7 @@ class ManifestLoader {
 	Parser::Stages m_stages;
 	dts::future_t m_future;
 	Engine::Service m_engine;
+	time::Point m_start{};
 };
 
 // impl
@@ -90,11 +101,11 @@ constexpr bool any_same_v = (... || std::is_same_v<T, Compare>);
 template <typename T>
 constexpr AssetManifest::Parser::Order AssetManifest::Parser::order(Order fallback) noexcept {
 	using namespace graphics;
-	if constexpr (detail::any_same_v<T, Sampler, SpirV, RenderLayer>) {
+	if constexpr (detail::any_same_v<T, Sampler, SpirV, RenderLayer, BPMaterialData, PBRMaterialData, TextureRefs>) {
 		return Order::eZeroth;
 	} else if constexpr (detail::any_same_v<T, Texture, RenderPipeline>) {
 		return Order::eFirst;
-	} else if constexpr (detail::any_same_v<T, Material, Font, Skybox, Model>) {
+	} else if constexpr (detail::any_same_v<T, Font, Skybox, Model, Mesh>) {
 		return Order::eSecond;
 	}
 	return fallback;
@@ -115,15 +126,8 @@ constexpr AssetManifest::Parser::Order AssetManifest::Parser::maxOrder(std::span
 	return ret;
 }
 
-inline void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
-
 template <typename T>
 void AssetManifest::Parser::add(Order order, std::string uri, T asset) const {
 	enqueue(order, [e = m_engine, uri = std::move(uri), asset = std::move(asset)]() mutable { e.store().add(std::move(uri), std::move(asset)); });
-}
-
-template <typename T>
-void AssetManifest::Parser::load(Order order, std::string uri, AssetLoadData<T> data) const {
-	enqueue(order, [e = m_engine, uri = std::move(uri), data = std::move(data)] { e.store().load(std::move(uri), std::move(data)); });
 }
 } // namespace le

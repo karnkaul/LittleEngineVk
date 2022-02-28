@@ -18,7 +18,8 @@ class Text : public TreeNode {
 	Text& position(glm::vec2 position);
 	Text& align(glm::vec2 pivot);
 
-	MeshView mesh() const noexcept override { return m_textMesh.mesh(); }
+	void addDrawPrimitives(DrawList& out) const override;
+	DrawPrimitive drawPrimitive() const;
 
 	Hash m_fontURI = defaultFontURI;
 

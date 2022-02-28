@@ -1,43 +1,28 @@
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
-#include <levk/graphics/render/shader_buffer.hpp>
 #include <algorithm>
 
 namespace le::graphics {
 DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_vram(vram) {
-	m_storage.buffering = info.buffering;
-	m_storage.layout = info.layout;
-	m_storage.setNumber = info.setNumber;
+	m_setNumber = info.setNumber;
 	bool active = false;
-	for (auto const& binding : info.bindingData) {
-		m_storage.bindingData[binding.binding.binding] = binding;
-		active |= binding.binding.descriptorType != vk::DescriptorType();
+	for (auto const& data : info.bindingData) {
+		m_bindingData[data.layoutBinding.binding] = data;
+		active |= data.layoutBinding.descriptorType != vk::DescriptorType();
 	}
 	if (active) {
-		std::vector<vk::DescriptorPoolSize> poolSizes;
-		poolSizes.reserve(max_bindings_v);
-		for (Buffering buf{}; buf < m_storage.buffering; ++buf) {
+		for (auto const dset : info.descriptorSets) {
 			Set set;
-			std::size_t idx{};
-			for (auto const& binding : m_storage.bindingData) {
-				if (binding.binding.descriptorType != vk::DescriptorType()) {
-					u32 const totalSize = binding.binding.descriptorCount * u32(m_storage.buffering);
-					poolSizes.push_back({binding.binding.descriptorType, totalSize});
-					set.bindings[idx].type = binding.binding.descriptorType;
-					set.bindings[idx].count = binding.binding.descriptorCount;
-					set.bindings[idx].texType = binding.textureType;
+			for (auto const& [data, idx] : le::utils::enumerate(m_bindingData)) {
+				if (data.layoutBinding.descriptorType != vk::DescriptorType()) {
+					set.bindings[idx] = {data.layoutBinding.descriptorType, data.textureType, data.layoutBinding.descriptorCount};
 				}
-				++idx;
 			}
-			set.pool = set.pool.make(m_vram->m_device->makeDescriptorPool(poolSizes, 1U), m_vram->m_device);
-			set.set = m_vram->m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
-			m_storage.sets.emplace(std::move(set));
+			set.set = dset;
+			m_sets.emplace(std::move(set));
 		}
 	}
 }
-
-void DescriptorSet::swap() { m_storage.sets.next(); }
-
-vk::DescriptorSet DescriptorSet::get() const { return m_storage.sets.get().set; }
 
 void DescriptorSet::updateBuffers(u32 binding, Span<Buf const> buffers) {
 	auto [_, b] = setBind(binding, (u32)buffers.size());
@@ -59,19 +44,12 @@ void DescriptorSet::updateImages(u32 binding, Span<Img const> images) {
 	update<vk::DescriptorImageInfo>(binding, bind.type, imageInfos);
 }
 
-SetBindingData DescriptorSet::binding(u32 bind) const noexcept { return bind < max_bindings_v ? m_storage.bindingData[bind] : SetBindingData(); }
-
 bool DescriptorSet::contains(u32 bind, vk::DescriptorType const* type, Texture::Type const* texType) const noexcept {
 	auto const ret = binding(bind);
-	if (ret.binding == vk::DescriptorSetLayoutBinding()) { return false; }
-	if (type && ret.binding.descriptorType != *type) { return false; }
+	if (ret.layoutBinding == vk::DescriptorSetLayoutBinding()) { return false; }
+	if (type && ret.layoutBinding.descriptorType != *type) { return false; }
 	if (texType && ret.textureType != *texType) { return false; }
 	return true;
-}
-
-bool DescriptorSet::unassigned() const noexcept {
-	auto const& bi = m_storage.bindingData;
-	return std::all_of(std::begin(bi), std::end(bi), [](SetBindingData const& bi) { return bi.binding == vk::DescriptorSetLayoutBinding(); });
 }
 
 void DescriptorSet::updateBuffersImpl(u32 binding, Span<Buf const> buffers, vk::DescriptorType type) {
@@ -87,7 +65,7 @@ void DescriptorSet::updateBuffersImpl(u32 binding, Span<Buf const> buffers, vk::
 }
 
 auto DescriptorSet::setBind(u32 bind, u32 count, vk::DescriptorType const* type) -> std::pair<Set&, Binding&> {
-	auto& set = m_storage.sets.get();
+	auto& set = m_sets.get();
 	ENSURE(contains(bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
 	if (type) { ENSURE(binding.type == *type, "Mismatched descriptor type"); }
@@ -95,59 +73,51 @@ auto DescriptorSet::setBind(u32 bind, u32 count, vk::DescriptorType const* type)
 	return {set, binding};
 }
 
-void ShaderInput::Pool::push() const { descriptorSets.emplace_back(vram, DescriptorSet::CreateInfo{layout, bindingData, buffering, setNumber}); }
-
-DescriptorSet& ShaderInput::Pool::index(std::size_t idx) const {
-	descriptorSets.reserve(idx + 1);
-	while (descriptorSets.size() < idx + 1) { push(); }
-	return descriptorSets[idx];
-}
-
-DescriptorSet& ShaderInput::set(u32 set, std::size_t index) {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.index(index); }
-	ENSURE(false, "Nonexistent set");
-}
-
-void ShaderInput::swap() {
-	for (auto& [_, pool] : m_setPools) {
-		for (auto& set : pool.descriptorSets) { set.swap(); }
+DescriptorPool::DescriptorPool(not_null<VRAM*> vram, CreateInfo info) : m_info(std::move(info)), m_vram(vram) {
+	auto const f = [](DescriptorSet::BindingData const& d) { return d.layoutBinding.descriptorType != vk::DescriptorType(); };
+	m_hasActiveBinding = std::any_of(m_info.bindingData.begin(), m_info.bindingData.end(), f);
+	EXPECT(m_info.bindingData.empty() || m_hasActiveBinding);
+	if (m_info.buffering == Buffering::eNone) { m_info.buffering = Buffering::eDouble; }
+	if (m_info.setsPerPool == 0U) { m_info.setsPerPool = 1U; }
+	for (auto const& [data, idx] : le::utils::enumerate(m_info.bindingData)) {
+		if (data.layoutBinding.descriptorType != vk::DescriptorType()) {
+			u32 const totalSize = data.layoutBinding.descriptorCount * u32(m_info.buffering) * m_info.setsPerPool;
+			m_maxSets += totalSize;
+			m_poolSizes.push_back({data.layoutBinding.descriptorType, totalSize});
+			m_bindings[idx].type = data.layoutBinding.descriptorType;
+			m_bindings[idx].count = data.layoutBinding.descriptorCount;
+			m_bindings[idx].texType = data.textureType;
+		}
 	}
 }
 
-bool ShaderInput::empty() const noexcept { return m_setPools.empty(); }
-
-bool ShaderInput::contains(u32 set) const noexcept {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return !it->second.index(0).unassigned(); }
-	return false;
+DescriptorSet& DescriptorPool::set(std::size_t index) const {
+	EXPECT(!unassigned() && m_hasActiveBinding);
+	while (index >= m_sets.size()) { makeSets(); }
+	EXPECT(index < m_sets.size());
+	return m_sets[index];
 }
 
-bool ShaderInput::contains(u32 set, u32 bind, vk::DescriptorType const* type, Texture::Type const* texType) const noexcept {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.index(0).contains(bind, type, texType); }
-	return false;
+void DescriptorPool::swap() {
+	for (auto& set : m_sets) { set.swap(); }
 }
 
-Texture::Type ShaderInput::textureType(u32 set, u32 bind) const noexcept {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.index(0).binding(bind).textureType; }
-	return {};
-}
-
-ShaderInput::ShaderInput(not_null<VRAM*> vram, SetPoolsData data) : m_vram(vram) {
-	Buffering const buffering = data.buffering == Buffering::eNone ? Buffering::eDouble : data.buffering;
-	for (std::size_t set = 0; set < data.sets.size(); ++set) {
-		Pool pool;
-		pool.vram = m_vram;
-		auto const& sld = data.sets[set];
-		pool.layout = sld.layout;
-		pool.buffering = buffering;
-		pool.setNumber = (u32)set;
-		pool.bindingData = std::move(sld.bindingData);
-		m_setPools.emplace((u32)set, std::move(pool));
+void DescriptorPool::makeSets() const {
+	EXPECT(!unassigned() && m_hasActiveBinding);
+	auto pool = m_vram->m_device->makeDescriptorPool(m_poolSizes, m_maxSets);
+	m_pools.push_back(Defer<vk::DescriptorPool>::make(pool, m_vram->m_device));
+	std::vector<vk::DescriptorSetLayout> layouts(m_info.setsPerPool * std::size_t(m_info.buffering), m_info.layout);
+	auto const count = m_info.setsPerPool * u32(m_info.buffering);
+	auto sets = m_vram->m_device->allocateDescriptorSets(m_pools.back(), layouts, count);
+	while (!sets.empty()) {
+		EXPECT(sets.size() % count == 0U);
+		auto const span = Span(sets.data() + sets.size() - count, count);
+		DescriptorSet::CreateInfo dci;
+		dci.descriptorSets = span;
+		dci.bindingData = m_info.bindingData;
+		dci.setNumber = m_info.setNumber;
+		m_sets.push_back(DescriptorSet(m_vram, dci));
+		for (u32 i = 0; i < count; ++i) { sets.pop_back(); }
 	}
-}
-
-void ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx) { buffer.update(this->set(set, idx), bind); }
-
-void ShaderInput::clear() noexcept {
-	for (auto& [_, pool] : m_setPools) { pool.descriptorSets.clear(); }
 }
 } // namespace le::graphics

@@ -10,7 +10,6 @@ class Enumerator {
 	using index_t = I;
 	using iterator = decltype(std::begin(std::declval<Cont&>()));
 	using const_iterator = decltype(std::cbegin(std::declval<Cont&>()));
-	using reverse_iterator = decltype(std::rbegin(std::declval<Cont&>()));
 	using difference_type = typename std::iterator_traits<iterator>::difference_type;
 
 	template <typename It>
@@ -22,8 +21,6 @@ class Enumerator {
 	constexpr iter_t<iterator> end() const noexcept { return {std::end(m_container), idx(m_size)}; }
 	constexpr iter_t<const_iterator> cbegin() const noexcept { return {std::cbegin(m_container), idx(0)}; }
 	constexpr iter_t<const_iterator> cend() const noexcept { return {std::cend(m_container), idx(m_size)}; }
-	constexpr iter_t<reverse_iterator> rbegin() const noexcept { return {std::rbegin(m_container), idx(m_size)}; }
-	constexpr iter_t<reverse_iterator> rend() const noexcept { return {std::rend(m_container), idx(0)}; }
 
   private:
 	static constexpr I idx(difference_type d) noexcept { return static_cast<I>(d); }
@@ -57,7 +54,7 @@ class Enumerator<Cont, I>::iter_t {
 	using value_type = RefIdx<it_ref_t>;
 	using pointer = value_type;
 	using reference = value_type;
-	using iterator_category = typename traits_t::iterator_category;
+	using iterator_category = std::forward_iterator_tag;
 
 	constexpr iter_t() = default;
 

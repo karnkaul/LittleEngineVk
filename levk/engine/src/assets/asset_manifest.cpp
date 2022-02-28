@@ -1,9 +1,54 @@
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
+#include <levk/engine/assets/asset_monitor.hpp>
+#include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/pipeline.hpp>
-#include <levk/engine/render/skybox.hpp>
+#include <levk/graphics/font/font.hpp>
+#include <levk/graphics/mesh.hpp>
+#include <levk/graphics/render/context.hpp>
+#include <levk/graphics/skybox.hpp>
+#include <levk/graphics/texture.hpp>
+#include <levk/graphics/utils/utils.hpp>
 
 namespace le {
+namespace {
+bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
+
+template <bool D = levk_debug>
+io::Path spirvPath(io::Path const& glsl, io::FSMedia const& media);
+
+template <>
+[[maybe_unused]] io::Path spirvPath<true>(io::Path const& glsl, io::FSMedia const& media) {
+	auto dbg = graphics::utils::spirVpath(glsl);
+	if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) {
+		dbg = *res;
+	} else {
+		if (media.present(dbg)) {
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", dbg.generic_string());
+			return dbg;
+		}
+		if (auto rel = graphics::utils::spirVpath(glsl, false); media.present(rel)) {
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
+			return rel;
+		}
+		ENSURE(false, "Failed to compile GLSL");
+	}
+	// compile Release shader too
+	graphics::utils::compileGlsl(media.fullPath(glsl), {}, {}, false);
+	return dbg;
+}
+
+template <>
+[[maybe_unused]] io::Path spirvPath<false>(io::Path const& glsl, io::FSMedia const& media) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (!media.present(spv, std::nullopt)) {
+		if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) { spv = *res; }
+	}
+	return spv;
+}
+} // namespace
+
 namespace {
 graphics::ShaderType parseShaderType(std::string_view str) noexcept {
 	if (str == "vert" || str == "vertex") {
@@ -34,58 +79,132 @@ vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
 	return ret;
 }
 
-AssetLoadData<graphics::SpirV> spirVData(std::string_view uri, dj::ptr<dj::json> const& json) {
-	AssetLoadData<graphics::SpirV> data;
+ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::ptr<dj::json> const& json) {
+	graphics::ShaderType shaderType{};
 	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
-		data.type = parseShaderType(type);
+		shaderType = parseShaderType(type);
 	} else {
-		data.type = shaderTypeFromExt(io::Path(uri).extension());
+		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
-	data.uri = uri;
-	return data;
+	return [uri = std::move(uri), engine, shaderType]() mutable {
+		Opt<io::FSMedia const> fsMedia{};
+		io::Path path = uri;
+		if (isGlsl(uri)) {
+			if (fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media()); fsMedia) {
+				path = spirvPath(path, *fsMedia);
+			} else {
+				// cannot compile shaders without FSMedia
+				path = graphics::utils::spirVpath(path);
+			}
+		} else {
+			// fallback to previously compiled shader
+			path = graphics::utils::spirVpath(path);
+		}
+		auto res = engine.store().media().bytes(path);
+		if (!res) { return; }
+		graphics::SpirV spirV;
+		spirV.spirV = std::vector<u32>(res->size() / 4);
+		spirV.type = shaderType;
+		std::memcpy(spirV.spirV.data(), res->data(), res->size());
+		engine.store().add(uri, std::move(spirV));
+		if (ManifestLoader::s_attachMonitors && fsMedia) {
+			engine.monitor().attach<graphics::SpirV>(uri, fsMedia->fullPath(uri), [uri, engine](graphics::SpirV& out) {
+				if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+					auto path = spirvPath(uri, *fsMedia);
+					if (auto res = fsMedia->bytes(path)) {
+						out.spirV = std::vector<u32>(res->size() / 4);
+						std::memcpy(out.spirV.data(), res->data(), res->size());
+						engine.context().pipelineFactory().markStale(uri);
+						return true;
+					}
+				}
+				return false;
+			});
+		}
+	};
 }
 
-AssetLoadData<graphics::Texture> textureData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	using Payload = graphics::Texture::Payload;
-	AssetLoadData<graphics::Texture> ret(&vram);
-	if (auto files = json->find_as<std::vector<std::string>>("files")) {
-		ret.imageURIs = {files->begin(), files->end()};
-	} else if (auto file = json->find_as<std::string>("file")) {
-		ret.imageURIs = {std::move(*file)};
-	} else {
-		ret.imageURIs = {uri};
+bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io::Media const& media, graphics::Texture& out) {
+	EXPECT(files.size() == 6U);
+	bytearray bytes[6];
+	ImageData cube[6];
+	for (auto const& [file, idx] : utils::enumerate(files)) {
+		auto res = media.bytes(prefix / file);
+		if (!res) { return false; }
+		bytes[idx] = std::move(*res);
+		cube[idx] = bytes[idx];
 	}
-	ret.prefix = json->get_as<std::string>("prefix");
-	ret.ext = json->get_as<std::string>("ext");
-	ret.samplerURI = json->get_as<std::string_view>("sampler");
-	if (auto payload = json->find_as<std::string_view>("payload")) { ret.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
-	return ret;
+	return out.construct(cube);
 }
 
-AssetLoadData<graphics::Font> fontData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	AssetLoadData<graphics::Font> ret(&vram);
+ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	std::vector<std::string> files = json->get_as<std::vector<std::string>>("files");
+	if (files.empty()) {
+		if (auto file = json->find_as<std::string>("file")) {
+			files.push_back(std::move(*file));
+		} else {
+			files.push_back(uri);
+		}
+	}
+	Hash samplerURI = json->get_as<std::string>("sampler", "samplers/default");
+	io::Path prefix = json->get_as<std::string>("prefix");
+	return [uri, samplerURI, prefix, files, engine]() {
+		auto sampler = engine.store().find<graphics::Sampler>(samplerURI);
+		if (!sampler) { return; }
+		graphics::Texture texture(&engine.vram(), sampler->sampler());
+		if (files.size() > 1U) {
+			if (constructCubemap(prefix, files, engine.store().media(), texture)) {
+				engine.store().add(std::move(uri), std::move(texture));
+				if (ManifestLoader::s_attachMonitors) {
+					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+						io::Path paths[6];
+						for (auto const& [file, idx] : utils::enumerate(files)) { paths[idx] = fsMedia->fullPath(file); }
+						auto f = [engine, files = std::move(files), prefix](graphics::Texture& out) {
+							return constructCubemap(prefix, files, engine.store().media(), out);
+						};
+						engine.monitor().attach<graphics::Texture>(uri, paths, f);
+					}
+				}
+			}
+		} else {
+			auto res = engine.store().media().bytes(files[0]);
+			if (!res) { return; }
+			if (texture.construct(*res)) {
+				engine.store().add(uri, std::move(texture));
+				if (ManifestLoader::s_attachMonitors) {
+					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
+						auto f = [engine, file = files[0]](graphics::Texture& out) {
+							if (auto res = engine.store().media().bytes(file)) { return out.construct(*res); }
+							return false;
+						};
+						engine.monitor().attach<graphics::Texture>(uri, fsMedia->fullPath(files[0]), f);
+					}
+				}
+			}
+		}
+	};
+}
+
+ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	io::Path ttfURI;
 	if (auto file = json->find("file"); file && file->is_string()) {
-		ret.ttfURI = file->as<std::string_view>();
+		ttfURI = file->as<std::string_view>();
 	} else {
 		io::Path path(uri);
-		ret.ttfURI = path / path.filename() + ".ttf";
+		ttfURI = path / path.filename() + ".ttf";
 	}
-	ret.info.atlas.mipMaps = json->get_as<bool>("mip_maps", ret.info.atlas.mipMaps);
-	ret.info.height = graphics::Font::Height{json->get_as<u32>("height", u32(ret.info.height))};
-	return ret;
-}
-
-AssetLoadData<Model> modelData(graphics::VRAM& vram, std::string_view uri, dj::ptr<dj::json> const& json) {
-	AssetLoadData<Model> data(&vram);
-	data.modelURI = uri;
-	if (auto file = json->find("file"); file && file->is_string()) {
-		data.jsonURI = file->as<std::string_view>();
-	} else {
-		io::Path path(uri);
-		data.jsonURI = path / path.filename() + ".json";
-	}
-	data.samplerURI = json->get_as<std::string_view>("sampler");
-	return data;
+	bool mipMaps = json->get_as<bool>("mip_maps", true);
+	auto height = graphics::Font::Height{json->get_as<u32>("height", u32(graphics::Font::Height::eDefault))};
+	return [uri, ttfURI, mipMaps, height, engine] {
+		auto ttf = engine.store().media().bytes(ttfURI);
+		if (!ttf) { return; }
+		graphics::Font::Info fi;
+		fi.name = ttfURI.filename().string();
+		fi.ttf = *ttf;
+		fi.height = height;
+		fi.atlas.mipMaps = mipMaps;
+		engine.store().add(std::move(uri), graphics::Font(&engine.vram(), std::move(fi)));
+	};
 }
 
 ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string uri, std::string layer, std::vector<std::string> shaders) {
@@ -116,8 +235,8 @@ static graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
 	return fallback;
 }
 
-ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
-	Material mat;
+ktl::kfunction<void()> bpMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	graphics::BPMaterialData mat;
 	mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
 	mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
 	mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
@@ -125,25 +244,62 @@ ktl::kfunction<void()> materialsFunc(Engine::Service engine, std::string uri, dj
 	mat.Ns = json->get_as<f32>("Ns", mat.Ns);
 	mat.d = json->get_as<f32>("d", mat.d);
 	mat.illum = json->get_as<int>("illum", mat.illum);
-	Hash const map_Kd = json->get_as<std::string_view>("map_Kd");
-	Hash const map_Ks = json->get_as<std::string_view>("map_Ks");
-	Hash const map_d = json->get_as<std::string_view>("map_d");
-	Hash const map_bump = json->get_as<std::string_view>("map_bump");
-	return [uri = std::move(uri), engine, mat, map_Kd, map_Ks, map_d, map_bump]() mutable {
-		mat.map_Kd = engine.store().find<graphics::Texture>(map_Kd);
-		mat.map_Ks = engine.store().find<graphics::Texture>(map_Ks);
-		mat.map_d = engine.store().find<graphics::Texture>(map_d);
-		mat.map_Bump = engine.store().find<graphics::Texture>(map_bump);
-		engine.store().add(std::move(uri), mat);
-	};
+	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
+}
+
+ktl::kfunction<void()> pbrMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	graphics::PBRMaterialData mat;
+	mat.alphaCutoff = json->get_as<f32>("alpha_cutoff", mat.alphaCutoff);
+	mat.baseColourFactor = parseRGBA(json->get("base_colour_factor"), mat.baseColourFactor);
+	mat.emissiveFactor = parseRGBA(json->get("emissive_factor"), mat.emissiveFactor);
+	mat.metallicFactor = json->get_as<f32>("metallic_factor", mat.metallicFactor);
+	mat.roughnessFactor = json->get_as<f32>("roughness_factor", mat.roughnessFactor);
+	if (auto mode = json->find_as<std::string_view>("mode")) {
+		if (*mode == "blend") {
+			mat.mode = graphics::PBRMaterialData::Mode::eBlend;
+		} else if (*mode == "mask") {
+			mat.mode = graphics::PBRMaterialData::Mode::eMask;
+		}
+	}
+	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
+}
+
+ktl::kfunction<void()> textureRefsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	TextureRefs texRefs;
+	texRefs.textures[graphics::MatTexType::eDiffuse] = json->get_as<std::string_view>("diffuse");
+	texRefs.textures[graphics::MatTexType::eSpecular] = json->get_as<std::string_view>("specular");
+	texRefs.textures[graphics::MatTexType::eAlpha] = json->get_as<std::string_view>("alpha");
+	texRefs.textures[graphics::MatTexType::eBump] = json->get_as<std::string_view>("bump");
+	texRefs.textures[graphics::MatTexType::eMetalRough] = json->get_as<std::string_view>("metal_rough");
+	texRefs.textures[graphics::MatTexType::eOcclusion] = json->get_as<std::string_view>("occlusion");
+	texRefs.textures[graphics::MatTexType::eNormal] = json->get_as<std::string_view>("normal");
+	texRefs.textures[graphics::MatTexType::eEmissive] = json->get_as<std::string_view>("emissive");
+	return [uri = std::move(uri), texRefs, engine] { engine.store().add(std::move(uri), texRefs); };
 }
 
 ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::string cubemap) {
 	return [engine, cb = std::move(cubemap), uri = std::move(uri)] {
 		if (auto cube = engine.store().find<graphics::Texture>(cb); cube && cube->type() == graphics::Texture::Type::eCube) {
-			engine.store().add(std::move(uri), Skybox(&*cube));
+			engine.store().add(std::move(uri), graphics::Skybox(&engine.vram(), cube));
 		} else {
 			logW(LC_LibUser, "[Asset] Failed to find cubemap Texture [{}] for Skybox [{}]", cb, uri);
+		}
+	};
+}
+
+ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+	std::string meshJSON = json->get_as<std::string>("file");
+	if (meshJSON.empty()) {
+		io::Path path = uri;
+		path /= path.filename();
+		path += ".json";
+		meshJSON = path.generic_string();
+	}
+	return [engine, json = std::move(meshJSON), uri = std::move(uri)] {
+		if (auto mesh = graphics::Mesh::fromObjMtl(json, engine.store().media(), &engine.vram())) {
+			engine.store().add(std::move(uri), std::move(*mesh));
+		} else {
+			logW(LC_LibUser, "[Asset] Failed to load Mesh from OBJ [{}]", json);
 		}
 	};
 }
@@ -158,9 +314,10 @@ struct DefaultParser : AssetManifest::Parser {
 		if (name == "textures") { return textures(group); }
 		if (name == "render_pipelines") { return renderPipelines(group); }
 		if (name == "materials") { return materials(group); }
+		if (name == "texture_refs") { return textureRefs(group); }
 		if (name == "fonts") { return fonts(group); }
 		if (name == "skyboxes") { return skyboxes(group); }
-		if (name == "models") { return models(group); }
+		if (name == "meshes") { return meshes(group); }
 		return std::nullopt;
 	}
 
@@ -179,8 +336,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t spirV(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = spirVData(uri, json);
-			load(order<graphics::SpirV>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::SpirV>(), spirVFunc(std::move(uri), m_engine, json));
 			++ret;
 		}
 		return ret;
@@ -199,8 +355,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t textures(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = textureData(m_engine.vram(), uri, json);
-			load(order<graphics::Texture>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::Texture>(), textureFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -222,7 +377,20 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t materials(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			enqueue(order<Material>(), materialsFunc(m_engine, std::move(uri), json));
+			if (json->get_as<std::string_view>("type") == "pbr") {
+				enqueue(order<graphics::PBRMaterialData>(), pbrMaterialFunc(m_engine, std::move(uri), json));
+			} else {
+				enqueue(order<graphics::BPMaterialData>(), bpMaterialFunc(m_engine, std::move(uri), json));
+			}
+			++ret;
+		}
+		return ret;
+	}
+
+	std::size_t textureRefs(Group const& group) const {
+		std::size_t ret{};
+		for (auto& [uri, json] : group) {
+			enqueue(order<TextureRefs>(), textureRefsFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -231,8 +399,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t fonts(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = fontData(m_engine.vram(), uri, json);
-			load(order<graphics::Font>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::Font>(), fontFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -249,11 +416,10 @@ struct DefaultParser : AssetManifest::Parser {
 		return ret;
 	}
 
-	std::size_t models(Group const& group) const {
+	std::size_t meshes(Group const& group) const {
 		std::size_t ret{};
 		for (auto& [uri, json] : group) {
-			auto data = modelData(m_engine.vram(), uri, json);
-			load(order<Model>(), std::move(uri), std::move(data));
+			enqueue(order<graphics::Mesh>(), objMeshFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
 		return ret;
@@ -270,6 +436,8 @@ std::size_t loaded(Engine::Service engine, AssetManifest const& manifest) {
 	return ret;
 }
 } // namespace
+
+void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
 
 AssetManifest& AssetManifest::include(List add) {
 	for (auto& [uri, group] : add) { list.insert_or_assign(std::move(uri), std::move(group)); }
@@ -313,6 +481,7 @@ std::size_t ManifestLoader::preload(dj::json const& root, Opt<Parser const> cust
 
 void ManifestLoader::loadAsync() {
 	if (m_stages.empty()) { return; }
+	m_start = time::now();
 	dts::future_t previous;
 	for (auto& [_, stage] : m_stages) {
 		std::span<dts::future_t> deps;
@@ -320,25 +489,32 @@ void ManifestLoader::loadAsync() {
 		previous = m_engine.executor().schedule(stage, deps);
 	}
 	auto const deps = std::span(&previous, 1U);
-	dts::task_t finalTask = [e = m_engine, m = m_manifest] {
-		if (auto const l = loaded(e, m); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
+	dts::task_t finalTask = [e = m_engine, m = m_manifest, s = m_start] {
+		if (auto const l = loaded(e, m); l > 0U) {
+			auto const dt = time::diff(s);
+			logI(LC_EndUser, "[Asset] [{}] Assets loaded in [{:.2f}s]", l, dt.count());
+		}
 	};
 	auto const tasks = std::span(&finalTask, 1U);
 	m_future = m_engine.executor().schedule(tasks, deps);
 }
 
 void ManifestLoader::loadBlocking() {
+	m_start = time::now();
 	for (auto const& [_, stage] : m_stages) {
 		for (auto const& func : stage) { func(); }
 	}
-	if (auto const l = loaded(m_engine, m_manifest); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
+	if (auto const l = loaded(m_engine, m_manifest); l > 0U) {
+		auto const dt = time::diff(m_start);
+		logI(LC_EndUser, "[Asset] [{}] Assets loaded in [{:.2f}s]", l, dt.count());
+	}
 }
 
-void ManifestLoader::load(io::Path jsonURI, Opt<Parser> custom, bool async, bool reload) {
+void ManifestLoader::load(io::Path const& jsonURI, Opt<Parser> custom, bool async, bool reload) {
 	if (reload || m_manifest.list.empty()) {
-		if (auto json = m_engine.store().resources().load(std::move(jsonURI), Resource::Type::eText, Resources::Flag::eReload)) {
+		if (auto json = m_engine.store().media().string(jsonURI)) {
 			dj::json root;
-			if (root.read(json->string())) { preload(root, custom); }
+			if (root.read(*json)) { preload(root, custom); }
 		}
 	}
 	if (async) {

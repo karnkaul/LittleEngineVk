@@ -113,9 +113,15 @@
 	],
 	"materials": [
 		{
-			"uri": "materials/player/cube",
-			"map_Kd": "textures/container2/diffuse",
-			"map_Ks": "textures/container2/specular"
+			"uri": "materials/bp/player/cube",
+			"Ks": "#777777ff"
+		}
+	],
+	"texture_refs": [
+		{
+			"uri": "texture_uris/player/cube",
+			"diffuse": "textures/container2/diffuse",
+			"specular": "textures/container2/specular"
 		}
 	],
 	"skyboxes": [
@@ -128,20 +134,20 @@
 			"cubemap": "cubemaps/test"
 		}
 	],
-	"models": [
+	"meshes": [
 		{
-			"uri": "models/plant"
+			"uri": "meshes/plant",
 		},
 		{
-			"uri": "models/teapot"
+			"uri": "meshes/teapot",
 		},
 		{
-			"uri": "models/nanosuit",
-			"file": "models/test/nanosuit/nanosuit.json"
+			"uri": "meshes/nanosuit",
+			"file": "meshes/test/nanosuit/nanosuit.json"
 		},
 		{
-			"uri": "models/fox",
-			"file": "models/test/fox/fox.json"
+			"uri": "meshes/fox",
+			"file": "meshes/test/fox/fox.json"
 		}
 	],
 	"fonts": [

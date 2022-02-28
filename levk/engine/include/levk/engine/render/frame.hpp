@@ -2,7 +2,7 @@
 #include <levk/core/utils/expect.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/graphics/render/render_pass.hpp>
-#include <levk/graphics/render/rgba.hpp>
+#include <levk/graphics/rgba.hpp>
 
 namespace le {
 using RenderPass = graphics::RenderPass;

@@ -2,6 +2,7 @@
 #include <levk/engine/input/space.hpp>
 #include <levk/gameplay/gui/text.hpp>
 #include <levk/graphics/font/font.hpp>
+#include <levk/graphics/render/draw_list.hpp>
 
 namespace le::gui {
 Text::Text(not_null<TreeRoot*> const root, Hash const fontURI) noexcept : TreeNode(root), m_fontURI(fontURI), m_textMesh(vram()) {}
@@ -14,4 +15,7 @@ void Text::onUpdate(input::Space const& space) {
 	}
 	m_textMesh.m_info.get<Line>().layout.origin.z = m_zIndex;
 }
+
+void Text::addDrawPrimitives(DrawList& out) const { pushDrawPrimitives(out, drawPrimitive()); }
+graphics::DrawPrimitive Text::drawPrimitive() const { return m_textMesh.drawPrimitive(); }
 } // namespace le::gui

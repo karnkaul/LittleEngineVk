@@ -1,5 +1,6 @@
 #include <ft/ft.hpp>
 #include <levk/core/log_channel.hpp>
+#include <exception>
 
 namespace le::graphics {
 FTLib FTLib::make() noexcept {
@@ -48,13 +49,21 @@ bool FTFace::setPixelSize(glm::uvec2 const size) const noexcept {
 
 FTFace::ID FTFace::glyphIndex(u32 codepoint) const noexcept { return FT_Get_Char_Index(face, codepoint); }
 
-bool FTFace::loadGlyph(ID index, FT_Render_Mode mode) const noexcept {
-	if (FT_Load_Glyph(face, index, FT_LOAD_DEFAULT)) {
-		logW("[Graphics] Failed to load glyph for index [{}]", index);
+bool FTFace::loadGlyph(ID index, FT_Render_Mode mode) const {
+	try {
+		if (FT_Load_Glyph(face, index, FT_LOAD_DEFAULT)) {
+			logW("[Graphics] Failed to load glyph for index [{}]", index);
+			return false;
+		}
+		if (FT_Render_Glyph(face->glyph, mode)) {
+			logW("[Graphics] Failed to render glyph for index [{}]", index);
+			return false;
+		}
+	} catch (std::exception const& e) {
+		logW("[Graphics] Failed to load glyph for index [{}]: {}", index, e.what());
 		return false;
-	}
-	if (FT_Render_Glyph(face->glyph, mode)) {
-		logW("[Graphics] Failed to render glyph for index [{}]", index);
+	} catch (...) {
+		logW("[Graphics] Failed to load glyph for index [{}] (Unknown error)", index);
 		return false;
 	}
 	return true;

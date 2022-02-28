@@ -359,7 +359,7 @@ vk::DescriptorSetLayout Device::makeDescriptorSetLayout(vAP<vk::DescriptorSetLay
 	return m_device->createDescriptorSetLayout(createInfo);
 }
 
-vk::DescriptorPool Device::makeDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets) const {
+vk::DescriptorPool Device::makeDescriptorPool(Span<vk::DescriptorPoolSize const> poolSizes, u32 maxSets) const {
 	vk::DescriptorPoolCreateInfo createInfo;
 	createInfo.poolSizeCount = poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();

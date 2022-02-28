@@ -46,31 +46,33 @@ class DescriptorUpdater : public DescriptorHelper {
 
 class DescriptorMap : public DescriptorHelper {
   public:
-	explicit DescriptorMap(not_null<Cache const*> cache, not_null<ShaderInput*> input) noexcept : m_cache(cache), m_input(input) {}
+	explicit DescriptorMap(not_null<Cache const*> cache, not_null<ShaderInput*> input) noexcept : m_input(input), m_cache(cache) {}
 
 	bool contains(u32 setNumber) { return m_input->contains(setNumber); }
-	DescriptorUpdater set(u32 setNumber);
+	DescriptorUpdater nextSet(u32 setNumber);
+
+	not_null<ShaderInput*> m_input;
 
   private:
 	u32 m_meta[max_bindings_v] = {};
 	not_null<Cache const*> m_cache;
-	not_null<ShaderInput*> m_input;
 };
 
 class DescriptorBinder : public DescriptorHelper {
   public:
 	explicit DescriptorBinder(vk::PipelineLayout layout, not_null<ShaderInput*> input, CommandBuffer cb) noexcept
-		: m_cb(cb), m_layout(layout), m_input(input) {}
+		: m_cb(cb), m_input(input), m_layout(layout) {}
 
 	void operator()(u32 set);
 	template <typename... T>
 		requires(sizeof...(T) > 1)
 	void operator()(T const... sets) { ((*this)(sets), ...); }
 
-  private:
 	CommandBuffer m_cb;
-	vk::PipelineLayout m_layout;
 	not_null<ShaderInput*> m_input;
+	vk::PipelineLayout m_layout;
+
+  private:
 	u32 m_meta[max_bindings_v] = {};
 };
 

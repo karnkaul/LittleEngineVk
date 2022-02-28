@@ -35,7 +35,7 @@ template <typename T>
 struct AddDrawPrimitives<T> {
 	template <std::output_iterator<DrawPrimitive> It>
 	void operator()(T const& t, It it) const {
-		if (DrawPrimitive prim = t.drawPrimitive()) { *it++ = prim; }
+		*it++ = t.drawPrimitive();
 	}
 };
 } // namespace le::graphics

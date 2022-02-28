@@ -88,6 +88,7 @@ class ManifestLoader {
 	Parser::Stages m_stages;
 	dts::future_t m_future;
 	Engine::Service m_engine;
+	time::Point m_start{};
 };
 
 // impl

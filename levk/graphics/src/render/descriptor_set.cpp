@@ -103,7 +103,7 @@ DescriptorSet& ShaderInput::Pool::index(std::size_t idx) const {
 	return descriptorSets[idx];
 }
 
-DescriptorSet& ShaderInput::set(u32 set, std::size_t index) {
+DescriptorSet& ShaderInput::set(u32 set, std::size_t index) const {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.index(index); }
 	ENSURE(false, "Nonexistent set");
 }

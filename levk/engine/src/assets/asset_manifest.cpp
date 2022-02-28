@@ -1,3 +1,4 @@
+#include <levk/core/utils/enumerate.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/assets/asset_monitor.hpp>
@@ -132,7 +133,8 @@ bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io:
 		auto res = media.bytes(prefix / file);
 		if (!res) { return false; }
 		bytes[idx] = std::move(*res);
-		cube[idx++] = bytes[idx];
+		cube[idx] = bytes[idx];
+		++idx;
 	}
 	return out.construct(cube);
 }
@@ -482,6 +484,7 @@ std::size_t ManifestLoader::preload(dj::json const& root, Opt<Parser const> cust
 
 void ManifestLoader::loadAsync() {
 	if (m_stages.empty()) { return; }
+	m_start = time::now();
 	dts::future_t previous;
 	for (auto& [_, stage] : m_stages) {
 		std::span<dts::future_t> deps;
@@ -489,18 +492,25 @@ void ManifestLoader::loadAsync() {
 		previous = m_engine.executor().schedule(stage, deps);
 	}
 	auto const deps = std::span(&previous, 1U);
-	dts::task_t finalTask = [e = m_engine, m = m_manifest] {
-		if (auto const l = loaded(e, m); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
+	dts::task_t finalTask = [e = m_engine, m = m_manifest, s = m_start] {
+		if (auto const l = loaded(e, m); l > 0U) {
+			auto const dt = time::diff(s);
+			logI(LC_EndUser, "[Asset] [{}] Assets loaded in [{:.2f}s]", l, dt.count());
+		}
 	};
 	auto const tasks = std::span(&finalTask, 1U);
 	m_future = m_engine.executor().schedule(tasks, deps);
 }
 
 void ManifestLoader::loadBlocking() {
+	m_start = time::now();
 	for (auto const& [_, stage] : m_stages) {
 		for (auto const& func : stage) { func(); }
 	}
-	if (auto const l = loaded(m_engine, m_manifest); l > 0U) { logI(LC_EndUser, "[Asset] [{}] Assets loaded", l); }
+	if (auto const l = loaded(m_engine, m_manifest); l > 0U) {
+		auto const dt = time::diff(m_start);
+		logI(LC_EndUser, "[Asset] [{}] Assets loaded in [{:.2f}s]", l, dt.count());
+	}
 }
 
 void ManifestLoader::load(io::Path const& jsonURI, Opt<Parser> custom, bool async, bool reload) {

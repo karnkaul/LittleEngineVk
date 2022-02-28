@@ -15,11 +15,10 @@ class DrawList {
 
 	DrawList& push(Span<DrawPrimitive const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
 	template <DrawPrimitiveAPI T>
-	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {}) {
-		auto const start = m_primitives.size();
-		AddDrawPrimitives<T>{}(t, std::back_inserter(m_primitives));
-		return push(start, matrix, scissor);
-	}
+	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
+
+	std::size_t size() const noexcept { return m_entries.size(); }
+	void clear() noexcept;
 
 	const_iterator begin() const;
 	const_iterator end() const;
@@ -27,20 +26,33 @@ class DrawList {
   private:
 	DrawList& push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor);
 
+	template <graphics::DrawPrimitiveAPI T>
+	static std::size_t size(T const&) {
+		return 0U;
+	}
+
+	template <graphics::DrawPrimitiveAPI T>
+		requires requires(T t) {
+			{ AddDrawPrimitives<T>{}.size(t) } -> std::convertible_to<std::size_t>;
+		}
+	static std::size_t size(T const& t) { return AddDrawPrimitives<T>{}.size(t); }
+
 	struct Entry {
 		std::size_t matrix{};
 		std::pair<std::size_t, std::size_t> primitives{};
 		std::optional<std::size_t> scissor{};
 	};
 
-	std::vector<glm::mat4> m_matrices;
-	std::vector<DrawPrimitive> m_primitives;
-	std::vector<vk::Rect2D> m_scissors;
-	std::vector<Entry> m_entries;
+	struct PrimitveInserter;
+
+	std::vector<glm::mat4> m_matrices{};
+	std::vector<DrawPrimitive> m_drawPrimitives{};
+	std::vector<vk::Rect2D> m_scissors{};
+	std::vector<Entry> m_entries{};
 };
 
 struct DrawObject {
-	not_null<glm::mat4 const*> matrix;
+	glm::mat4 const& matrix;
 	Span<DrawPrimitive const> primitives;
 	Opt<vk::Rect2D const> scissor{};
 };
@@ -65,7 +77,7 @@ class DrawList::iterator {
 	iterator(DrawList const& list, std::size_t index) : m_list(&list), m_index(index) {}
 
 	Span<DrawPrimitive const> prims() const;
-	not_null<glm::mat4 const*> matrix() const;
+	glm::mat4 const& matrix() const;
 	Opt<vk::Rect2D const> scissor() const;
 
 	DrawList const* m_list{};
@@ -73,4 +85,30 @@ class DrawList::iterator {
 
 	friend class DrawList;
 };
+
+// impl
+
+struct DrawList::PrimitveInserter {
+	using value_type = void;
+	using difference_type = std::ptrdiff_t;
+
+	std::vector<DrawPrimitive>* primitives{};
+
+	PrimitveInserter& operator=(DrawPrimitive dp) {
+		if (dp) { primitives->push_back(std::move(dp)); }
+		return *this;
+	}
+
+	PrimitveInserter& operator*() { return *this; }
+	PrimitveInserter& operator++() { return *this; }
+	PrimitveInserter& operator++(int) { return *this; }
+};
+
+template <graphics::DrawPrimitiveAPI T>
+DrawList& DrawList::add(T const& t, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
+	auto const start = m_drawPrimitives.size();
+	m_drawPrimitives.reserve(start + size(t));
+	AddDrawPrimitives<T>{}(t, PrimitveInserter{&m_drawPrimitives});
+	return push(start, matrix, scissor);
+}
 } // namespace le::graphics

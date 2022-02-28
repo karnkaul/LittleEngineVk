@@ -146,30 +146,29 @@ class Renderer : public ListRenderer {
 
   private:
 	void writeSets(DescriptorMap map, graphics::DrawList const& list) override {
-		auto set0 = map.set(0);
+		auto set0 = map.nextSet(0);
 		set0.update(0, *m_mats);
 		set0.update(1, *m_lights);
 		for (auto const& obj : list) {
-			map.set(1).update(0, *obj.matrix);
+			map.nextSet(1).update(0, obj.matrix);
 			for (auto const& primitive : obj.primitives) {
 				auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
-				auto set2 = map.set(2);
-				set2.update(0, primitive.textures[graphics::MatTexType::eDiffuse]);
-				set2.update(1, primitive.textures[graphics::MatTexType::eAlpha]);
-				set2.update(2, primitive.textures[graphics::MatTexType::eSpecular], TextureFallback::eBlack);
-				map.set(3).update(0, smat);
+				auto set2 = map.nextSet(2);
+				set2.update(0, primitive.textures[MatTexType::eDiffuse]);
+				set2.update(1, primitive.textures[MatTexType::eAlpha]);
+				set2.update(2, primitive.textures[MatTexType::eSpecular], TextureFallback::eBlack);
+				map.nextSet(3).update(0, smat);
 			}
 		}
 	}
 
 	void draw(DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const override {
 		bind(0);
-		for (auto const& d : list) {
+		for (auto const& obj : list) {
 			bind(1);
-			cb.setScissor(d.scissor ? *d.scissor : m_scissor);
-			for (auto const& primitive : d.primitives) {
-				bind(2);
-				bind(3);
+			cb.setScissor(obj.scissor ? *obj.scissor : m_scissor);
+			for (auto const& primitive : obj.primitives) {
+				bind(2, 3);
 				primitive.primitive->draw(cb);
 			}
 		}

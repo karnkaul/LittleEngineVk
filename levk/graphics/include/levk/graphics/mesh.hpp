@@ -36,6 +36,8 @@ struct AddDrawPrimitives<Mesh> {
 	void operator()(Mesh const& mesh, It it) const {
 		for (auto const& primitive : mesh.primitives) { *it++ = drawPrimitive(mesh, primitive); }
 	}
+
+	std::size_t size(Mesh const& mesh) const noexcept { return mesh.primitives.size(); }
 };
 } // namespace graphics
 } // namespace le

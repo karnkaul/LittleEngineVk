@@ -1,20 +1,26 @@
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/render/draw_list.hpp>
+#include <levk/graphics/render/pipeline.hpp>
 
 namespace le::graphics {
 DrawList& DrawList::push(Span<DrawPrimitive const> primitives, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
-	std::size_t const start = this->m_primitives.size();
-	m_primitives.reserve(m_primitives.size() + primitives.size());
-	for (auto const& primitive : primitives) {
-		if (primitive) { m_primitives.push_back(primitive); }
-	}
+	std::size_t const start = m_drawPrimitives.size();
+	m_drawPrimitives.reserve(start + m_drawPrimitives.size());
+	std::copy(primitives.begin(), primitives.end(), PrimitveInserter{&m_drawPrimitives});
 	return push(start, matrix, scissor);
 }
 
+void DrawList::clear() noexcept {
+	m_matrices.clear();
+	m_drawPrimitives.clear();
+	m_scissors.clear();
+	m_entries.clear();
+}
+
 DrawList& DrawList::push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
-	if (primitiveStart >= m_primitives.size()) { return *this; }
+	if (primitiveStart >= m_drawPrimitives.size()) { return *this; }
 	Entry entry;
-	entry.primitives = {primitiveStart, m_primitives.size() - primitiveStart};
+	entry.primitives = {primitiveStart, m_drawPrimitives.size() - primitiveStart};
 	entry.matrix = m_matrices.size();
 	m_matrices.push_back(matrix);
 	if (scissor) {
@@ -23,11 +29,6 @@ DrawList& DrawList::push(std::size_t primitiveStart, glm::mat4 matrix, std::opti
 	}
 	m_entries.push_back(entry);
 	return *this;
-}
-
-Span<DrawPrimitive const> DrawList::iterator::prims() const {
-	auto const& p = m_list->m_entries[m_index].primitives;
-	return Span(&m_list->m_primitives[p.first], p.second);
 }
 
 DrawList::iterator& DrawList::iterator::operator++() {
@@ -52,11 +53,16 @@ DrawList::iterator DrawList::iterator::operator--(int) {
 	return ret;
 }
 
-not_null<glm::mat4 const*> DrawList::iterator::matrix() const { return &m_list->m_matrices[m_list->m_entries[m_index].matrix]; }
+glm::mat4 const& DrawList::iterator::matrix() const { return m_list->m_matrices[m_list->m_entries[m_index].matrix]; }
 
 Opt<vk::Rect2D const> DrawList::iterator::scissor() const {
 	auto const& s = m_list->m_entries[m_index].scissor;
 	return s ? &m_list->m_scissors[*s] : nullptr;
+}
+
+Span<DrawPrimitive const> DrawList::iterator::prims() const {
+	auto const& p = m_list->m_entries[m_index].primitives;
+	return Span(&m_list->m_drawPrimitives[p.first], p.second);
 }
 
 DrawList::iterator DrawList::begin() const { return {*this, 0U}; }

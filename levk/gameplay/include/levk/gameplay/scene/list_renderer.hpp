@@ -17,6 +17,7 @@ class ListRenderer {
 	using RenderPass = graphics::RenderPass;
 	using RenderMap = std::unordered_map<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
 	using Primitive = graphics::DrawPrimitive;
+	using MatTexType = graphics::MatTexType;
 
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
 

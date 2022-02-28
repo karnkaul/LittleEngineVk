@@ -98,7 +98,7 @@ class ShaderInput {
 	ShaderInput() = default;
 	ShaderInput(not_null<VRAM*> vram, SetPoolsData data);
 
-	DescriptorSet& set(u32 set, std::size_t index);
+	DescriptorSet& set(u32 set, std::size_t index) const;
 	void swap();
 	bool empty() const noexcept;
 	bool contains(u32 set) const noexcept;

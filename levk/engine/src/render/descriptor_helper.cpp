@@ -49,7 +49,7 @@ graphics::Texture const* DescriptorUpdater::safeTex(Texture const* tex, u32 bind
 	return m_cache->defaults[fb];
 }
 
-DescriptorUpdater DescriptorMap::set(u32 setNumber) {
+DescriptorUpdater DescriptorMap::nextSet(u32 setNumber) {
 	return contains(setNumber) ? DescriptorUpdater(m_cache, m_input, setNumber, m_meta[setNumber]++) : DescriptorUpdater();
 }
 

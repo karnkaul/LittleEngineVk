@@ -9,8 +9,8 @@
 #include <vector>
 
 namespace le::graphics {
-struct DescriptorBindings {
-	std::optional<std::size_t> indices[max_bindings_v]{};
+struct DrawBindings {
+	mutable std::optional<std::size_t> indices[max_bindings_v]{};
 };
 
 class DrawList {
@@ -19,7 +19,7 @@ class DrawList {
 	using const_iterator = iterator;
 
 	struct Obj {
-		mutable DescriptorBindings bindings{};
+		DrawBindings bindings{};
 		DrawPrimitive primitive{};
 	};
 
@@ -33,7 +33,7 @@ class DrawList {
 	const_iterator begin() const;
 	const_iterator end() const;
 
-	mutable DescriptorBindings m_bindings{};
+	DrawBindings m_bindings{};
 
   private:
 	DrawList& push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor);
@@ -61,13 +61,13 @@ class DrawList {
 	std::vector<Obj> m_drawPrimitives{};
 	std::vector<vk::Rect2D> m_scissors{};
 	std::vector<Entry> m_entries{};
-	mutable std::vector<DescriptorBindings> m_entryBindings{};
+	std::vector<DrawBindings> m_entryBindings{};
 };
 
 struct DrawObject {
 	Span<DrawList::Obj const> objs{};
 	glm::mat4 const& matrix;
-	DescriptorBindings& bindings;
+	DrawBindings const& bindings;
 	Opt<vk::Rect2D const> scissor{};
 };
 
@@ -92,7 +92,7 @@ class DrawList::iterator {
 
 	Span<DrawList::Obj const> prims() const;
 	glm::mat4 const& matrix() const;
-	DescriptorBindings& indices() const;
+	DrawBindings const& indices() const;
 	Opt<vk::Rect2D const> scissor() const;
 
 	DrawList const* m_list{};

@@ -16,7 +16,7 @@ class DescriptorHelper {
 	using Texture = graphics::Texture;
 	using ShaderBuffer = graphics::ShaderBuffer;
 	using CommandBuffer = graphics::CommandBuffer;
-	using DescriptorBindings = graphics::DescriptorBindings;
+	using DrawBindings = graphics::DrawBindings;
 	struct Cache;
 
   protected:
@@ -26,24 +26,24 @@ class DescriptorHelper {
 class DescriptorUpdater : public DescriptorHelper {
   public:
 	DescriptorUpdater() = default;
-	DescriptorUpdater(not_null<Cache const*> cache, not_null<ShaderInput*> input, not_null<DescriptorBindings*> bindings, u32 setNumber, std::size_t index);
+	DescriptorUpdater(not_null<Cache const*> cache, not_null<ShaderInput*> input, not_null<DrawBindings const*> bindings, u32 setNumber, std::size_t index);
 
 	bool valid() const noexcept { return m_input && m_vram && m_bindings; }
 
 	template <typename T>
-	bool update(u32 bind, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool update(u32 bind, Opt<Texture const> tex, TextureFallback tb = TextureFallback::eWhite);
-	bool update(u32 bind, ShaderBuffer const& buffer);
+	bool update(u32 bind, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer) const;
+	bool update(u32 bind, Opt<Texture const> tex, TextureFallback tb = TextureFallback::eWhite) const;
+	bool update(u32 bind, ShaderBuffer const& buffer) const;
 
   private:
-	bool check(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) noexcept;
+	bool check(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
 	Texture const& safeTex(Texture const* tex, u32 bind, TextureFallback fb) const;
 
-	ktl::fixed_vector<u32, max_bindings_v> m_binds;
+	mutable ktl::fixed_vector<u32, max_bindings_v> m_binds;
 	Cache const* m_cache{};
 	ShaderInput* m_input{};
 	graphics::VRAM* m_vram{};
-	DescriptorBindings* m_bindings{};
+	DrawBindings const* m_bindings{};
 	std::size_t m_index{};
 	u32 m_setNumber{};
 };
@@ -53,7 +53,7 @@ class DescriptorMap : public DescriptorHelper {
 	explicit DescriptorMap(not_null<Cache const*> cache, not_null<ShaderInput*> input) noexcept : m_input(input), m_cache(cache) {}
 
 	bool contains(u32 setNumber) { return m_input->contains(setNumber); }
-	DescriptorUpdater nextSet(DescriptorBindings& bindings, u32 setNumber);
+	DescriptorUpdater nextSet(DrawBindings const& bindings, u32 setNumber);
 
 	ShaderInput const& shaderInput() const noexcept { return *m_input; }
 	Cache const& cache() const noexcept { return *m_cache; }
@@ -68,7 +68,7 @@ class DescriptorBinder : public DescriptorHelper {
 	explicit DescriptorBinder(vk::PipelineLayout layout, not_null<ShaderInput*> input, CommandBuffer cb) noexcept
 		: m_cb(cb), m_input(input), m_layout(layout) {}
 
-	void bind(DescriptorBindings const& indices) const;
+	void bind(DrawBindings const& indices) const;
 	bool bindNext(u32 setNumber);
 	template <typename... T>
 		requires(sizeof...(T) > 1)
@@ -94,7 +94,7 @@ struct DescriptorHelper::Cache {
 // impl
 
 template <typename T>
-bool DescriptorUpdater::update(u32 bind, T const& t, vk::DescriptorType type) {
+bool DescriptorUpdater::update(u32 bind, T const& t, vk::DescriptorType type) const {
 	if (check(bind, &type)) {
 		m_input->set(m_setNumber, m_index).writeUpdate(t, bind);
 		m_bindings->indices[m_setNumber] = m_index;

@@ -138,32 +138,10 @@ glm::vec2 Font::Pen::textExtent(std::string_view text) const {
 	return ret;
 }
 
-std::string_view Font::Pen::truncate(std::string_view line, f32 maxWidth) const {
-	auto const ellipsesWidth = f32(glyph(codepoint_ellipses_v).quad.extent.x) * m_info.scale;
-	auto func = [maxWidth, ellipsesWidth, &line](glm::vec2 const ex, std::size_t const idx) {
-		if (ex.x + ellipsesWidth > maxWidth) {
-			line = line.substr(0, idx);
-			return false;
-		}
-		return true;
-	};
-	iterate(*this, m_info.scale, line, func);
-	return line;
-}
-
 void Font::Pen::align(std::string_view const line, glm::vec2 pivot) { m_head -= alignExtent(*this, m_info.scale, line, pivot, {}); }
 
-glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> realign, Opt<std::size_t const> retIdx, Opt<f32 const> maxWidth) {
-	bool truncated = false;
-	if (maxWidth) {
-		auto const org = line.size();
-		line = truncate(line, *maxWidth);
-		truncated = line.size() < org;
-	}
-	if (realign) {
-		f32 const offset = truncated ? f32(glyph(codepoint_ellipses_v).quad.extent.x) * m_info.scale : 0.0f;
-		m_head -= alignExtent(*this, m_info.scale, line, *realign, {offset, 0.0f});
-	}
+glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> realign, Opt<std::size_t const> retIdx) {
+	if (realign) { m_head -= alignExtent(*this, m_info.scale, line, *realign, {}); }
 	auto write = [this](Codepoint const cp) {
 		auto const& gl = glyph(cp);
 		if (m_info.out_geometry) { m_font->write(*m_info.out_geometry, gl, m_head, m_info.scale); }
@@ -183,7 +161,6 @@ glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> reali
 			write(cp);
 		}
 	}
-	if (truncated) { write(codepoint_ellipses_v); }
 	return !retIdx || *retIdx >= line.size() ? m_head : idxPos;
 }
 

@@ -4,11 +4,11 @@
 #include <levk/engine/render/descriptor_helper.hpp>
 
 namespace le {
-DescriptorUpdater::DescriptorUpdater(not_null<Cache const*> cache, not_null<ShaderInput*> input, not_null<DescriptorBindings*> bindings, u32 setNumber,
+DescriptorUpdater::DescriptorUpdater(not_null<Cache const*> cache, not_null<ShaderInput*> input, not_null<DrawBindings const*> bindings, u32 setNumber,
 									 std::size_t index)
 	: m_cache(cache), m_input(input), m_vram(input->m_vram), m_bindings(bindings), m_index(index), m_setNumber(setNumber) {}
 
-bool DescriptorUpdater::update(u32 bind, ShaderBuffer const& buffer) {
+bool DescriptorUpdater::update(u32 bind, ShaderBuffer const& buffer) const {
 	if (check(bind)) {
 		m_input->update(buffer, m_setNumber, bind, m_index);
 		m_bindings->indices[m_setNumber] = m_index;
@@ -17,7 +17,7 @@ bool DescriptorUpdater::update(u32 bind, ShaderBuffer const& buffer) {
 	return false;
 }
 
-bool DescriptorUpdater::update(u32 bind, Opt<Texture const> tex, TextureFallback fb) {
+bool DescriptorUpdater::update(u32 bind, Opt<Texture const> tex, TextureFallback fb) const {
 	if (check(bind)) {
 		m_input->set(m_setNumber, m_index).update(bind, safeTex(tex, bind, fb));
 		m_bindings->indices[m_setNumber] = m_index;
@@ -26,7 +26,7 @@ bool DescriptorUpdater::update(u32 bind, Opt<Texture const> tex, TextureFallback
 	return false;
 }
 
-bool DescriptorUpdater::check(u32 bind, vk::DescriptorType const* type, Texture::Type const* texType) noexcept {
+bool DescriptorUpdater::check(u32 bind, vk::DescriptorType const* type, Texture::Type const* texType) const noexcept {
 	if (!valid()) { return false; }
 	for (u32 const b : m_binds) {
 		if (bind == b) { return true; }
@@ -45,11 +45,11 @@ graphics::Texture const& DescriptorUpdater::safeTex(Texture const* tex, u32 bind
 	return *m_cache->defaults[fb];
 }
 
-DescriptorUpdater DescriptorMap::nextSet(DescriptorBindings& bindings, u32 setNumber) {
+DescriptorUpdater DescriptorMap::nextSet(DrawBindings const& bindings, u32 setNumber) {
 	return contains(setNumber) ? DescriptorUpdater(m_cache, m_input, &bindings, setNumber, m_nextIndex[setNumber]++) : DescriptorUpdater();
 }
 
-void DescriptorBinder::bind(DescriptorBindings const& indices) const {
+void DescriptorBinder::bind(DrawBindings const& indices) const {
 	for (auto const [di, set] : utils::enumerate(indices.indices)) {
 		if (di && m_input->contains(set)) { m_cb.bindSet(m_layout, m_input->set(set, *di)); }
 	}

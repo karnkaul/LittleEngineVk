@@ -9,8 +9,6 @@
 namespace le::graphics {
 class Device;
 
-constexpr Codepoint codepoint_ellipses_v = Codepoint(0x2026);
-
 class FontFace {
   public:
 	enum struct Height : u32 { eDefault = 64U };

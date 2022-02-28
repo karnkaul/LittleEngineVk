@@ -291,7 +291,7 @@ ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::
 	std::string meshJSON = json->get_as<std::string>("file");
 	if (meshJSON.empty()) {
 		io::Path path = uri;
-		path / path.filename();
+		path /= path.filename();
 		path += ".json";
 		meshJSON = path.generic_string();
 	}

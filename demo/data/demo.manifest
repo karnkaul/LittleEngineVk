@@ -137,19 +137,17 @@
 	"meshes": [
 		{
 			"uri": "meshes/plant",
-			"file": "models/plant/plant.json"
 		},
 		{
 			"uri": "meshes/teapot",
-			"file": "models/teapot/teapot.json"
 		},
 		{
 			"uri": "meshes/nanosuit",
-			"file": "models/test/nanosuit/nanosuit.json"
+			"file": "meshes/test/nanosuit/nanosuit.json"
 		},
 		{
 			"uri": "meshes/fox",
-			"file": "models/test/fox/fox.json"
+			"file": "meshes/test/fox/fox.json"
 		}
 	],
 	"fonts": [

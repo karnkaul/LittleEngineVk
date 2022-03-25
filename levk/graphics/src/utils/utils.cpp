@@ -1,11 +1,11 @@
 #include <stb/stb_image.h>
+#include <ktl/enumerate.hpp>
 #include <ktl/stack_string.hpp>
 #include <levk/core/log.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/core/singleton.hpp>
 #include <levk/core/utils/algo.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/graphics/common.hpp>
@@ -364,7 +364,7 @@ void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept {
 
 std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageURIs const& ids) {
 	std::array<bytearray, 6> ret;
-	for (auto const& [id, idx] : le::utils::enumerate(ids)) {
+	for (auto const& [id, idx] : ktl::enumerate(ids)) {
 		io::Path const name = io::Path(id) + ext;
 		io::Path const path = prefix / name;
 		if (auto bytes = media.bytes(path)) {

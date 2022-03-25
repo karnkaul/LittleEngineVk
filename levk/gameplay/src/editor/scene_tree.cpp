@@ -1,7 +1,6 @@
 #include <editor/sudo.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/core/services.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/gameplay/editor/editor.hpp>

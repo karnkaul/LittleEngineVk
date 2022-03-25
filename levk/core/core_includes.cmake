@@ -32,7 +32,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/utils/data_store.hpp
   include/levk/core/utils/debug.hpp
   include/levk/core/utils/dirty_flag.hpp
-  include/levk/core/utils/enumerate.hpp
   include/levk/core/utils/error.hpp
   include/levk/core/utils/execute.hpp
   include/levk/core/utils/expect.hpp

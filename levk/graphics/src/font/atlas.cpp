@@ -1,5 +1,4 @@
 #include <levk/core/log_channel.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/graphics/font/atlas.hpp>
 #include <algorithm>
 

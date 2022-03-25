@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/core/utils/enumerate.hpp>
+#include <ktl/enumerate.hpp>
 #include <levk/gameplay/gui/shape.hpp>
 #include <levk/gameplay/gui/text.hpp>
 #include <levk/gameplay/gui/widgets/button.hpp>
@@ -43,7 +43,7 @@ class Dropdown : public Button {
 		if (!m_options.empty()) {
 			ENSURE(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
-			for (auto [entry, index] : utils::enumerate(m_options)) {
+			for (auto [entry, index] : ktl::enumerate(m_options)) {
 				bool const pad = itemPad(entry, index);
 				add(m_flexbox->add<T>(m_rect.size, pad, m_text->m_fontURI, std::forward<Args>(args)...), entry, index);
 			}

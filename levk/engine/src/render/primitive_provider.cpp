@@ -1,4 +1,3 @@
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/render/primitive_provider.hpp>

@@ -2,6 +2,7 @@
 #include <levk/core/services.hpp>
 #include <levk/engine/render/shader_buffer_map.hpp>
 #include <levk/gameplay/scene/scene.hpp>
+#include <levk/graphics/render/context.hpp>
 
 namespace le {
 Scene::Scene(Opt<Engine::Service> service) noexcept : m_engineService(service ? *service : *Services::find<Engine::Service>()) {}
@@ -20,5 +21,8 @@ void Scene::open() { executor().start(); }
 
 void Scene::tick(Time_s dt) { updateSystems(dt, engine()); }
 
-void Scene::close() { executor().stop(); }
+void Scene::close() {
+	executor().stop();
+	engine().context().pipelineFactory().clear();
+}
 } // namespace le

@@ -1,5 +1,5 @@
+#include <ktl/enumerate.hpp>
 #include <levk/core/log_channel.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/graphics/font/font.hpp>
 #include <levk/graphics/utils/instant_command.hpp>
 
@@ -10,7 +10,7 @@ constexpr bool dummy(glm::vec2 const, std::size_t const) noexcept { return true;
 template <typename F = decltype(&dummy)>
 glm::vec2 iterate(Font::Pen const& pen, f32 const scale, std::string_view line, F func = &dummy) {
 	glm::vec2 ret{};
-	for (auto const [ch, idx] : le::utils::enumerate(line)) {
+	for (auto const [ch, idx] : ktl::enumerate(line)) {
 		if (ch == '\n' || ch == '\r') {
 			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
 			return ret;
@@ -147,7 +147,7 @@ glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> reali
 		advance(gl);
 	};
 	glm::vec3 idxPos = m_head;
-	for (auto const [ch, idx] : le::utils::enumerate(line)) {
+	for (auto const [ch, idx] : ktl::enumerate(line)) {
 		if (retIdx && *retIdx == idx) { idxPos = m_head; }
 		Codepoint const cp(static_cast<u32>(ch));
 		bool const newLine = ch == '\r' || ch == '\n';

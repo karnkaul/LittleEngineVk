@@ -1,8 +1,8 @@
 #pragma once
+#include <ktl/hash_table.hpp>
+#include <ktl/kunique_ptr.hpp>
 #include <levk/core/hash.hpp>
-#include <memory>
 #include <typeinfo>
-#include <unordered_map>
 
 namespace le {
 ///
@@ -105,8 +105,8 @@ class DataStore {
 		T t;
 		Model(T t) : t(std::move(t)) { typeHash = DataStore::typeHash<T>(); }
 	};
-	using Entry = std::unique_ptr<Concept>;
-	using Map = std::unordered_map<Hash, Entry>;
+	using Entry = ktl::kunique_ptr<Concept>;
+	using Map = ktl::hash_table<Hash, Entry>;
 
 	template <typename T>
 	static std::size_t typeHash() noexcept {
@@ -122,7 +122,7 @@ class DataStore {
 	}
 	template <typename T, typename... Args>
 	static Entry make(Args&&... args) {
-		return std::make_unique<Model<T>>(std::forward<Args>(args)...);
+		return ktl::make_unique<Model<T>>(std::forward<Args>(args)...);
 	}
 
 	inline static Map s_map;

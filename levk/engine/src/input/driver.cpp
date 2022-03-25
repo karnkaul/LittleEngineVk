@@ -74,7 +74,7 @@ void Driver::parse(Span<Event const> events, EventParser& parser) {
 	for (auto const& event : events) { recurse(event, parser); }
 }
 
-Driver::Driver() : m_keyDB(std::make_unique<KeyDB>()) {}
+Driver::Driver() : m_keyDB(ktl::make_unique<KeyDB>()) {}
 
 Frame Driver::update(In const& in, Viewport const& view) {
 	Frame ret;

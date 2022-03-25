@@ -14,7 +14,6 @@
 #include <levk/gameplay/gui/view.hpp>
 #include <levk/gameplay/gui/widget.hpp>
 
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 #include <ktl/async/kasync.hpp>

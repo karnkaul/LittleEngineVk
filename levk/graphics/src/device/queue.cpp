@@ -1,5 +1,5 @@
+#include <ktl/enumerate.hpp>
 #include <levk/core/log_channel.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/core/utils/error.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/common.hpp>
@@ -80,7 +80,7 @@ Queues::Select Queues::select(PhysicalDevice const& device, vk::SurfaceKHR surfa
 	u32 family{};
 	static f32 const priority = 1.0f;
 	std::optional<std::size_t> primary;
-	for (auto const& [props, idx] : utils::enumerate(device.queueFamilies)) {
+	for (auto const& [props, idx] : ktl::enumerate(device.queueFamilies)) {
 		bool const presentable = device.surfaceSupport(family, surface);
 		if ((ret.info.empty() || !ret.info.front().qcaps.test(QType::eGraphics)) && props.queueFlags & vQFB::eGraphics && presentable) {
 			QCaps caps = QType::eGraphics;

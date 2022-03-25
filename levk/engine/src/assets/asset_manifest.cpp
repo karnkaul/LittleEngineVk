@@ -1,4 +1,4 @@
-#include <levk/core/utils/enumerate.hpp>
+#include <ktl/enumerate.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/assets/asset_monitor.hpp>
@@ -128,7 +128,7 @@ bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io:
 	EXPECT(files.size() == 6U);
 	bytearray bytes[6];
 	ImageData cube[6];
-	for (auto const& [file, idx] : utils::enumerate(files)) {
+	for (auto const& [file, idx] : ktl::enumerate(files)) {
 		auto res = media.bytes(prefix / file);
 		if (!res) { return false; }
 		bytes[idx] = std::move(*res);
@@ -158,7 +158,7 @@ ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::
 				if (ManifestLoader::s_attachMonitors) {
 					if (auto fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media())) {
 						io::Path paths[6];
-						for (auto const& [file, idx] : utils::enumerate(files)) { paths[idx] = fsMedia->fullPath(file); }
+						for (auto const& [file, idx] : ktl::enumerate(files)) { paths[idx] = fsMedia->fullPath(file); }
 						auto f = [engine, files = std::move(files), prefix](graphics::Texture& out) {
 							return constructCubemap(prefix, files, engine.store().media(), out);
 						};

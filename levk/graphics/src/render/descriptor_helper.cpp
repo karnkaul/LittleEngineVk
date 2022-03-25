@@ -1,4 +1,4 @@
-#include <levk/core/utils/enumerate.hpp>
+#include <ktl/enumerate.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/render/descriptor_helper.hpp>
 #include <levk/graphics/render/pipeline_factory.hpp>
@@ -52,8 +52,8 @@ DescriptorUpdater DescriptorMap::nextSet(DrawBindings const& bindings, u32 setNu
 }
 
 void DescriptorBinder::bind(DrawBindings const& indices) const {
-	for (auto const [di, set] : le::utils::enumerate(indices.indices)) {
-		if (di && m_input->contains((u32)set)) { m_cb.bindSet(m_layout, m_input->set((u32)set, *di)); }
+	for (auto const [di, set] : ktl::enumerate<u32>(indices.indices)) {
+		if (di && m_input->contains((u32)set)) { m_cb.bindSet(m_layout, m_input->set(set, *di)); }
 	}
 }
 } // namespace le::graphics

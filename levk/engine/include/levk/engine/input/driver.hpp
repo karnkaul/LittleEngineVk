@@ -1,7 +1,7 @@
 #pragma once
+#include <ktl/kunique_ptr.hpp>
 #include <levk/engine/input/frame.hpp>
 #include <levk/window/event.hpp>
-#include <memory>
 
 namespace le {
 struct Viewport;
@@ -56,6 +56,6 @@ class Driver {
 	} m_persistent;
 
 	KeyQueue m_keyQueue;
-	std::unique_ptr<KeyDB> m_keyDB; // 4K bytes, hence on heap
+	ktl::kunique_ptr<KeyDB> m_keyDB; // 4K bytes, hence on heap
 };
 } // namespace le::input

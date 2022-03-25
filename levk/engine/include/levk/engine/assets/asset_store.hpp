@@ -1,5 +1,7 @@
 #pragma once
 #include <ktl/async/kmutex.hpp>
+#include <ktl/hash_table.hpp>
+#include <ktl/kunique_ptr.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/core/io/fs_media.hpp>
 #include <levk/core/log_channel.hpp>
@@ -48,12 +50,12 @@ class AssetStore : public NoCopy {
 
   private:
 	struct Base;
-	using TAssets = std::unordered_map<Hash, std::unique_ptr<Base>>;
+	using TAssets = ktl::hash_table<Hash, ktl::kunique_ptr<Base>>;
 	template <typename T>
 	struct TAsset;
 
 	template <typename T>
-	Opt<T> add(std::unique_ptr<TAsset<T>>&& tasset);
+	Opt<T> add(ktl::kunique_ptr<TAsset<T>>&& tasset);
 	template <typename T>
 	Opt<TAsset<T>> findImpl(Hash uri) const;
 
@@ -100,7 +102,7 @@ struct AssetStore::TAsset : Base {
 
 template <typename T>
 Opt<T> AssetStore::add(std::string uri, T t) {
-	return add(std::make_unique<TAsset<T>>(std::move(uri), std::move(t)));
+	return add(ktl::make_unique<TAsset<T>>(std::move(uri), std::move(t)));
 }
 
 template <typename T>
@@ -135,7 +137,7 @@ bool AssetStore::unload(Hash uri) {
 }
 
 template <typename T>
-Opt<T> AssetStore::add(std::unique_ptr<TAsset<T>>&& tasset) {
+Opt<T> AssetStore::add(ktl::kunique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
 	Hash const key = tasset->uri;
 	if (key == Hash()) { return {}; }

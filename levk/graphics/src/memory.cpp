@@ -1,5 +1,5 @@
+#include <ktl/enumerate.hpp>
 #include <levk/core/log_channel.hpp>
-#include <levk/core/utils/enumerate.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/device/device.hpp>
 #include <levk/graphics/memory.hpp>
@@ -134,10 +134,10 @@ vk::ImageBlit Memory::imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Of
 	ret.srcSubresource = vk::ImageSubresourceLayers(meta.first.aspects, flm.mip.first, flm.layer.first, flm.layer.count);
 	ret.dstSubresource = vk::ImageSubresourceLayers(meta.second.aspects, slm.mip.first, slm.layer.first, slm.layer.count);
 	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
-	for (auto [off, idx] : utils::enumerate(ret.srcOffsets)) { off = offsets[idx]; }
+	for (auto [off, idx] : ktl::enumerate(ret.srcOffsets)) { off = offsets[idx]; }
 	offsets[0] = dstOff.first;
 	offsets[1] = dstOff.second;
-	for (auto [off, idx] : utils::enumerate(ret.dstOffsets)) { off = offsets[idx]; }
+	for (auto [off, idx] : ktl::enumerate(ret.dstOffsets)) { off = offsets[idx]; }
 	return ret;
 }
 

@@ -1,4 +1,4 @@
-#include <levk/core/utils/enumerate.hpp>
+#include <ktl/enumerate.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <algorithm>
 
@@ -13,7 +13,7 @@ DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_v
 	if (active) {
 		for (auto const dset : info.descriptorSets) {
 			Set set;
-			for (auto const& [data, idx] : le::utils::enumerate(m_bindingData)) {
+			for (auto const& [data, idx] : ktl::enumerate(m_bindingData)) {
 				if (data.layoutBinding.descriptorType != vk::DescriptorType()) {
 					set.bindings[idx] = {{}, data.layoutBinding.descriptorType, data.textureType, data.layoutBinding.descriptorCount};
 				}
@@ -79,7 +79,7 @@ DescriptorPool::DescriptorPool(not_null<VRAM*> vram, CreateInfo info) : m_info(s
 	EXPECT(m_info.bindingData.empty() || m_hasActiveBinding);
 	if (m_info.buffering == Buffering::eNone) { m_info.buffering = Buffering::eDouble; }
 	if (m_info.setsPerPool == 0U) { m_info.setsPerPool = 1U; }
-	for (auto const& [data, idx] : le::utils::enumerate(m_info.bindingData)) {
+	for (auto const& [data, idx] : ktl::enumerate(m_info.bindingData)) {
 		if (data.layoutBinding.descriptorType != vk::DescriptorType()) {
 			u32 const totalSize = data.layoutBinding.descriptorCount * u32(m_info.buffering) * m_info.setsPerPool;
 			m_maxSets += totalSize;

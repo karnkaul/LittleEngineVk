@@ -1,6 +1,7 @@
 #pragma once
 #include <ktl/async/kfunction.hpp>
 #include <ktl/fixed_pimpl.hpp>
+#include <levk/core/os.hpp>
 #include <levk/core/log.hpp>
 #include <levk/core/time.hpp>
 #include <levk/core/version.hpp>
@@ -23,7 +24,13 @@ class Device final : public Pinned {
 	struct Deleter;
 
 	enum class QSelect { eOptimal, eSingleFamily, eSingleQueue };
-	static constexpr std::string_view requiredExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+	static constexpr std::string_view requiredExtensions[] = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_MAINTENANCE1_EXTENSION_NAME,
+#if defined(LEVK_OS_APPLE)
+		"VK_KHR_portability_subset"
+#endif
+	};
 	static constexpr stdch::nanoseconds fenceWait = 1s;
 
 	struct CreateInfo;

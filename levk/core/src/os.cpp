@@ -14,6 +14,11 @@
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
+#elif defined(LEVK_OS_APPLE)
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fstream>
+#include <iostream>
 #endif
 
 namespace le {
@@ -76,7 +81,6 @@ void os::debugBreak() {
 	raise(SIGTRAP);
 #endif
 #endif
-	return;
 }
 
 std::string_view os::cpuID() {

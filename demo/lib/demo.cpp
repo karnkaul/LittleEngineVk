@@ -707,6 +707,10 @@ bool openFilesystemPath(io::Path path) {
 		return false;
 	} else if constexpr (levk_OS == os::OS::eWindows) {
 		return utils::Shell(fmt::format("explorer {}", dir).data()).success();
+	} else if constexpr (levk_OS == os::OS::eApple) {
+		return utils::Shell(fmt::format("open {}", dir).data()).success();
+	} else {
+		return false;
 	}
 }
 

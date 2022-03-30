@@ -37,3 +37,5 @@ massif.out.*
 # ktl, dtest - submodules are fetched into source subdir (not binary subdir)
 /libs/ktl
 /libs/dtest
+
+cmake-build-*

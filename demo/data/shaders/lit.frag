@@ -49,15 +49,15 @@ void main() {
 	vec4 diffuseLight = vec4(0.0);
 	vec4 specularLight = vec4(0.0);
 	for (uint i = 0; i < dirLight.count; ++i) {
-		DirLight dirLight = dirLight.lights[i];
-		const vec3 direction = vec3(dirLight.direction);
+		DirLight light = dirLight.lights[i];
+		const vec3 direction = vec3(light.direction);
 		const vec3 toView = normalize(viewPos - vec3(fragPos));
 		const vec3 reflectDir = reflect(direction, fragNorm);
 		const float lambert = max(dot(-direction, fragNorm), 0.0);
 		const float phong = pow(max(dot(reflectDir, toView), 0.0), material.specular.w);
-		ambientLight += opaque(dirLight.ambient);
-		diffuseLight += opaque(dirLight.diffuse * lambert);
-		specularLight += opaque(dirLight.specular * phong * metallic);
+		ambientLight += opaque(light.ambient);
+		diffuseLight += opaque(light.diffuse * lambert);
+		specularLight += opaque(light.specular * phong * metallic);
 	}
 	ambientColour *= ambientLight;
 	diffuseColour *= diffuseLight;

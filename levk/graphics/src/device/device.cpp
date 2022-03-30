@@ -102,6 +102,11 @@ vkInst makeInstance(Device::CreateInfo const& info) {
 		}
 	}
 	for (auto ext : requiredExtensionsSet) { ret.extensions.push_back(ext.data()); }
+
+#if defined(LEVK_OS_APPLE)
+	ret.extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+#endif
+
 	vk::ApplicationInfo appInfo;
 	appInfo.pApplicationName = info.app.name.data();
 	appInfo.applicationVersion = VK_MAKE_VERSION(info.app.version.major(), info.app.version.minor(), info.app.version.patch());

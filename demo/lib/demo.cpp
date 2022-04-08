@@ -139,24 +139,28 @@ class Renderer : public ListRenderer {
 		}
 		auto& map = data.custom;
 		fill(map, store, registry);
-		ListRenderer::render(out_rp, store, std::move(map));
+		auto pipes = ListRenderer::render(out_rp, store, std::move(map));
+		rotate(pipes);
 	}
 
   private:
-	void writeSets(graphics::DescriptorMap map, graphics::DrawList const& list) override {
-		auto set0 = map.nextSet(list.m_bindings, 0);
-		set0.update(0, *m_mats);
-		set0.update(1, *m_lights);
+	void draw(graphics::DescriptorHelper helper, graphics::DrawList const& list, graphics::CommandBuffer const& cb) override {
+		if (auto set = helper.nextSet(0)) {
+			set->update(0, *m_mats);
+			set->update(1, *m_lights);
+		}
 		for (auto const& drawObj : list) {
-			map.nextSet(drawObj.bindings, 1).update(0, drawObj.matrix);
-			for (auto const& obj : drawObj.objs) {
-				auto const& primitive = obj.primitive;
-				auto const smat = primitive.blinnPhong ? primitive.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
-				auto set2 = map.nextSet(obj.bindings, 2);
-				set2.update(0, primitive.textures[MatTexType::eDiffuse]);
-				set2.update(1, primitive.textures[MatTexType::eAlpha]);
-				set2.update(2, primitive.textures[MatTexType::eSpecular]);
-				map.nextSet(obj.bindings, 3).update(0, smat);
+			if (auto set = helper.nextSet(1)) { set->update(0, drawObj.matrix); }
+			cb.setScissor(drawObj.scissor ? *drawObj.scissor : m_scissor);
+			for (auto const& drawPrim : drawObj.primitives) {
+				auto const smat = drawPrim.blinnPhong ? drawPrim.blinnPhong->std140() : graphics::BPMaterialData::Std140{};
+				if (auto set = helper.nextSet(2)) {
+					set->update(0, drawPrim.textures[MatTexType::eDiffuse]);
+					set->update(1, drawPrim.textures[MatTexType::eAlpha]);
+					set->update(2, drawPrim.textures[MatTexType::eSpecular]);
+				}
+				if (auto set = helper.nextSet(3)) { set->update(0, smat); }
+				drawPrim.primitive->draw(cb);
 			}
 		}
 	}

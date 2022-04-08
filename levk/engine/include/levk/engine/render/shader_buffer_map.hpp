@@ -11,7 +11,7 @@ class ShaderBufferMap {
 
 	Buffer& make(Hash id, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	Buffer& get(Hash id);
-	void swap();
+	void rotate();
 
   private:
 	std::unordered_map<Hash, Buffer> m_shaderBuffers;

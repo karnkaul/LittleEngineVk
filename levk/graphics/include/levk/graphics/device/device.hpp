@@ -34,7 +34,7 @@ class Device final : public Pinned {
 		"VK_KHR_portability_subset"
 #endif
 	};
-	static constexpr stdch::nanoseconds fenceWait = 1s;
+	static constexpr stdch::nanoseconds fenceWait = 5s;
 
 	struct CreateInfo;
 

@@ -205,7 +205,7 @@ vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	ltacquired(vIL::ePresentSrcKHR, {}, presentLS);
 	cmd.cb.end();
 	m_acquired = {};
-	next();
+	rotate();
 	return cmd.cb.m_cb;
 }
 
@@ -219,7 +219,7 @@ bool Renderer::renderScale(f32 rs) noexcept {
 	return false;
 }
 
-void Renderer::next() {
+void Renderer::rotate() {
 	m_primaryCmd.next();
 	m_secondaryCmds.next();
 	m_framebuffers.next();

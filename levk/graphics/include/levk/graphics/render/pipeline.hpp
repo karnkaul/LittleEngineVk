@@ -6,10 +6,11 @@ namespace le::graphics {
 class ShaderInput;
 
 struct Pipeline {
-	not_null<ShaderInput*> shaderInput;
+	not_null<ShaderInput*> input;
 	vk::Pipeline pipeline;
 	vk::PipelineLayout layout;
 
-	bool valid() const noexcept { return shaderInput && pipeline && layout; }
+	constexpr explicit operator bool() const { return pipeline && layout; }
+	constexpr bool operator==(Pipeline const&) const = default;
 };
 } // namespace le::graphics

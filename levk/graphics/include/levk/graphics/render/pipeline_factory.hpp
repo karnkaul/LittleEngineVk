@@ -18,7 +18,7 @@ class ShaderInput {
 
 	bool contains(u32 set) const noexcept;
 	DescriptorSet& set(u32 set, std::size_t index) const;
-	void swap();
+	void rotate();
 
 	VRAM* m_vram{};
 

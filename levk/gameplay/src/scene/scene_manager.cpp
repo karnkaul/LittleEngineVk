@@ -39,7 +39,7 @@ void SceneManager::render(graphics::RGBA clear) {
 			m_active->scene->render(frame.renderPass(), view);
 		}
 		if constexpr (levk_editor) { editor::render(frame.renderPass().commandBuffers().front()); }
-		m_shaderBufferMap.swap();
+		m_shaderBufferMap.rotate();
 	}
 }
 

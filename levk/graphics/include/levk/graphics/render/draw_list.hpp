@@ -9,21 +9,10 @@
 #include <vector>
 
 namespace le::graphics {
-struct DrawBindings {
-	mutable std::optional<std::size_t> indices[max_bindings_v]{};
-
-	void bind(u32 set, std::size_t index) const { indices[set] = index; }
-};
-
 class DrawList {
   public:
 	class iterator;
 	using const_iterator = iterator;
-
-	struct Obj {
-		DrawBindings bindings{};
-		DrawPrimitive primitive{};
-	};
 
 	DrawList& push(Span<DrawPrimitive const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
 	template <DrawPrimitiveAPI T>
@@ -34,8 +23,6 @@ class DrawList {
 
 	const_iterator begin() const;
 	const_iterator end() const;
-
-	DrawBindings m_bindings{};
 
   private:
 	DrawList& push(std::size_t primitiveStart, glm::mat4 matrix, std::optional<vk::Rect2D> scissor);
@@ -60,16 +47,14 @@ class DrawList {
 	struct PrimitveInserter;
 
 	std::vector<glm::mat4> m_matrices{};
-	std::vector<Obj> m_drawPrimitives{};
+	std::vector<DrawPrimitive> m_drawPrimitives{};
 	std::vector<vk::Rect2D> m_scissors{};
 	std::vector<Entry> m_entries{};
-	std::vector<DrawBindings> m_entryBindings{};
 };
 
 struct DrawObject {
-	Span<DrawList::Obj const> objs{};
+	Span<DrawPrimitive const> primitives{};
 	glm::mat4 const& matrix;
-	DrawBindings const& bindings;
 	Opt<vk::Rect2D const> scissor{};
 };
 
@@ -80,7 +65,7 @@ class DrawList::iterator {
 
 	iterator() = default;
 
-	DrawObject operator*() const { return {prims(), matrix(), indices(), scissor()}; }
+	DrawObject operator*() const { return {prims(), matrix(), scissor()}; }
 
 	iterator& operator++();
 	iterator operator++(int);
@@ -92,9 +77,8 @@ class DrawList::iterator {
   private:
 	iterator(DrawList const& list, std::size_t index) : m_list(&list), m_index(index) {}
 
-	Span<DrawList::Obj const> prims() const;
+	Span<DrawPrimitive const> prims() const;
 	glm::mat4 const& matrix() const;
-	DrawBindings const& indices() const;
 	Opt<vk::Rect2D const> scissor() const;
 
 	DrawList const* m_list{};
@@ -109,10 +93,10 @@ struct DrawList::PrimitveInserter {
 	using value_type = void;
 	using difference_type = std::ptrdiff_t;
 
-	std::vector<Obj>* primitives{};
+	std::vector<DrawPrimitive>* primitives{};
 
 	PrimitveInserter& operator=(DrawPrimitive dp) {
-		if (dp) { primitives->push_back({{}, std::move(dp)}); }
+		if (dp) { primitives->push_back(std::move(dp)); }
 		return *this;
 	}
 

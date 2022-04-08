@@ -12,7 +12,6 @@
 #include <levk/graphics/mesh_primitive.hpp>
 #include <levk/graphics/skybox.hpp>
 #include <levk/graphics/utils/utils.hpp>
-#include <unordered_set>
 
 namespace le {
 namespace {
@@ -22,10 +21,12 @@ constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
 	vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleFan,
 };
 
-graphics::DescriptorFallback makeDescriptorTextures(AssetStore const& store) {
+graphics::DescriptorFallback makeDescriptorFallback(AssetStore const& store) {
 	return {store.find<graphics::Texture>("textures/white"), store.find<graphics::Texture>("cubemaps/blank")};
 }
 } // namespace
+
+std::size_t ListRenderer::PipeHasher::operator()(graphics::Pipeline const& pipeline) const { return std::hash<graphics::ShaderInput*>{}(pipeline.input); }
 
 graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	graphics::ShaderSpec ss;
@@ -42,43 +43,34 @@ void ListRenderer::fill(RenderMap& out_map, AssetStore const& store, dens::regis
 	DebugDrawListGen{}(out_map, store, registry);
 }
 
-void ListRenderer::draw(graphics::DescriptorBinder binder, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const {
-	binder.bind(list.m_bindings);
-	for (auto const& drawObj : list) {
-		binder.bind(drawObj.bindings);
-		cb.setScissor(drawObj.scissor ? *drawObj.scissor : m_scissor);
-		for (auto const& obj : drawObj.objs) {
-			auto const& primitive = obj.primitive;
-			binder.bind(obj.bindings);
-			primitive.primitive->draw(cb);
-		}
-	}
-}
-
-void ListRenderer::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {
+ListRenderer::PipeSet ListRenderer::render(RenderPass& out_rp, AssetStore const& store, RenderMap map) {
 	EXPECT(!out_rp.commandBuffers().empty());
-	if (out_rp.commandBuffers().empty()) { return; }
+	if (out_rp.commandBuffers().empty()) { return {}; }
 	std::vector<RenderList> drawLists;
 	drawLists.reserve(map.size());
 	for (auto& [rpipe, list] : map) {
-		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
+		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass())) {
 			drawLists.push_back(RenderList{pipe, std::move(list), rpipe.layer.order});
 		}
 	}
-	auto const textures = makeDescriptorTextures(store);
-	std::unordered_set<graphics::ShaderInput*> pipes;
+
+	auto const fallback = makeDescriptorFallback(store);
+	PipeSet pipes;
 	auto const& cb = out_rp.commandBuffers().front();
 	m_scissor = out_rp.scissor();
 	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
 	std::sort(drawLists.begin(), drawLists.end());
 	for (auto const& list : drawLists) {
-		EXPECT(list.pipeline.valid());
 		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
-		pipes.insert(list.pipeline.shaderInput);
-		writeSets(graphics::DescriptorMap(textures, list.pipeline.shaderInput), list.drawList);
-		draw(graphics::DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list.drawList, cb);
+		draw(graphics::DescriptorHelper(fallback, list.pipeline.layout, *list.pipeline.input, cb), list.drawList, cb);
+		pipes.insert(list.pipeline);
 	}
-	for (auto pipe : pipes) { pipe->swap(); }
+
+	return pipes;
+}
+
+void ListRenderer::rotate(PipeSet const& pipes) const {
+	for (auto const& pipe : pipes) { pipe.input->rotate(); }
 }
 
 namespace {

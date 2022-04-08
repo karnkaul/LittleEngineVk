@@ -14,7 +14,7 @@ ShaderBufferMap::Buffer& ShaderBufferMap::get(Hash id) {
 	return make(id);
 }
 
-void ShaderBufferMap::swap() {
-	for (auto& [_, buffer] : m_shaderBuffers) { buffer.swap(); }
+void ShaderBufferMap::rotate() {
+	for (auto& [_, buffer] : m_shaderBuffers) { buffer.rotate(); }
 }
 } // namespace le

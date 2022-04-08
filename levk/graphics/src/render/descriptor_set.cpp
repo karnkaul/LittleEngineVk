@@ -98,8 +98,8 @@ DescriptorSet& DescriptorPool::set(std::size_t index) const {
 	return m_sets[index];
 }
 
-void DescriptorPool::swap() {
-	for (auto& set : m_sets) { set.swap(); }
+void DescriptorPool::rotate() {
+	for (auto& set : m_sets) { set.rotate(); }
 }
 
 void DescriptorPool::makeSets() const {

@@ -21,7 +21,7 @@ class ShaderBuffer {
 	ShaderBuffer& writeArray(T const& t);
 	ShaderBuffer& write(void const* data, std::size_t size, std::size_t offset);
 	ShaderBuffer const& update(DescriptorSet& out_set, u32 binding) const;
-	ShaderBuffer& swap();
+	ShaderBuffer& rotate();
 
 	bool valid() const noexcept;
 	vk::DescriptorType type() const noexcept;

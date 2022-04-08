@@ -4,6 +4,7 @@
 #include <levk/graphics/render/descriptor_helper.hpp>
 #include <levk/graphics/render/pipeline_factory.hpp>
 #include <levk/graphics/render/renderer.hpp>
+#include <unordered_set>
 
 namespace dens {
 class registry;
@@ -14,22 +15,26 @@ class AssetStore;
 
 class ListRenderer {
   public:
+	struct PipeHasher {
+		std::size_t operator()(graphics::Pipeline const& pipeline) const;
+	};
+
 	using PipelineFactory = graphics::PipelineFactory;
 	using Pipeline = graphics::Pipeline;
 	using RenderPass = graphics::RenderPass;
 	using RenderMap = std::unordered_map<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
 	using Primitive = graphics::DrawPrimitive;
 	using MatTexType = graphics::MatTexType;
+	using PipeSet = std::unordered_set<Pipeline, PipeHasher>;
 
 	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
 
-	void render(RenderPass& out_rp, AssetStore const& store, RenderMap map);
+	[[nodiscard]] PipeSet render(RenderPass& out_rp, AssetStore const& store, RenderMap map);
 
   protected:
-	virtual void writeSets(graphics::DescriptorMap map, graphics::DrawList const& list) = 0;
-
 	virtual void fill(RenderMap& out_map, AssetStore const& store, dens::registry const& registry) const;
-	virtual void draw(graphics::DescriptorBinder bind, graphics::DrawList const& list, graphics::CommandBuffer const& cb) const;
+	virtual void draw(graphics::DescriptorHelper helper, graphics::DrawList const& list, graphics::CommandBuffer const& cb) = 0;
+	void rotate(PipeSet const& pipes) const;
 
 	vk::Rect2D m_scissor{};
 };

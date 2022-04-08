@@ -81,7 +81,7 @@ class Renderer {
 	Defer<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
 										 Span<vk::SubpassDependency const> deps = {}) const;
 
-	virtual void next();
+	virtual void rotate();
 
 	ImageCache m_depthImage;
 	ImageCache m_colourImage;

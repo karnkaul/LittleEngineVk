@@ -34,7 +34,7 @@ class DescriptorSet {
 	DescriptorSet& operator=(DescriptorSet&&) = default;
 
 	vk::DescriptorSet descriptorSet() const { return m_sets.get().set; }
-	void swap() { m_sets.next(); }
+	void rotate() { m_sets.next(); }
 
 	void updateBuffers(u32 binding, Span<Buf const> buffers);
 	void updateImages(u32 binding, Span<Img const> images);
@@ -94,7 +94,7 @@ class DescriptorPool {
 
 	DescriptorSet& set(std::size_t index) const;
 	bool unassigned() const noexcept { return m_info.bindingData.empty(); }
-	void swap();
+	void rotate();
 
   private:
 	struct Binding {

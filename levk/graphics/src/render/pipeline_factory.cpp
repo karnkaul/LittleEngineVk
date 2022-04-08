@@ -29,8 +29,8 @@ DescriptorSet& ShaderInput::set(u32 set, std::size_t index) const {
 	ENSURE(false, "Nonexistent set");
 }
 
-void ShaderInput::swap() {
-	for (auto& [_, pool] : m_setPools) { pool.swap(); }
+void ShaderInput::rotate() {
+	for (auto& [_, pool] : m_setPools) { pool.rotate(); }
 }
 
 std::size_t PipelineFactory::Hasher::operator()(Spec const& spec) const {

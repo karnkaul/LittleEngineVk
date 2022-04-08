@@ -30,7 +30,7 @@ ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) co
 	return *this;
 }
 
-ShaderBuffer& ShaderBuffer::swap() {
+ShaderBuffer& ShaderBuffer::rotate() {
 	for (auto& rb : m_storage.buffers) { rb.next(); }
 	return *this;
 }

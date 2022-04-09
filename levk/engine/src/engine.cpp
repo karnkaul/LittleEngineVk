@@ -34,11 +34,6 @@ struct GFX {
 
 ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
-template <typename T>
-void profilerNext(T& out_profiler, Time_s total) {
-	if constexpr (!std::is_same_v<T, utils::NullProfileDB>) { out_profiler.next(total); }
-}
-
 std::optional<utils::EngineConfig> load(io::Path const& path) {
 	if (path.empty()) { return std::nullopt; }
 	if (auto json = dj::json(); json.load(path.generic_string())) { return io::fromJson<utils::EngineConfig>(json); }
@@ -108,7 +103,7 @@ struct Engine::Impl {
 	input::ReceiverStore receivers;
 	input::Frame inputFrame;
 	graphics::ScreenView view;
-	Profiler profiler;
+	ProfilerRecord profiler;
 	time::Point lastPoll{};
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
@@ -142,7 +137,7 @@ bool Engine::boot(BootInfo info) {
 	auto const& surface = m_impl->gfx->context.surface();
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->device->physicalDevice().supportsLazyAllocation());
-	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, m_impl->gfx->vram.get(), &m_impl->store, &m_impl->profiler);
+	Services::track<Context, VRAM, AssetStore, ProfilerRecord>(&m_impl->gfx->context, m_impl->gfx->vram.get(), &m_impl->store, &m_impl->profiler);
 	addDefaultAssets();
 	m_impl->win->show();
 	m_impl->executor.start();
@@ -155,7 +150,7 @@ bool Engine::unboot() noexcept {
 		m_impl->executor.stop();
 		m_impl->store.clear();
 		m_impl->monitor.clear();
-		Services::untrack<Context, VRAM, AssetStore, Profiler>();
+		Services::untrack<Context, VRAM, AssetStore, ProfilerRecord>();
 		m_impl->gfx->vram->shutdown();
 		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
@@ -298,12 +293,13 @@ void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom)
 		if ((*it)->block(m_impl->inputFrame.state)) { break; }
 	}
 	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->monitor.update(m_impl->store); }
-	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
+	m_impl->profiler.update();
 	m_impl->executor.rethrow();
 }
 
 void Engine::Service::pushReceiver(not_null<input::Receiver*> context) const { context->attach(m_impl->receivers); }
-Engine::Profiler::Profiler Engine::Service::profile(std::string_view name) const { return m_impl->profiler.profile(name); }
+Engine::Profiler Engine::Service::profile(std::string_view name) const { return m_impl->profiler.profile(name); }
+Engine::ProfilerRecord const& Engine::Service::profiler() const { return m_impl->profiler; }
 window::Manager& Engine::Service::windowManager() const noexcept { return *m_impl->wm; }
 Engine::Device& Engine::Service::device() const noexcept { return *m_impl->gfx->device; }
 Engine::VRAM& Engine::Service::vram() const noexcept { return *m_impl->gfx->vram; }

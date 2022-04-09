@@ -4,6 +4,8 @@
 #include <levk/gameplay/editor/editor.hpp>
 #include <levk/gameplay/scene/scene_manager.hpp>
 
+#include <levk/core/profilers/record_profiler.hpp>
+
 namespace le {
 SceneManager::SceneManager(Engine::Service engine) : m_shaderBufferMap(engine), m_engine(engine) {}
 

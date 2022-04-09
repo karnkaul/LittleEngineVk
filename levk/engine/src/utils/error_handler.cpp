@@ -49,16 +49,14 @@ void ErrorHandler::operator()(std::string_view message, SrcInfo const& source) {
 }
 
 ErrorHandler::~ErrorHandler() {
-	m_list.errors.mutex.lock();
+	auto lock = std::unique_lock(m_list.errors.mutex);
 	if (!m_list.errors.t.empty()) {
 		if (auto si = DataObject<SysInfo>("sys_info")) { m_list.sysInfo = *si; }
 		dj::serial_opts_t opts;
 		opts.sort_keys = opts.pretty = true;
-		m_list.errors.mutex.unlock();
+		lock.unlock();
 		if (io::FSMedia{}.write(m_path, io::toJson(m_list).to_string(opts))) { logI("Errors saved to [{}]", m_path.generic_string()); }
-		return;
 	}
-	m_list.errors.mutex.unlock();
 }
 
 bool ErrorHandler::fileExists() const { return stdfs::exists(m_path.generic_string()); }

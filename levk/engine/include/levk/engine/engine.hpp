@@ -1,5 +1,6 @@
 #pragma once
-#include <levk/core/utils/profiler.hpp>
+#include <levk/core/not_null.hpp>
+#include <levk/core/profilers/record_profiler.hpp>
 #include <levk/core/version.hpp>
 #include <levk/engine/input/driver.hpp>
 #include <levk/engine/input/receiver.hpp>
@@ -48,7 +49,8 @@ class Engine {
 	using Context = graphics::RenderContext;
 	using Renderer = graphics::Renderer;
 	using Stats = utils::EngineStats;
-	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
+	using ProfilerRecord = RecordProfilerStorage<16>;
+	using Profiler = ProfilerRecord::profiler_type;
 	using Executor = dts::executor;
 	using Signal = ktl::delegate<>::signal;
 
@@ -87,7 +89,8 @@ class Engine::Service {
 	void pushReceiver(not_null<input::Receiver*> context) const;
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) const;
 
-	Profiler::Profiler profile(std::string_view name) const;
+	ProfilerRecord const& profiler() const;
+	Profiler profile(std::string_view name) const;
 	window::Manager& windowManager() const noexcept;
 	Device& device() const noexcept;
 	VRAM& vram() const noexcept;

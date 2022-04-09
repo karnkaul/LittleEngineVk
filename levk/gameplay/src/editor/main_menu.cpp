@@ -11,6 +11,8 @@
 #include <levk/gameplay/editor/editor.hpp>
 #include <levk/graphics/render/context.hpp>
 #include <levk/window/window.hpp>
+
+#include <levk/core/profilers/record_profiler.hpp>
 #endif
 
 namespace le::editor {
@@ -27,60 +29,50 @@ struct Panes {
 	bool& flag(Flag f) { return flags[static_cast<std::size_t>(f)]; }
 	bool flag(Flag f) const { return flags[static_cast<std::size_t>(f)]; }
 
-	void operator()();
+	void operator()(Engine::Service const& engine);
 
-	void showStats() const;
-	template <typename T>
-	void showProfiler() const;
+	void showStats(Engine::Service const& engine) const;
+	void showProfiler(Engine::Service const& engine) const;
 };
 
 Panes g_panes;
 
-void Panes::showStats() const {
-	if (auto eng = Services::find<Engine::Service>()) {
-		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
-			auto const& s = eng->stats();
-			auto t = Text(CStr<32>("FPS: {}", s.frame.rate));
-			t = Text(CStr<32>("Frame #: {}", s.frame.count));
-			t = Text(CStr<32>("Uptime: {}", time::format(s.upTime).data()));
-			t = Text(CStr<32>("Draw calls: {}", s.gfx.drawCalls));
-			t = Text(CStr<32>("Triangles: {}", s.gfx.triCount));
-			t = Text(CStr<32>("Window: {}x{}", s.gfx.extents.window.x, s.gfx.extents.window.y));
-			t = Text(CStr<32>("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
-			t = Text(CStr<32>("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
-			Styler st(Style::eSeparator);
-			auto& renderer = eng->context().renderer();
-			f32 rs = renderer.renderScale();
-			TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});
-			renderer.renderScale(rs);
+void Panes::showStats(Engine::Service const& eng) const {
+	if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
+		auto const& s = eng.stats();
+		auto t = Text(CStr<32>("FPS: {}", s.frame.rate));
+		t = Text(CStr<32>("Frame #: {}", s.frame.count));
+		t = Text(CStr<32>("Uptime: {}", time::format(s.upTime).data()));
+		t = Text(CStr<32>("Draw calls: {}", s.gfx.drawCalls));
+		t = Text(CStr<32>("Triangles: {}", s.gfx.triCount));
+		t = Text(CStr<32>("Window: {}x{}", s.gfx.extents.window.x, s.gfx.extents.window.y));
+		t = Text(CStr<32>("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
+		t = Text(CStr<32>("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
+		Styler st(Style::eSeparator);
+		auto& renderer = eng.context().renderer();
+		f32 rs = renderer.renderScale();
+		TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});
+		renderer.renderScale(rs);
+	}
+}
+
+void Panes::showProfiler(Engine::Service const& engine) const {
+	if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler))) {
+		auto const& record = engine.profiler().record;
+		Time_s const total = record.total;
+		f32 idLength{};
+		for (auto const& entry : record.entries) { idLength = std::max(idLength, ImGui::CalcTextSize(entry.id.data()).x); }
+		for (auto const& entry : record.entries) {
+			Text t(entry.id);
+			ImGui::SameLine(idLength + 20.0f);
+			ImGui::ProgressBar(entry.dt / total, ImVec2{-1.0f, 0.0f}, CStr<16>("{1.2f}ms", entry.dt.count() * 1000.0f).data());
 		}
 	}
 }
 
-template <typename T>
-void Panes::showProfiler() const {
-	if (auto profiler = Services::find<T>()) {
-		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler))) {
-			auto const& record = profiler->m_record.back();
-			Time_s const total = record.total;
-			f32 maxLength{};
-			for (auto const& profile : record.entries) { maxLength = std::max(maxLength, ImGui::CalcTextSize(profile.name.data()).x); }
-			for (auto const& profile : record.entries) {
-				Text t(profile.name);
-				ImGui::SameLine(maxLength + 20.0f);
-				ImGui::ProgressBar(profile.dt / total, ImVec2{-1.0f, 0.0f}, CStr<16>("{1.2f}ms", profile.dt.count() * 1000.0f).data());
-			}
-		}
-		profiler->m_record.clear();
-	}
-}
-
-template <>
-MU void Panes::showProfiler<utils::NullProfileDB>() const {}
-
-void Panes::operator()() {
-	if (flag(Flag::eStats)) { showStats(); }
-	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
+void Panes::operator()(Engine::Service const& eng) {
+	if (flag(Flag::eStats)) { showStats(eng); }
+	if (flag(Flag::eProfiler)) { showProfiler(eng); }
 	if (flag(Flag::eAssetIndex)) {
 		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &flag(Flag::eAssetIndex))) {
 			if (auto store = Services::find<AssetStore>()) { AssetIndex::list(*store); }
@@ -117,7 +109,7 @@ void MainMenu::operator()(MU MenuList const& extras) const {
 		for (auto const& tree : extras.trees) { MenuBar::walk(tree); }
 		ImGui::EndMainMenuBar();
 	}
-	g_panes();
+	if (auto eng = Services::find<Engine::Service>()) { g_panes(*eng); }
 #endif
 }
 } // namespace le::editor

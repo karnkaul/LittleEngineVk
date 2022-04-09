@@ -10,7 +10,7 @@ struct Pipeline {
 	vk::Pipeline pipeline;
 	vk::PipelineLayout layout;
 
-	constexpr explicit operator bool() const { return pipeline && layout; }
-	constexpr bool operator==(Pipeline const&) const = default;
+	explicit operator bool() const { return pipeline && layout; }
+	bool operator==(Pipeline const&) const = default;
 };
 } // namespace le::graphics

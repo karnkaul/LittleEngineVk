@@ -5,7 +5,6 @@
 #include <levk/core/log_channel.hpp>
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/engine/assets/asset_monitor.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/builder.hpp>
@@ -16,13 +15,17 @@
 #include <levk/engine/render/layer.hpp>
 #include <levk/engine/utils/engine_config.hpp>
 #include <levk/engine/utils/engine_stats.hpp>
-#include <levk/engine/utils/error_handler.hpp>
 #include <levk/graphics/material_data.hpp>
 #include <levk/graphics/mesh.hpp>
 #include <levk/graphics/render/context.hpp>
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
+
+#include <levk/core/kassert/assert_instance.hpp>
+#include <levk/core/utils/error.hpp>
+#include <levk/engine/utils/error_handler.hpp>
+#include <filesystem>
 
 namespace le {
 namespace {
@@ -87,6 +90,32 @@ std::optional<GFX> makeGFX(Engine::BootInfo const& info, window::Window const& w
 struct Delegates {
 	ktl::delegate<> rendererChanged;
 };
+
+struct AssertSaver : AssertRecorder<> {
+	inline static std::string path = "assertions.txt";
+
+	static void deleteFile() { std::filesystem::remove(path); }
+
+	~AssertSaver() override {
+		auto lock = ktl::klock(records);
+		if (!lock->empty() && !path.empty()) {
+			auto assertions = dj::json{};
+			for (auto& record : *ktl::klock(records)) {
+				auto& data = record.data;
+				auto ass = io::JsonHelper::build("thread_id", record.threadID, "expression", std::move(data.expression), "message", std::move(data.message));
+				ass.insert("timestamp", dj::json(time::format(SysTime::clock::now(), "{:%a %F %T %Z}")));
+				if (auto location = SrcLocPrint{record.data.location, AssertContext::locPrintType}.to_string(); !location.empty()) {
+					ass.insert("location", dj::json(std::move(location)));
+				}
+				assertions.push_back(std::move(ass));
+			}
+			dj::json root;
+			root.insert("assertions", std::move(assertions));
+			root.save(path, dj::serial_opts_t{.sort_keys = true});
+			logI("[Engine] {} assertion(s) recorded and saved to {}", lock->size(), path);
+		}
+	}
+};
 } // namespace
 
 struct Engine::Impl {
@@ -107,6 +136,7 @@ struct Engine::Impl {
 	time::Point lastPoll{};
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
+	AssertInstance assertInstance;
 	Service service;
 	io::Path configPath;
 
@@ -257,6 +287,8 @@ std::optional<Engine> Engine::Builder::operator()() {
 		logE(LC_EndUser, "[Engine] Failed to create window");
 		return std::nullopt;
 	}
+	AssertSaver::deleteFile();
+	impl->assertInstance.setHandler(ktl::make_unique<AssertSaver>());
 	impl->errorHandler.deleteFile();
 	impl->configPath = std::move(m_configPath);
 	if (!impl->errorHandler.activeHandler()) { impl->errorHandler.setActive(); }

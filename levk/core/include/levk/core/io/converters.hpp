@@ -101,28 +101,28 @@ inline std::istream& operator>>(std::istream& in, glm::quat& out) {
 
 struct JsonHelper {
 	template <typename T>
-	dj::json to(T const& t) const {
+	static dj::json to(T const& t) {
 		return Jsonify<T>{}(t);
 	}
 
 	template <typename T>
-	T to(dj::json const& json) const {
+	static T to(dj::json const& json) {
 		return Jsonify<T>{}(json);
 	}
 
 	template <typename T>
-	void set(T& out, dj::json const& json) const {
+	static void set(T& out, dj::json const& json) {
 		out = to<T>(json);
 	}
 
 	template <typename T, typename... Ts>
-	void insert(dj::json& out, std::string key, T value, Ts... others) const {
+	static void insert(dj::json& out, std::string key, T value, Ts... others) {
 		out.insert(std::move(key), to(std::move(value)));
 		if constexpr (sizeof...(Ts) > 0) { insert(out, std::move(others)...); }
 	}
 
 	template <typename... T>
-	dj::json build(T... t) const {
+	static dj::json build(T... t) {
 		dj::json ret;
 		insert(ret, std::move(t)...);
 		return ret;

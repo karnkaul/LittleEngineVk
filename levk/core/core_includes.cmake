@@ -29,6 +29,11 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/io/path.hpp
   include/levk/core/io/zip_media.hpp
 
+  include/levk/core/kassert/assert_instance.hpp
+  include/levk/core/kassert/fmt_loc.hpp
+  include/levk/core/kassert/kassert.hpp
+  include/levk/core/kassert/src_loc.hpp
+
   include/levk/core/profilers/log_profiler.hpp
   include/levk/core/profilers/record_profiler.hpp
   include/levk/core/profilers/scoped_profiler.hpp

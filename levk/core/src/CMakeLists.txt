@@ -5,6 +5,8 @@ target_sources(${PROJECT_NAME} PRIVATE
   time.cpp
   transform.cpp
   version.cpp
+
+  kassert/assert_instance.cpp
 )
 
 add_subdirectory(io)

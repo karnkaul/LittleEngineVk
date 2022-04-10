@@ -42,6 +42,7 @@
 #include <levk/gameplay/scene/list_renderer.hpp>
 #include <levk/gameplay/scene/scene_manager.hpp>
 
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/graphics/mesh.hpp>
 #include <levk/graphics/skybox.hpp>
 
@@ -370,7 +371,7 @@ class App : public input::Receiver, public Scene {
 		Scene::open();
 
 		m_manifest.load("demo.manifest");
-		ENSURE(!m_manifest.manifest().list.empty(), "Manifest missing/empty");
+		KASSERT(!m_manifest.manifest().list.empty());
 
 		/* custom meshes */ {
 			auto rQuad = engine().store().add<graphics::MeshPrimitive>("mesh_primitives/rounded_quad", graphics::MeshPrimitive(&engine().vram()));
@@ -777,8 +778,8 @@ bool run(io::Media const& media) {
 			scenes.tick(++dt);
 			scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-				// app.sched().enqueue([]() { ENSURE(false, "test"); });
-				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
+				// app.sched().enqueue([]() { KASSERT(false, "test"); });
+				// app.sched().enqueue([]() { KASSERT(false, "test2"); });
 				auto& ctx = engine.service().context();
 				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {

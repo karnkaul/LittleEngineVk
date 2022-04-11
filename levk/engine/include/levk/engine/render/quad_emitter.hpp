@@ -44,7 +44,7 @@ struct EmitterInfo {
 class QuadEmitter {
   public:
 	void create(EmitterInfo const& info);
-	void tick(Time_s dt, Opt<dts::executor> tasks = {});
+	void tick(Time_s dt, Ptr<dts::executor> tasks = {});
 	graphics::Geometry geometry() const;
 
   private:

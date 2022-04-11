@@ -311,7 +311,7 @@ void Engine::Service::setRenderer(std::unique_ptr<Renderer>&& renderer) const {
 
 bool Engine::Service::booted() const noexcept { return m_impl->gfx.has_value(); }
 
-void Engine::Service::poll(Viewport const& view, Opt<input::EventParser> custom) const {
+void Engine::Service::poll(Viewport const& view, Ptr<input::EventParser> custom) const {
 	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
 	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win, custom};
 	m_impl->inputFrame = m_impl->input.update(in, view);

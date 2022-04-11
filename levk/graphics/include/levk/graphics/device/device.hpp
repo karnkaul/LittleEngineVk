@@ -166,13 +166,13 @@ class Device::Unique {
 	}
 
 	T m_t;
-	Opt<Device> m_device{};
+	Ptr<Device> m_device{};
 };
 
 template <typename Del>
 class Device::Unique<void, Del> {
   public:
-	Unique(Opt<Device> device = {}) noexcept : m_device(device) {}
+	Unique(Ptr<Device> device = {}) noexcept : m_device(device) {}
 	Unique(Unique&& rhs) noexcept : Unique() { exchg(*this, rhs); }
 	Unique& operator=(Unique&& rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Unique() {
@@ -184,7 +184,7 @@ class Device::Unique<void, Del> {
   private:
 	static void exchg(Unique& lhs, Unique& rhs) noexcept { std::swap(lhs.m_device, rhs.m_device); }
 
-	Opt<Device> m_device{};
+	Ptr<Device> m_device{};
 };
 
 constexpr vk::BufferUsageFlagBits Device::bufferUsage(vk::DescriptorType type) noexcept {

@@ -12,16 +12,16 @@
 #include <levk/core/utils/type_guid.hpp>
 
 namespace le {
-class AssetStore : public NoCopy {
+class AssetStore : public MoveOnly {
   public:
 	using Sign = utils::TypeGUID;
 
 	struct Index;
 
 	template <typename T>
-	Opt<T> add(std::string uri, T t);
+	Ptr<T> add(std::string uri, T t);
 	template <typename T>
-	Opt<T> find(Hash uri) const;
+	Ptr<T> find(Hash uri) const;
 	bool exists(Hash uri) const;
 	template <typename T>
 	bool exists(Hash uri) const;
@@ -37,7 +37,7 @@ class AssetStore : public NoCopy {
 
 	io::Media const& media() const noexcept { return m_customMedia ? *m_customMedia : m_fsMedia; }
 	io::FSMedia const& fsMedia() const noexcept { return m_fsMedia; }
-	void customMedia(Opt<io::Media const> media) noexcept { m_customMedia = media; }
+	void customMedia(Ptr<io::Media const> media) noexcept { m_customMedia = media; }
 
 	template <typename T>
 	static Sign sign();
@@ -55,16 +55,16 @@ class AssetStore : public NoCopy {
 	struct TAsset;
 
 	template <typename T>
-	Opt<T> add(ktl::kunique_ptr<TAsset<T>>&& tasset);
+	Ptr<T> add(ktl::kunique_ptr<TAsset<T>>&& tasset);
 	template <typename T>
-	Opt<TAsset<T>> findImpl(Hash uri) const;
+	Ptr<TAsset<T>> findImpl(Hash uri) const;
 
 	template <typename T>
 	static TAsset<T>& toTAsset(Base& base) noexcept;
 
 	ktl::strict_tmutex<TAssets> m_assets;
 	io::FSMedia m_fsMedia{};
-	Opt<io::Media const> m_customMedia{};
+	Ptr<io::Media const> m_customMedia{};
 };
 
 struct AssetStore::Index {
@@ -101,12 +101,12 @@ struct AssetStore::TAsset : Base {
 };
 
 template <typename T>
-Opt<T> AssetStore::add(std::string uri, T t) {
+Ptr<T> AssetStore::add(std::string uri, T t) {
 	return add(ktl::make_unique<TAsset<T>>(std::move(uri), std::move(t)));
 }
 
 template <typename T>
-Opt<T> AssetStore::find(Hash uri) const {
+Ptr<T> AssetStore::find(Hash uri) const {
 	auto t = findImpl<T>(uri);
 	if (t && t->t) { return &*t->t; }
 	return {};
@@ -137,7 +137,7 @@ bool AssetStore::unload(Hash uri) {
 }
 
 template <typename T>
-Opt<T> AssetStore::add(ktl::kunique_ptr<TAsset<T>>&& tasset) {
+Ptr<T> AssetStore::add(ktl::kunique_ptr<TAsset<T>>&& tasset) {
 	if (!tasset) { return {}; }
 	Hash const key = tasset->uri;
 	if (key == Hash()) { return {}; }
@@ -149,7 +149,7 @@ Opt<T> AssetStore::add(ktl::kunique_ptr<TAsset<T>>&& tasset) {
 }
 
 template <typename T>
-auto AssetStore::findImpl(Hash uri) const -> Opt<TAsset<T>> {
+auto AssetStore::findImpl(Hash uri) const -> Ptr<TAsset<T>> {
 	if (uri == Hash()) { return {}; }
 	ktl::klock lock(m_assets);
 	if (auto it = lock->find(uri); it != lock->end()) {

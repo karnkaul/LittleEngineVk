@@ -3,7 +3,7 @@
 #include <levk/graphics/font/font.hpp>
 
 namespace le::input {
-TextCursor::TextCursor(not_null<graphics::VRAM*> vram, Flags flags, Opt<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
+TextCursor::TextCursor(not_null<graphics::VRAM*> vram, Flags flags, Ptr<Font> font) : m_flags(flags), m_primitive(vram), m_font(font) { refresh(); }
 
 graphics::DrawPrimitive TextCursor::drawPrimitive() const {
 	if (m_drawCursor) {

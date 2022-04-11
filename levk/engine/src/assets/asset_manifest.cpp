@@ -88,7 +88,7 @@ ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::pt
 		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
 	return [uri = std::move(uri), engine, shaderType]() mutable {
-		Opt<io::FSMedia const> fsMedia{};
+		Ptr<io::FSMedia const> fsMedia{};
 		io::Path path = uri;
 		if (isGlsl(uri)) {
 			if (fsMedia = dynamic_cast<io::FSMedia const*>(&engine.store().media()); fsMedia) {
@@ -471,7 +471,7 @@ static std::size_t recurse(std::string_view name, AssetManifest::Group const& gr
 	return {};
 }
 
-std::size_t ManifestLoader::preload(dj::json const& root, Opt<Parser const> custom) {
+std::size_t ManifestLoader::preload(dj::json const& root, Ptr<Parser const> custom) {
 	m_manifest.list = AssetManifest::populate(root);
 	DefaultParser parser(m_engine, &m_stages, custom);
 	std::size_t ret = {};
@@ -511,7 +511,7 @@ void ManifestLoader::loadBlocking() {
 	}
 }
 
-void ManifestLoader::load(io::Path const& jsonURI, Opt<Parser> custom, bool async, bool reload) {
+void ManifestLoader::load(io::Path const& jsonURI, Ptr<Parser> custom, bool async, bool reload) {
 	if (reload || m_manifest.list.empty()) {
 		if (auto json = m_engine.store().media().string(jsonURI)) {
 			dj::json root;

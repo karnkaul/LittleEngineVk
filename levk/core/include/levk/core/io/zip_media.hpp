@@ -5,7 +5,7 @@ namespace le::io {
 ///
 /// \brief Concrete class for `.zip` IO
 ///
-class ZIPMedia final : public Media, public NoCopy {
+class ZIPMedia final : public Media, public MoveOnly {
   public:
 	static constexpr Info info_v = {"ZIP", Flag::eRead};
 

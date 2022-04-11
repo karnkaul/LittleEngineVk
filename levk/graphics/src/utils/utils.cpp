@@ -341,7 +341,7 @@ Bitmap utils::bitmap(Span<Colour const> pixels, u32 width, u32 height) {
 
 void utils::append(BmpBytes& out, Colour pixel) {
 	u8 const bytes[] = {pixel.r.value, pixel.g.value, pixel.b.value, pixel.a.value};
-	out.reserve(out.size() + arraySize(bytes));
+	out.reserve(out.size() + std::size(bytes));
 	for (auto const byte : bytes) { out.push_back(byte); }
 }
 

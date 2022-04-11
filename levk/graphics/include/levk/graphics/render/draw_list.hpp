@@ -74,7 +74,7 @@ class DrawList {
 struct DrawObject {
 	Span<DrawPrimitive const> primitives{};
 	glm::mat4 const& matrix;
-	Opt<vk::Rect2D const> scissor{};
+	Ptr<vk::Rect2D const> scissor{};
 };
 
 class DrawList::iterator {
@@ -98,7 +98,7 @@ class DrawList::iterator {
 
 	Span<DrawPrimitive const> prims() const;
 	glm::mat4 const& matrix() const;
-	Opt<vk::Rect2D const> scissor() const;
+	Ptr<vk::Rect2D const> scissor() const;
 
 	DrawList const* m_list{};
 	std::size_t m_index{};

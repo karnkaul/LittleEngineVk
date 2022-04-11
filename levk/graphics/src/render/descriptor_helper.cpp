@@ -18,7 +18,7 @@ bool DescriptorUpdater::update(u32 binding, ShaderBuffer const& buffer) {
 	return false;
 }
 
-bool DescriptorUpdater::update(u32 binding, Opt<Texture const> tex) {
+bool DescriptorUpdater::update(u32 binding, Ptr<Texture const> tex) {
 	if (check(binding)) {
 		m_descriptorSet.update(binding, safeTex(tex, binding));
 		return true;

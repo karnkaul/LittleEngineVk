@@ -6,13 +6,13 @@ namespace le::graphics {
 class MeshPrimitive;
 class Texture;
 
-using MaterialTextures = TMatTexArray<Opt<Texture const>>;
+using MaterialTextures = TMatTexArray<Ptr<Texture const>>;
 
 struct DrawPrimitive {
 	MaterialTextures textures{};
-	Opt<MeshPrimitive const> primitive{};
-	Opt<BPMaterialData const> blinnPhong{};
-	Opt<PBRMaterialData const> pbr{};
+	Ptr<MeshPrimitive const> primitive{};
+	Ptr<BPMaterialData const> blinnPhong{};
+	Ptr<PBRMaterialData const> pbr{};
 
 	explicit operator bool() const noexcept { return primitive && (blinnPhong || pbr); }
 };

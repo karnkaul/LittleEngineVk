@@ -48,11 +48,11 @@ class AssetManifest::Parser : public utils::VBase {
 	static constexpr Order depend(Order fallback = Order{4}) noexcept;
 	static constexpr Order maxOrder(std::span<Order const> orders, Order fallback) noexcept;
 
-	Parser(Engine::Service engine, not_null<Stages*> stages, Opt<Parser const> next = {}) noexcept : m_next(next), m_engine(engine), m_stages(stages) {}
+	Parser(Engine::Service engine, not_null<Stages*> stages, Ptr<Parser const> next = {}) noexcept : m_next(next), m_engine(engine), m_stages(stages) {}
 
 	virtual std::optional<std::size_t> operator()(std::string_view name, Group const& group) const = 0;
 
-	Opt<Parser const> m_next{};
+	Ptr<Parser const> m_next{};
 
   protected:
 	void enqueue(Order order, dts::task_t task) const;
@@ -72,10 +72,10 @@ class ManifestLoader {
 
 	ManifestLoader(Engine::Service engine) noexcept : m_engine(engine) {}
 
-	std::size_t preload(dj::json const& root, Opt<Parser const> custom = {});
+	std::size_t preload(dj::json const& root, Ptr<Parser const> custom = {});
 	void loadAsync();
 	void loadBlocking();
-	void load(io::Path const& jsonURI, Opt<Parser> custom = {}, bool async = true, bool reload = false);
+	void load(io::Path const& jsonURI, Ptr<Parser> custom = {}, bool async = true, bool reload = false);
 	std::size_t unload();
 
 	AssetManifest const& manifest() const noexcept { return m_manifest; }

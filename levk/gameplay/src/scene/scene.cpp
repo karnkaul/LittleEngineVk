@@ -5,7 +5,7 @@
 #include <levk/graphics/render/context.hpp>
 
 namespace le {
-Scene::Scene(Opt<Engine::Service> service) noexcept : m_engineService(service ? *service : *Services::find<Engine::Service>()) {}
+Scene::Scene(Ptr<Engine::Service> service) noexcept : m_engineService(service ? *service : *Services::find<Engine::Service>()) {}
 
 ShaderBufferMap& Scene::shaderBufferMap() const {
 	EXPECT(m_shaderBufferMap);

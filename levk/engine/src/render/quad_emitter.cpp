@@ -54,7 +54,7 @@ void QuadEmitter::create(EmitterInfo const& info) {
 	for (std::size_t i = 0; i < m_info.count / 2; ++i) { addQuad(); }
 }
 
-void QuadEmitter::tick(Time_s dt, Opt<dts::executor> executor) {
+void QuadEmitter::tick(Time_s dt, Ptr<dts::executor> executor) {
 	if (m_info.loop) {
 		while (m_data.pos.size() < m_info.count) { addQuad(); }
 	}

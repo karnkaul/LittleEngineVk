@@ -4,12 +4,12 @@
 #include <levk/graphics/texture.hpp>
 
 namespace le::graphics {
-Skybox::Skybox(not_null<VRAM*> vram, Opt<Texture const> texture) : m_mesh(vram) {
+Skybox::Skybox(not_null<VRAM*> vram, Ptr<Texture const> texture) : m_mesh(vram) {
 	m_mesh.construct(makeCube());
 	cubemap(texture);
 }
 
-void Skybox::cubemap(Opt<Texture const> texture) noexcept {
+void Skybox::cubemap(Ptr<Texture const> texture) noexcept {
 	if (texture) {
 		EXPECT(texture->type() == Texture::Type::eCube);
 		if (texture->type() != Texture::Type::eCube) { return; }

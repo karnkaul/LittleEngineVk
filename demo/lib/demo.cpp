@@ -17,6 +17,7 @@
 #include <levk/gameplay/gui/widgets/dropdown.hpp>
 
 #include <ktl/async/kasync.hpp>
+#include <levk/core/kassert/assert_instance.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/core/utils/tween.hpp>
 #include <levk/engine/input/text_cursor.hpp>
@@ -347,7 +348,7 @@ struct EmitMesh {
 
 	EmitMesh(not_null<graphics::VRAM*> vram, EmitterInfo info = {}) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic) { emitter.create(info); }
 
-	void tick(Time_s dt, Opt<dts::executor> executor = {}) {
+	void tick(Time_s dt, Ptr<dts::executor> executor = {}) {
 		emitter.tick(dt, executor);
 		primitive.construct(emitter.geometry());
 	}
@@ -737,73 +738,82 @@ bool package(io::Path const& binary, bool clean) {
 }
 
 bool run(io::Media const& media) {
-	window::CreateInfo winInfo;
-	winInfo.config.title = "levk demo";
-	winInfo.config.size = {1280, 720};
-	winInfo.options.centreCursor = true;
-	auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media).addIcon("textures/awesomeface.png")();
-	if (!eng) { return false; }
-	auto& engine = *eng;
-	Flags flags;
-	FlagsInput flagsInput(flags);
-	engine.service().pushReceiver(&flagsInput);
-	Engine::BootInfo bootInfo;
-	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
-	bootInfo.device.validationLogLevel = LogLevel::info;
-	struct Poll : input::EventParser {
-		Flags* flags{};
-		bool operator()(input::Event const& event) override {
-			if (event.type() == input::Event::Type::eClosed) {
-				flags->set(Flag::eQuit);
-				return true;
+	try {
+		window::CreateInfo winInfo;
+		winInfo.config.title = "levk demo";
+		winInfo.config.size = {1280, 720};
+		winInfo.options.centreCursor = true;
+		auto eng = Engine::Builder{}.window(std::move(winInfo)).media(&media).addIcon("textures/awesomeface.png")();
+		if (!eng) { return false; }
+		auto& engine = *eng;
+		Flags flags;
+		FlagsInput flagsInput(flags);
+		engine.service().pushReceiver(&flagsInput);
+		Engine::BootInfo bootInfo;
+		if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
+		bootInfo.device.validationLogLevel = LogLevel::info;
+		struct Poll : input::EventParser {
+			Flags* flags{};
+			bool operator()(input::Event const& event) override {
+				if (event.type() == input::Event::Type::eClosed) {
+					flags->set(Flag::eQuit);
+					return true;
+				}
+				return false;
 			}
-			return false;
-		}
-	};
-	Poll poll;
-	poll.flags = &flags;
-	do {
-		flags = {};
-		engine.boot(bootInfo);
-		auto editor = editor::Instance::make(eng->service());
-		SceneManager scenes(engine.service());
-		scenes.attach<App>("app", engine.service());
-		scenes.open("app");
-		DeltaTime dt;
-		ktl::kfuture<void> bf;
-		ktl::kasync async;
-		while (!engine.service().closing()) {
-			engine.service().poll(scenes.sceneView(), &poll);
-			if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
-			scenes.tick(++dt);
-			scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));
-			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-				// app.sched().enqueue([]() { KASSERT(false, "test"); });
-				// app.sched().enqueue([]() { KASSERT(false, "test2"); });
-				auto& ctx = engine.service().context();
-				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
-					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
-						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
-						if (written > 0) { logD("Screenshot saved to shot.ppm"); }
+		};
+		Poll poll;
+		poll.flags = &flags;
+		do {
+			flags = {};
+			engine.boot(bootInfo);
+			auto editor = editor::Instance::make(eng->service());
+			SceneManager scenes(engine.service());
+			scenes.attach<App>("app", engine.service());
+			scenes.open("app");
+			DeltaTime dt;
+			ktl::kfuture<void> bf;
+			ktl::kasync async;
+			while (!engine.service().closing()) {
+				engine.service().poll(scenes.sceneView(), &poll);
+				if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
+				scenes.tick(++dt);
+				scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));
+				if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
+					// app.sched().enqueue([]() { KASSERT(false, "test"); });
+					// app.sched().enqueue([]() { KASSERT(false, "test2"); });
+					auto& ctx = engine.service().context();
+					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
+						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
+							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
+							if (written > 0) { logD("Screenshot saved to shot.ppm"); }
+						}
 					}
 				}
-			}
-			if (flags.test(Flag::eClose)) {
-				scenes.close();
-				flags.reset(Flag::eClose);
-			}
-			flags.reset(Flag::eDebug0);
-			/*bf = async(&package, "out/autobuild", false);
-			bf.then([](bool built) {
-				if (!built) {
-					logW("build failed");
-				} else {
-					logD("build success");
+				if (flags.test(Flag::eClose)) {
+					scenes.close();
+					flags.reset(Flag::eClose);
 				}
-			});*/
-		}
-		flags.reset(Flag::eQuit);
-	} while (flags.test(Flag::eReboot));
-	return true;
+				flags.reset(Flag::eDebug0);
+				/*bf = async(&package, "out/autobuild", false);
+				bf.then([](bool built) {
+					if (!built) {
+						logW("build failed");
+					} else {
+						logD("build success");
+					}
+				});*/
+			}
+			flags.reset(Flag::eQuit);
+		} while (flags.test(Flag::eReboot));
+		return true;
+	} catch (AssertException const& e) {
+		logE("AssertException caught: {}", e.what());
+		return false;
+	} catch (std::exception const& e) {
+		logE("Exception caught: {}", e.what());
+		return false;
+	} catch (...) { logE("Unhandled exception!"); }
+	return false;
 }
 } // namespace le::demo

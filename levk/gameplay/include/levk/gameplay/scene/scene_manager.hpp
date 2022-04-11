@@ -16,7 +16,7 @@ class SceneManager {
 	T& attach(std::string id, Args&&... args);
 
 	Viewport const& sceneView() const noexcept;
-	Opt<Scene> active() const noexcept { return m_active ? m_active->scene.get() : nullptr; }
+	Ptr<Scene> active() const noexcept { return m_active ? m_active->scene.get() : nullptr; }
 	bool open(Hash id);
 	void tick(Time_s dt);
 	void render(graphics::RGBA clear = {});
@@ -32,7 +32,7 @@ class SceneManager {
 	std::unordered_map<Hash, Entry> m_scenes;
 	ShaderBufferMap m_shaderBufferMap;
 	Engine::Service m_engine;
-	Opt<Entry> m_active{};
+	Ptr<Entry> m_active{};
 };
 
 // impl

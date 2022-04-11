@@ -13,7 +13,7 @@ class ShaderBufferMap;
 
 class Scene : public SceneRegistry {
   public:
-	Scene(Opt<Engine::Service> service = {}) noexcept;
+	Scene(Ptr<Engine::Service> service = {}) noexcept;
 
 	Engine::Service const& engine() const noexcept { return m_engineService; }
 	Engine::Executor& executor() const { return m_engineService.executor(); }

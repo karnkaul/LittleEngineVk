@@ -18,7 +18,7 @@ class AssetProvider {
 	bool empty() const noexcept { return m_uri == Hash(); }
 	bool ready(AssetStore const& store) const;
 	T const& get(AssetStore const& store, T const& fallback = T{}) const;
-	Opt<T const> find(AssetStore const& store) const;
+	Ptr<T const> find(AssetStore const& store) const;
 
   private:
 	Hash m_uri;
@@ -41,7 +41,7 @@ T const& AssetProvider<T>::get(AssetStore const& store, T const& fallback) const
 }
 
 template <typename T>
-Opt<T const> AssetProvider<T>::find(AssetStore const& store) const {
+Ptr<T const> AssetProvider<T>::find(AssetStore const& store) const {
 	return store.find<T>(m_uri);
 }
 } // namespace le

@@ -12,7 +12,7 @@ using Event = window::Event;
 using EventQueue = std::vector<Event>;
 
 struct EventParser {
-	Opt<EventParser> next{};
+	Ptr<EventParser> next{};
 	virtual bool operator()(Event const& event) = 0;
 };
 

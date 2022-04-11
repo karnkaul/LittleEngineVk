@@ -52,8 +52,8 @@ struct Font::PenInfo {
 	glm::vec3 origin{};
 	f32 scale = 1.0f;
 	f32 lineSpacing = default_spacing_v;
-	Opt<Geometry> out_geometry{};
-	Opt<Height const> customSize{};
+	Ptr<Geometry> out_geometry{};
+	Ptr<Height const> customSize{};
 };
 
 class Font::Pen {
@@ -68,8 +68,8 @@ class Font::Pen {
 	Glyph glyph(Codepoint cp) const;
 	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_info.scale; }
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});
-	glm::vec3 writeLine(std::string_view line, Opt<glm::vec2 const> realign = {}, Opt<std::size_t const> retIdx = {});
-	glm::vec3 writeText(std::string_view text, Opt<glm::vec2 const> realign = {});
+	glm::vec3 writeLine(std::string_view line, Ptr<glm::vec2 const> realign = {}, Ptr<std::size_t const> retIdx = {});
+	glm::vec3 writeText(std::string_view text, Ptr<glm::vec2 const> realign = {});
 
 	void lineFeed() noexcept;
 

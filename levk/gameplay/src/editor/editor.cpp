@@ -125,7 +125,7 @@ struct Cache {
 };
 
 struct State {
-	Opt<Storage> storage{};
+	Ptr<Storage> storage{};
 	Viewport gameView{};
 	Flags flags;
 	Cache cache;
@@ -135,7 +135,7 @@ State g_state;
 } // namespace
 
 struct Instance::Impl {
-	inline static Opt<Impl> s_impl{};
+	inline static Ptr<Impl> s_impl{};
 
 	std::optional<DearImGui> imgui;
 	Storage storage;

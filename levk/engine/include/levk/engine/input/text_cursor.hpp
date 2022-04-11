@@ -30,10 +30,10 @@ class TextCursor {
 
 	static constexpr std::size_t npos = std::string_view::npos;
 
-	TextCursor(not_null<graphics::VRAM*> vram, Flags flags = {}, Opt<Font> font = {});
+	TextCursor(not_null<graphics::VRAM*> vram, Flags flags = {}, Ptr<Font> font = {});
 
 	void font(not_null<Font*> font) noexcept { m_font = font; }
-	Opt<Font> font() const noexcept { return m_font; }
+	Ptr<Font> font() const noexcept { return m_font; }
 	graphics::DrawPrimitive drawPrimitive() const;
 
 	///
@@ -118,7 +118,7 @@ class TextCursor {
 	glm::vec2 m_size = {0.07f, 1.1f};
 	time::Point m_lastBlink;
 	std::size_t m_index = npos;
-	Opt<Font> m_font{};
+	Ptr<Font> m_font{};
 	bool m_drawCursor = true;
 };
 } // namespace input

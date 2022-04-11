@@ -139,7 +139,7 @@ glm::vec2 Font::Pen::textExtent(std::string_view text) const {
 
 void Font::Pen::align(std::string_view const line, glm::vec2 pivot) { m_head -= alignExtent(*this, m_info.scale, line, pivot, {}); }
 
-glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> realign, Opt<std::size_t const> retIdx) {
+glm::vec3 Font::Pen::writeLine(std::string_view line, Ptr<glm::vec2 const> realign, Ptr<std::size_t const> retIdx) {
 	if (realign) { m_head -= alignExtent(*this, m_info.scale, line, *realign, {}); }
 	auto write = [this](Codepoint const cp) {
 		auto const& gl = glyph(cp);
@@ -163,7 +163,7 @@ glm::vec3 Font::Pen::writeLine(std::string_view line, Opt<glm::vec2 const> reali
 	return !retIdx || *retIdx >= line.size() ? m_head : idxPos;
 }
 
-glm::vec3 Font::Pen::writeText(std::string_view text, Opt<glm::vec2 const> realign) {
+glm::vec3 Font::Pen::writeText(std::string_view text, Ptr<glm::vec2 const> realign) {
 	auto remain = text;
 	auto idx = remain.find('\n');
 	while (idx != std::string_view::npos) {

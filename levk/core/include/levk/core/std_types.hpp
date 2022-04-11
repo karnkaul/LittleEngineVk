@@ -2,28 +2,8 @@
 #if defined(__MINGW32__)
 #define __STDC_FORMAT_MACROS
 #endif
-#include <array>
-#include <concepts>
-#include <cstddef>
 #include <cstdint>
-#include <limits>
-#include <stdexcept>
 #include <string_view>
-#include <utility>
-#include <vector>
-
-#if defined(near)
-#undef near
-#endif
-#if defined(far)
-#undef far
-#endif
-#if defined(min)
-#undef min
-#endif
-#if defined(max)
-#undef max
-#endif
 
 #if defined(LEVK_DEBUG)
 inline constexpr bool levk_debug = true;
@@ -53,17 +33,17 @@ using bytearray = std::vector<std::byte>;
 using namespace std::string_view_literals;
 
 template <typename T>
-using Opt = T*;
+using Ptr = T*;
 
 template <typename Enum, typename Ty, std::size_t N = (std::size_t)Enum::eCOUNT_>
 	requires std::is_enum_v<Enum>
 struct EnumArray {
 	using type = Ty;
 
-	type arr[N] = {};
+	Ty arr[N]{};
 
-	constexpr type const& operator[](Enum e) const noexcept { return arr[(std::size_t)e]; }
-	constexpr type& operator[](Enum e) noexcept { return arr[(std::size_t)e]; }
+	constexpr Ty const& operator[](Enum e) const noexcept { return arr[static_cast<std::size_t>(e)]; }
+	constexpr Ty& operator[](Enum e) noexcept { return arr[static_cast<std::size_t>(e)]; }
 };
 
 template <typename...>
@@ -73,29 +53,21 @@ template <typename...>
 constexpr bool true_v = true;
 
 ///
-/// \brief Obtain the number of elements in a stack array
-///
-template <typename T, std::size_t N>
-constexpr std::size_t arraySize(T const (&)[N]) noexcept {
-	return N;
-}
-
-///
 /// \brief Convenience base type with deleted copy semantics
 ///
-struct NoCopy {
-	constexpr NoCopy() = default;
-	constexpr NoCopy(NoCopy&&) = default;
-	constexpr NoCopy& operator=(NoCopy&&) = default;
-	NoCopy(NoCopy const&) = delete;
-	NoCopy& operator=(NoCopy const&) = delete;
+struct MoveOnly {
+	MoveOnly() = default;
+	MoveOnly(MoveOnly&&) = default;
+	MoveOnly& operator=(MoveOnly&&) = default;
+	MoveOnly(MoveOnly const&) = delete;
+	MoveOnly& operator=(MoveOnly const&) = delete;
 };
 
 ///
 /// \brief Convenience base type with deleted movr/copy semantics
 ///
 struct Pinned {
-	constexpr Pinned() = default;
+	Pinned() = default;
 	Pinned(Pinned&&) = delete;
 	Pinned& operator=(Pinned&&) = delete;
 	Pinned(Pinned const&) = delete;

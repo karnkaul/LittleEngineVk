@@ -85,7 +85,7 @@ class Engine {
 class Engine::Service {
   public:
 	bool booted() const noexcept;
-	void poll(Viewport const& view = {}, Opt<input::EventParser> custom = {}) const;
+	void poll(Viewport const& view = {}, Ptr<input::EventParser> custom = {}) const;
 	void pushReceiver(not_null<input::Receiver*> context) const;
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) const;
 

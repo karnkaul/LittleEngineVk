@@ -45,7 +45,7 @@ class DescriptorHelper::Updater {
 
 	template <typename T>
 	bool update(u32 binding, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool update(u32 binding, Opt<Texture const> tex);
+	bool update(u32 binding, Ptr<Texture const> tex);
 	bool update(u32 binding, ShaderBuffer const& buffer);
 
   private:

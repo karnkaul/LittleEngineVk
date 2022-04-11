@@ -2,7 +2,6 @@
 #include <levk/core/io/fs_media.hpp>
 #include <levk/core/io/zip_media.hpp>
 #include <levk/core/log.hpp>
-#include <levk/core/utils/execute.hpp>
 #include <levk/engine/utils/env.hpp>
 
 int main(int argc, char const* const argv[]) {
@@ -31,5 +30,5 @@ int main(int argc, char const* const argv[]) {
 	}
 	io::FSMedia media;
 	media.mount(std::move(*data));
-	return utils::Execute([&media]() { return demo::run(media) ? 0 : 10; });
+	return demo::run(media) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

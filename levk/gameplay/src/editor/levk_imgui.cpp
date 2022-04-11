@@ -42,8 +42,8 @@ vk::DescriptorPool makePool(Device& device, u32 count) {
 	};
 	vk::DescriptorPoolCreateInfo pool_info;
 	pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-	pool_info.maxSets = (u32)(count * arraySize(pool_sizes));
-	pool_info.poolSizeCount = (u32)arraySize(pool_sizes);
+	pool_info.maxSets = (u32)(count * std::size(pool_sizes));
+	pool_info.poolSizeCount = (u32)std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
 	return device.device().createDescriptorPool(pool_info);
 }

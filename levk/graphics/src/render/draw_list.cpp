@@ -55,7 +55,7 @@ DrawList::iterator DrawList::iterator::operator--(int) {
 
 glm::mat4 const& DrawList::iterator::matrix() const { return m_list->m_matrices[m_list->m_entries[m_index].matrix]; }
 
-Opt<vk::Rect2D const> DrawList::iterator::scissor() const {
+Ptr<vk::Rect2D const> DrawList::iterator::scissor() const {
 	auto const& s = m_list->m_entries[m_index].scissor;
 	return s ? &m_list->m_scissors[*s] : nullptr;
 }

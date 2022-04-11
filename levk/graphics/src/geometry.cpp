@@ -1,5 +1,5 @@
 #include <glm/gtx/rotate_vector.hpp>
-#include <levk/core/utils/error.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/graphics/geometry.hpp>
 #include <algorithm>
 #include <iterator>
@@ -85,7 +85,7 @@ graphics::Geometry graphics::makeCube(f32 side /* = 1.0f */, GeomInfo const& inf
 
 graphics::Geometry graphics::makeSector(glm::vec2 radExtent, f32 diameter, u16 points, GeomInfo const& info) {
 	Geometry ret;
-	ENSURE(points < 1000, "Max points is 1000");
+	KASSERT(points < 1000, "Max points is 1000");
 	f32 const subArc = (radExtent.y - radExtent.x) / points;
 	f32 const r = diameter * 0.5f;
 	v3 const norm(0.0f, 0.0f, 1.0f);
@@ -114,7 +114,7 @@ graphics::Geometry graphics::makeCircle(f32 diameter, u16 points, GeomInfo const
 
 graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points, GeomInfo const& info) {
 	Geometry ret;
-	ENSURE(points < 1000, "Max points is 1000");
+	KASSERT(points < 1000, "Max points is 1000");
 	f32 const r = diam * 0.5f;
 	f32 const angle = 360.0f / points;
 	v3 const nBase(0.0f, -1.0f, 0.0f);
@@ -151,7 +151,7 @@ graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points, GeomInfo
 
 graphics::Geometry graphics::makeCubedSphere(f32 diam, u8 quadsPerSide, GeomInfo const& info) {
 	Geometry ret;
-	ENSURE(quadsPerSide < 30, "Max quads per side is 30");
+	KASSERT(quadsPerSide < 30, "Max quads per side is 30");
 	u32 qCount = (u32)(quadsPerSide * quadsPerSide);
 	ret.reserve(qCount * 4 * 6, qCount * 6 * 6);
 	v3 const bl(-1.0f, -1.0f, 1.0f);

@@ -1,4 +1,5 @@
 #include <ktl/enumerate.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <algorithm>
 
@@ -66,10 +67,10 @@ void DescriptorSet::updateBuffersImpl(u32 binding, Span<Buf const> buffers, vk::
 
 auto DescriptorSet::setBind(u32 bind, u32 count, vk::DescriptorType const* type) -> std::pair<Set&, Binding&> {
 	auto& set = m_sets.get();
-	ENSURE(contains(bind), "Nonexistent binding");
+	KASSERT(contains(bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
-	if (type) { ENSURE(binding.type == *type, "Mismatched descriptor type"); }
-	ENSURE(binding.count == count, "Mismatched descriptor size");
+	if (type) { KASSERT(binding.type == *type, "Mismatched descriptor type"); }
+	KASSERT(binding.count == count, "Mismatched descriptor size");
 	return {set, binding};
 }
 

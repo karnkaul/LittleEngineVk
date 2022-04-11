@@ -30,7 +30,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/io/zip_media.hpp
 
   include/levk/core/kassert/assert_instance.hpp
-  include/levk/core/kassert/fmt_loc.hpp
   include/levk/core/kassert/kassert.hpp
   include/levk/core/kassert/src_loc.hpp
 
@@ -41,7 +40,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/levk/core/utils/data_store.hpp
   include/levk/core/utils/debug.hpp
   include/levk/core/utils/dirty_flag.hpp
-  include/levk/core/utils/error.hpp
   include/levk/core/utils/execute.hpp
   include/levk/core/utils/expect.hpp
   include/levk/core/utils/ratio.hpp

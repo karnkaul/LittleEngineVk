@@ -8,7 +8,6 @@
 #include <ktl/fixed_any.hpp>
 #include <levk/core/array_map.hpp>
 #include <levk/core/log.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/core/utils/expect.hpp>
 #endif
 

@@ -1,6 +1,5 @@
 #include <ktl/enumerate.hpp>
 #include <levk/core/log_channel.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/device/device.hpp>

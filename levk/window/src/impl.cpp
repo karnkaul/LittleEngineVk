@@ -1,7 +1,6 @@
 #include <impl.hpp>
 #include <levk/core/array_map.hpp>
 #include <levk/core/utils/data_store.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/core/utils/sys_info.hpp>
 
 namespace le::window {

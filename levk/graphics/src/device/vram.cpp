@@ -1,3 +1,4 @@
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/command_buffer.hpp>
@@ -21,11 +22,11 @@ TPair<std::size_t> getLayerImageSize(T const& images) {
 	TPair<std::size_t> ret;
 	for (auto const& image : images) {
 		PData const data(image);
-		ENSURE(ret.first == 0 || ret.first == data.size, "Invalid image data!");
+		KASSERT(ret.first == 0 || ret.first == data.size, "Invalid image data!");
 		ret.first = data.size;
 		ret.second += ret.first;
 	}
-	ENSURE(ret.first > 0 && ret.second > 0, "Invalid image data!");
+	KASSERT(ret.first > 0 && ret.second > 0, "Invalid image data!");
 	return ret;
 }
 
@@ -109,7 +110,7 @@ struct VRAM::ImageCopier {
 	void operator()() const {
 		auto stage = vram.m_transfer.newStage(layerImageSize.second);
 		void const* data = stage.buffer->map();
-		ENSURE(data, "Memory map failed");
+		KASSERT(data, "Memory map failed");
 		u32 layerIdx = 0;
 		std::vector<vk::BufferImageCopy> copyRegions;
 		for (auto const& img : imgs) {
@@ -202,9 +203,9 @@ VRAM::Future VRAM::clearAsync(ImageRef const& image, LayerMip const& layerMip, C
 }
 
 VRAM::Future VRAM::copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
-	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
-	ENSURE(out_dst.layerCount() == bitmaps.size(), "Invalid image");
+	KASSERT((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	KASSERT(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
+	KASSERT(out_dst.layerCount() == bitmaps.size(), "Invalid image");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	ktl::fixed_vector<bytearray, 6> imgs;
@@ -214,9 +215,9 @@ VRAM::Future VRAM::copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, 
 }
 
 VRAM::Future VRAM::copyAsync(Images&& imgs, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
-	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
-	ENSURE(out_dst.layerCount() == imgs.size(), "Invalid image");
+	KASSERT((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	KASSERT(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
+	KASSERT(out_dst.layerCount() == imgs.size(), "Invalid image");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	m_transfer.m_queue.push(ImageCopier<utils::STBImg>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo, {}));

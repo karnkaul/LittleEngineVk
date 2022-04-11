@@ -10,7 +10,6 @@
 #include <glm/common.hpp>
 #include <levk/core/colour.hpp>
 #include <levk/core/log.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/render/context.hpp>
 #include <levk/graphics/utils/instant_command.hpp>

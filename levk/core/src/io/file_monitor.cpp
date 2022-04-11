@@ -1,6 +1,6 @@
 #include <levk/core/io/file_monitor.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/log.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/core/utils/string.hpp>
 #include <filesystem>
 
@@ -56,7 +56,7 @@ FileMonitor::Status FileMonitor::update() {
 }
 
 std::string_view FileMonitor::text() const {
-	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
+	KASSERT(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eTextContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FSMedia>(), m_path.generic_string());
 		return {};
@@ -65,7 +65,7 @@ std::string_view FileMonitor::text() const {
 }
 
 Span<std::byte const> FileMonitor::bytes() const {
-	ENSURE(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
+	KASSERT(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eBinaryContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FSMedia>(), m_path.generic_string());
 		return {};

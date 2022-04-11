@@ -1,4 +1,5 @@
 #include <glm/gtx/transform.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/log.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/maths.hpp>
@@ -15,8 +16,8 @@
 namespace le::graphics {
 namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
-	ENSURE(images > Buffering::eSingle, "Insufficient swapchain images");
-	ENSURE(buffering > Buffering::eNone, "Insufficient buffering");
+	KASSERT(images > Buffering::eSingle, "Insufficient swapchain images");
+	KASSERT(buffering > Buffering::eNone, "Insufficient buffering");
 	if ((s64)buffering - (s64)images > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
 	if (buffering < Buffering::eDouble) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
 }

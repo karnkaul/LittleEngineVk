@@ -1,4 +1,5 @@
 #include <ktl/enumerate.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/engine/assets/asset_converters.hpp>
 #include <levk/engine/assets/asset_manifest.hpp>
 #include <levk/engine/assets/asset_monitor.hpp>
@@ -32,7 +33,7 @@ template <>
 			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
 			return rel;
 		}
-		ENSURE(false, "Failed to compile GLSL");
+		KASSERT(false, "Failed to compile GLSL");
 	}
 	// compile Release shader too
 	graphics::utils::compileGlsl(media.fullPath(glsl), {}, {}, false);

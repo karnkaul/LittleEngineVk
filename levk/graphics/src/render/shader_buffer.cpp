@@ -1,3 +1,4 @@
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <levk/graphics/render/shader_buffer.hpp>
 
@@ -14,8 +15,8 @@ ShaderBuffer& ShaderBuffer::write(void const* data, std::size_t size, std::size_
 }
 
 ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) const {
-	ENSURE(valid(), "Invalid ShaderBuffer instance");
-	ENSURE(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty buffer!");
+	KASSERT(valid(), "Invalid ShaderBuffer instance");
+	KASSERT(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty shader buffer!");
 	if (m_storage.buffers.size() > 1) {
 		std::vector<DescriptorSet::Buf> bufs;
 		bufs.reserve(m_storage.buffers.size());
@@ -36,7 +37,7 @@ ShaderBuffer& ShaderBuffer::rotate() {
 }
 
 void ShaderBuffer::resize(std::size_t size, std::size_t count) {
-	ENSURE(valid(), "Invalid ShaderBuffer instance");
+	KASSERT(valid(), "Invalid ShaderBuffer instance");
 	if (size != m_storage.elemSize || count != m_storage.buffers.size()) {
 		m_storage.elemSize = size;
 		m_storage.buffers.clear();

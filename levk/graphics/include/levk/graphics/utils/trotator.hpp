@@ -1,5 +1,5 @@
 #pragma once
-#include <levk/core/utils/error.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <vector>
 
 namespace le {
@@ -30,12 +30,12 @@ void TRotator<T>::emplace(U&&... u) {
 }
 template <typename T>
 typename TRotator<T>::type& TRotator<T>::get() {
-	ENSURE(!ts.empty(), "Empty buffer");
+	KASSERT(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>
 typename TRotator<T>::type const& TRotator<T>::get() const {
-	ENSURE(!ts.empty(), "Empty buffer");
+	KASSERT(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>

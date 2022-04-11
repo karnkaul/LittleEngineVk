@@ -1,3 +1,4 @@
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/graphics/command_buffer.hpp>
 #include <levk/graphics/device/device.hpp>
 #include <levk/graphics/mesh_primitive.hpp>
@@ -50,12 +51,11 @@ void MeshPrimitive::exchg(MeshPrimitive& lhs, MeshPrimitive& rhs) noexcept {
 MeshPrimitive::Storage MeshPrimitive::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
 	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
-	ENSURE(ret.buffer.has_value(), "Invalid buffer");
 	if (m_type == Type::eStatic) {
 		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
 	} else {
-		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
-		ENSURE(bRes, "Write failure");
+		[[maybe_unused]] bool const res = ret.buffer->write(pData, size);
+		KASSERT(res, "Buffer write failure");
 	}
 	return ret;
 }

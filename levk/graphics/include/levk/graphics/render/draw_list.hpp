@@ -16,7 +16,12 @@ class DrawList {
 
 	DrawList& push(Span<DrawPrimitive const> primitives, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
 	template <DrawPrimitiveAPI T>
-	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {});
+	DrawList& add(T const& t, glm::mat4 matrix = glm::mat4(1.0f), std::optional<vk::Rect2D> scissor = {}) {
+		auto const start = m_drawPrimitives.size();
+		m_drawPrimitives.reserve(start + size(t));
+		AddDrawPrimitives<T>{}(t, PrimitveInserter{&m_drawPrimitives});
+		return push(start, matrix, scissor);
+	}
 
 	std::size_t size() const noexcept { return m_entries.size(); }
 	void clear() noexcept;
@@ -44,7 +49,21 @@ class DrawList {
 		std::optional<std::size_t> scissor{};
 	};
 
-	struct PrimitveInserter;
+	struct PrimitveInserter {
+		using value_type = void;
+		using difference_type = std::ptrdiff_t;
+
+		std::vector<DrawPrimitive>* primitives{};
+
+		PrimitveInserter& operator=(DrawPrimitive dp) {
+			if (dp) { primitives->push_back(std::move(dp)); }
+			return *this;
+		}
+
+		PrimitveInserter& operator*() { return *this; }
+		PrimitveInserter& operator++() { return *this; }
+		PrimitveInserter& operator++(int) { return *this; }
+	};
 
 	std::vector<glm::mat4> m_matrices{};
 	std::vector<DrawPrimitive> m_drawPrimitives{};
@@ -86,30 +105,4 @@ class DrawList::iterator {
 
 	friend class DrawList;
 };
-
-// impl
-
-struct DrawList::PrimitveInserter {
-	using value_type = void;
-	using difference_type = std::ptrdiff_t;
-
-	std::vector<DrawPrimitive>* primitives{};
-
-	PrimitveInserter& operator=(DrawPrimitive dp) {
-		if (dp) { primitives->push_back(std::move(dp)); }
-		return *this;
-	}
-
-	PrimitveInserter& operator*() { return *this; }
-	PrimitveInserter& operator++() { return *this; }
-	PrimitveInserter& operator++(int) { return *this; }
-};
-
-template <graphics::DrawPrimitiveAPI T>
-DrawList& DrawList::add(T const& t, glm::mat4 matrix, std::optional<vk::Rect2D> scissor) {
-	auto const start = m_drawPrimitives.size();
-	m_drawPrimitives.reserve(start + size(t));
-	AddDrawPrimitives<T>{}(t, PrimitveInserter{&m_drawPrimitives});
-	return push(start, matrix, scissor);
-}
 } // namespace le::graphics

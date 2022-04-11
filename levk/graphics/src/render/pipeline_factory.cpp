@@ -1,9 +1,8 @@
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/render/context.hpp>
 #include <levk/graphics/render/pipeline_factory.hpp>
 #include <levk/graphics/utils/utils.hpp>
-
-#include <levk/core/services.hpp>
 
 namespace le::graphics {
 ShaderInput::ShaderInput(not_null<VRAM*> vram, PoolData data) : m_vram(vram) {
@@ -26,7 +25,8 @@ bool ShaderInput::contains(u32 set) const noexcept {
 
 DescriptorSet& ShaderInput::set(u32 set, std::size_t index) const {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.set(index); }
-	ENSURE(false, "Nonexistent set");
+	KASSERT(false, "Nonexistent set");
+	throw std::runtime_error("Nonexistent set");
 }
 
 void ShaderInput::rotate() {
@@ -74,7 +74,7 @@ Pipeline PipelineFactory::get(Spec const& spec, vk::RenderPass renderPass) {
 	auto pit = specMap.map.find(renderPass);
 	if (pit == specMap.map.end() || pit->second.stale) {
 		auto pipe = makePipe(specMap, renderPass);
-		ENSURE(pipe, "Failed to create pipeline");
+		KASSERT(pipe, "Failed to create pipeline");
 		auto [i, b] = specMap.map.insert_or_assign(renderPass, std::move(*pipe));
 		pit = i;
 	}

@@ -1,8 +1,7 @@
 #pragma once
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/std_types.hpp>
-#include <levk/core/utils/error.hpp>
-#include <levk/core/utils/expect.hpp>
 #include <cstdint>
 #include <typeindex>
 #include <unordered_map>
@@ -46,7 +45,8 @@ class Services final {
 	///
 	template <typename T>
 	[[nodiscard]] static not_null<T*> get() noexcept(false) {
-		ENSURE(exists<T>(), "Service not found");
+		[[maybe_unused]] bool const t_exists = exists<T>();
+		KASSERT(t_exists, "Service not found");
 		return find<T>();
 	}
 	///

@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/vec2.hpp>
 #include <levk/core/hash.hpp>
-#include <levk/core/utils/error.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/gameplay/gui/interact.hpp>
 #include <levk/graphics/material_data.hpp>
 #include <levk/graphics/rgba.hpp>
@@ -40,7 +40,7 @@ class Styles {
 	}
 
 	static Style& getOrInsert(Hash id) {
-		ENSURE(id != Hash(), "Invalid id");
+		KASSERT(id != Hash(), "Invalid id");
 		return s_map[id];
 	}
 

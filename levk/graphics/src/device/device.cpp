@@ -1,5 +1,6 @@
 #include <device/device_impl.hpp>
 #include <levk/core/build_version.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/maths.hpp>
 #include <levk/core/utils/data_store.hpp>
@@ -129,7 +130,7 @@ vkInst makeInstance(Device::CreateInfo const& info) {
 		using vktype = vk::DebugUtilsMessageTypeFlagBitsEXT;
 		createInfo.messageType = vktype::eGeneral | vktype::ePerformance | vktype::eValidation;
 		createInfo.pfnUserCallback = &validationCallback;
-		ENSURE(VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
+		KASSERT(VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT);
 		ret.messenger = ret.instance->createDebugUtilsMessengerEXTUnique(createInfo, nullptr);
 	}
 	logI(LC_LibUser, "[{}] Vulkan instance constructed", g_name);
@@ -279,7 +280,7 @@ void Device::waitIdle() {
 
 vk::UniqueSurfaceKHR Device::makeSurface() const {
 	auto ret = m_makeSurface(*m_instance);
-	ENSURE(valid(ret), "Invalid surface");
+	KASSERT(valid(ret), "Invalid surface");
 	return vk::UniqueSurfaceKHR(ret, *m_instance);
 }
 
@@ -306,7 +307,7 @@ bool Device::isBusy(vk::Fence fence) const {
 void Device::waitFor(Span<vk::Fence const> fences, stdch::nanoseconds const wait) const {
 	if constexpr (levk_debug) {
 		auto const result = m_device->waitForFences(u32(fences.size()), fences.data(), true, static_cast<u64>(wait.count()));
-		ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+		KASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 	} else {
 		m_device->waitForFences(u32(fences.size()), fences.data(), true, maths::max<u64>());
 	}
@@ -366,7 +367,7 @@ vk::DescriptorSetLayout Device::makeDescriptorSetLayout(vAP<vk::DescriptorSetLay
 
 vk::DescriptorPool Device::makeDescriptorPool(Span<vk::DescriptorPoolSize const> poolSizes, u32 maxSets) const {
 	vk::DescriptorPoolCreateInfo createInfo;
-	createInfo.poolSizeCount = poolSizes.size();
+	createInfo.poolSizeCount = static_cast<u32>(poolSizes.size());
 	createInfo.pPoolSizes = poolSizes.data();
 	createInfo.maxSets = maxSets;
 	return m_device->createDescriptorPool(createInfo);
@@ -382,7 +383,7 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 
 vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers) const {
 	vk::FramebufferCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)attachments.size();
+	createInfo.attachmentCount = static_cast<u32>(attachments.size());
 	createInfo.pAttachments = attachments.data();
 	createInfo.renderPass = renderPass;
 	createInfo.width = extent.width;

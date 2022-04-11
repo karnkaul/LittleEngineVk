@@ -2,6 +2,7 @@
 #include <levk/core/build_version.hpp>
 #include <levk/core/io.hpp>
 #include <levk/core/io/zip_media.hpp>
+#include <levk/core/kassert/assert_instance.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/services.hpp>
 #include <levk/core/utils/data_store.hpp>
@@ -21,11 +22,6 @@
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
-
-#include <levk/core/kassert/assert_instance.hpp>
-#include <levk/core/utils/error.hpp>
-#include <levk/engine/utils/error_handler.hpp>
-#include <filesystem>
 
 namespace le {
 namespace {
@@ -66,7 +62,7 @@ graphics::Device::MakeSurface makeSurface(window::Window const& winst) {
 
 graphics::RenderContext::GetSpirV getShader(AssetStore const& store) {
 	return [&store](Hash uri) {
-		ENSURE(store.exists<graphics::SpirV>(uri), "Shader doesn't exist");
+		KASSERT(store.exists<graphics::SpirV>(uri), "Shader doesn't exist");
 		return *store.find<graphics::SpirV>(uri);
 	};
 }
@@ -92,9 +88,9 @@ struct Delegates {
 };
 
 struct AssertSaver : AssertRecorder<> {
-	inline static std::string path = "assertions.txt";
+	inline static io::Path path = "assertions.txt";
 
-	static void deleteFile() { std::filesystem::remove(path); }
+	static void deleteFile() { io::remove(path); }
 
 	~AssertSaver() override {
 		auto lock = ktl::klock(records);
@@ -110,9 +106,10 @@ struct AssertSaver : AssertRecorder<> {
 				assertions.push_back(std::move(ass));
 			}
 			dj::json root;
+			auto const pathStr = path.generic_string();
 			root.insert("assertions", std::move(assertions));
-			root.save(path, dj::serial_opts_t{.sort_keys = true});
-			logI("[Engine] {} assertion(s) recorded and saved to {}", lock->size(), path);
+			root.save(pathStr, dj::serial_opts_t{.sort_keys = true});
+			logI("[Engine] {} assertion(s) recorded and saved to {}", lock->size(), pathStr);
 		}
 	}
 };
@@ -135,7 +132,6 @@ struct Engine::Impl {
 	ProfilerRecord profiler;
 	time::Point lastPoll{};
 	utils::EngineStats::Counter stats;
-	utils::ErrorHandler errorHandler;
 	AssertInstance assertInstance;
 	Service service;
 	io::Path configPath;
@@ -289,9 +285,7 @@ std::optional<Engine> Engine::Builder::operator()() {
 	}
 	AssertSaver::deleteFile();
 	impl->assertInstance.setHandler(ktl::make_unique<AssertSaver>());
-	impl->errorHandler.deleteFile();
 	impl->configPath = std::move(m_configPath);
-	if (!impl->errorHandler.activeHandler()) { impl->errorHandler.setActive(); }
 	std::vector<bytearray> iconBytes;
 	std::vector<graphics::utils::STBImg> icons;
 	iconBytes.reserve(m_iconURIs.size());
@@ -338,7 +332,7 @@ Engine::VRAM& Engine::Service::vram() const noexcept { return *m_impl->gfx->vram
 Engine::Context& Engine::Service::context() const noexcept { return m_impl->gfx->context; }
 Engine::Renderer& Engine::Service::renderer() const { return m_impl->gfx->context.renderer(); }
 Engine::Window& Engine::Service::window() const {
-	ENSURE(m_impl->win.has_value(), "Not booted");
+	KASSERT(m_impl->win, "Not booted");
 	return *m_impl->win;
 }
 input::Frame const& Engine::Service::inputFrame() const noexcept { return m_impl->inputFrame; }

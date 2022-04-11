@@ -7,7 +7,6 @@
 #include <ktl/stack_string.hpp>
 #include <levk/core/colour.hpp>
 #include <levk/core/span.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/gameplay/editor/scene_ref.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>

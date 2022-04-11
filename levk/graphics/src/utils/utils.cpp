@@ -1,6 +1,7 @@
 #include <stb/stb_image.h>
 #include <ktl/enumerate.hpp>
 #include <ktl/stack_string.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/log.hpp>
 #include <levk/core/log_channel.hpp>
 #include <levk/core/maths.hpp>
@@ -192,7 +193,7 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
 				bindInfo.binding.descriptorType = {};
 			}
-			ENSURE(binds.has_space(), "Max descriptor sets exceeded");
+			KASSERT(binds.has_space(), "Max descriptor sets exceeded");
 			binds.push_back(bindInfo);
 		}
 	}
@@ -345,7 +346,7 @@ void utils::append(BmpBytes& out, Colour pixel) {
 }
 
 utils::STBImg::STBImg(ImageData compressed, u8 channels) {
-	ENSURE(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
+	KASSERT(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);

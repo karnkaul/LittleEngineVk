@@ -2,8 +2,8 @@
 #include <glm/vec2.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <levk/core/hash.hpp>
+#include <levk/core/kassert/kassert.hpp>
 #include <levk/core/not_null.hpp>
-#include <levk/core/utils/error.hpp>
 #include <levk/graphics/common.hpp>
 #include <levk/graphics/qtype.hpp>
 #include <atomic>
@@ -73,7 +73,7 @@ class CommandBuffer {
 
 template <typename T>
 void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const {
-	ENSURE(rendering(), "Command buffer not recording!");
+	KASSERT(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
 } // namespace le::graphics

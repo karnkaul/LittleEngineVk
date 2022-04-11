@@ -6,7 +6,7 @@
 #define KASSERT_MSG(pred, msg)                                                                                                                                 \
 	do {                                                                                                                                                       \
 		if (!(pred)) {                                                                                                                                         \
-			auto const ctx = ::le::AssertData<>{#pred, msg, ::le::SrcLoc::current()};                                                                          \
+			auto const ctx = ::le::AssertData<>{#pred, msg, LE_MAKE_SRC_LOC()};                                                                                \
 			::le::kassertNotify(ctx);                                                                                                                          \
 			DEBUG_TRAP();                                                                                                                                      \
 			::le::kassertTrigger(ctx);                                                                                                                         \
@@ -15,8 +15,8 @@
 
 #define KASSERT_NOMSG(pred) KASSERT_MSG(pred, "")
 
-#define KASSERT_RESOLVE(_1, _2, NAME, ...) NAME
-#define KASSERT(...) KASSERT_RESOLVE(__VA_ARGS__, KASSERT_MSG, KASSERT_NOMSG)(__VA_ARGS__)
+#define KASSERT_RESOLVE_OVERLOAD(_1, _2, NAME, ...) NAME
+#define KASSERT(...) KASSERT_RESOLVE_OVERLOAD(__VA_ARGS__, KASSERT_MSG, KASSERT_NOMSG)(__VA_ARGS__)
 
 namespace le {
 template <typename Text = std::string_view>

@@ -1,10 +1,10 @@
 #include <device/device_impl.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/graphics/font/face.hpp>
-#include <unordered_map>
 
 namespace le::graphics {
-using SlotMap = std::unordered_map<Codepoint, FontFace::Slot, std::hash<Codepoint::type>>;
+using SlotMap = ktl::hash_table<Codepoint, FontFace::Slot, std::hash<Codepoint::type>>;
 
 namespace {
 FontFace::Slot makeSlot(FTFace const face, Codepoint const cp) noexcept {

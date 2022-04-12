@@ -1,4 +1,5 @@
 #include <ktl/async/kthread.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/io/path.hpp>
 #include <levk/core/log.hpp>
 #include <levk/core/maths.hpp>
@@ -8,13 +9,12 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <unordered_map>
 
 namespace le::utils {
 namespace {
 std::string randomPath(std::string_view prefix, std::string_view ext) { return fmt::format("{}_{}.{}", prefix, maths::randomRange(1000, 9999), ext); }
 
-std::unordered_map<std::string_view, ktl::fixed_vector<int, 8>> const g_successCodeMap = {
+ktl::hash_table<std::string_view, ktl::fixed_vector<int, 8>> const g_successCodeMap = {
 	{"explorer", {0, 1}},
 };
 

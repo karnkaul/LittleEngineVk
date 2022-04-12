@@ -24,8 +24,8 @@ struct AssetManifest {
 	class Parser;
 
 	using Metadata = dj::ptr<dj::json>;
-	using Group = std::unordered_map<std::string, Metadata>;
-	using List = std::unordered_map<std::string, Group>;
+	using Group = ktl::hash_table<std::string, Metadata>;
+	using List = ktl::hash_table<std::string, Group>;
 
 	List list;
 

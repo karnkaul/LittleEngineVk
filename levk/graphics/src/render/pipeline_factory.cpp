@@ -30,7 +30,7 @@ DescriptorSet& ShaderInput::set(u32 set, std::size_t index) const {
 }
 
 void ShaderInput::rotate() {
-	for (auto& [_, pool] : m_setPools) { pool.rotate(); }
+	for (auto [_, pool] : m_setPools) { pool.rotate(); }
 }
 
 std::size_t PipelineFactory::Hasher::operator()(Spec const& spec) const {
@@ -93,7 +93,7 @@ PipelineSpec const* PipelineFactory::find(Hash spec) const {
 
 std::size_t PipelineFactory::markStale(Hash shaderURI) {
 	std::size_t ret{};
-	for (auto& [_, specMap] : m_storage) {
+	for (auto [_, specMap] : m_storage) {
 		for (Hash const uri : specMap.spec.shader.moduleURIs) {
 			if (uri == shaderURI) {
 				specMap.map.clear();						  // destroy pipelines

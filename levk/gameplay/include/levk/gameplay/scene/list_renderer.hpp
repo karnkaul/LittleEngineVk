@@ -22,7 +22,7 @@ class ListRenderer {
 	using PipelineFactory = graphics::PipelineFactory;
 	using Pipeline = graphics::Pipeline;
 	using RenderPass = graphics::RenderPass;
-	using RenderMap = std::unordered_map<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
+	using RenderMap = ktl::hash_table<RenderPipeline, graphics::DrawList, RenderPipeline::Hasher>;
 	using Primitive = graphics::DrawPrimitive;
 	using MatTexType = graphics::MatTexType;
 	using PipeSet = std::unordered_set<Pipeline, PipeHasher>;

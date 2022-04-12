@@ -9,24 +9,24 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_XYZW_ONLY GLM_FORCE_
 target_compile_definitions(${PROJECT_NAME} PUBLIC KTL_FIXED_ANY_THROW)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
-    src
-    "${CMAKE_CURRENT_BINARY_DIR}/include"
+  src
+  "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    glm
-    ktl::ktl
-    dlog::dlog
-    dtasks::dtasks
-    djson::djson
-    levk::levk-build-interface
+  glm
+  ktl::ktl
+  dlog::dlog
+  dtasks::dtasks
+  djson::djson
+  levk::levk-build-interface
   PRIVATE
-    levk::levk-compile-options
-    physfs-static
+  levk::levk-compile-options
+  physfs-static
 )
 include(core_includes.cmake)
 add_subdirectory(src)
@@ -38,12 +38,16 @@ source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${version_file})
 
 # PCH
 if(LEVK_USE_PCH)
-  set(PRECOMPILE
+  target_precompile_headers(${PROJECT_NAME}
+    PUBLIC
     <string>
     <unordered_map>
     <vector>
+
+    <ktl/fixed_vector.hpp>
+    <ktl/hash_table.hpp>
+    <ktl/kunique_ptr.hpp>
   )
-  target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
 endif()
 
 if(LEVK_INSTALL)

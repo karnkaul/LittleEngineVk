@@ -14,7 +14,7 @@ class ShaderBufferMap {
 	void rotate();
 
   private:
-	std::unordered_map<Hash, Buffer> m_shaderBuffers;
+	ktl::hash_table<Hash, Buffer> m_shaderBuffers;
 	Engine::Service m_engine;
 	graphics::Buffering m_buffering = graphics::Buffering::eDouble;
 };

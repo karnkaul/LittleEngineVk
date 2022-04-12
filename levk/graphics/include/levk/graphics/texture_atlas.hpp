@@ -1,4 +1,5 @@
 #pragma once
+#include <ktl/hash_table.hpp>
 #include <levk/graphics/geometry.hpp>
 #include <levk/graphics/texture.hpp>
 
@@ -31,7 +32,7 @@ class TextureAtlas {
 		Extent2D offset{};
 	};
 	struct {
-		std::unordered_map<ID, Entry> entries;
+		ktl::hash_table<ID, Entry> entries;
 		Extent2D head{};
 		u32 rowHeight = 0;
 	} m_data;

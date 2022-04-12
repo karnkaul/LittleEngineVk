@@ -29,7 +29,7 @@ class SceneManager {
 		std::string id;
 		std::unique_ptr<Scene> scene;
 	};
-	std::unordered_map<Hash, Entry> m_scenes;
+	ktl::hash_table<Hash, Entry> m_scenes;
 	ShaderBufferMap m_shaderBufferMap;
 	Engine::Service m_engine;
 	Ptr<Entry> m_active{};

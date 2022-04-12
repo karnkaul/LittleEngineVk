@@ -7,9 +7,9 @@
 #include <GLFW/glfw3.h>
 #include <event_builder.hpp>
 #include <ktl/fixed_any.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/utils/unique.hpp>
-#include <unordered_map>
 
 namespace le::window {
 struct Cursor {
@@ -18,7 +18,7 @@ struct Cursor {
 };
 
 #if defined(LEVK_USE_GLFW)
-inline std::unordered_map<GLFWwindow*, not_null<Window::Impl*>> g_impls;
+inline ktl::hash_table<GLFWwindow*, not_null<Window::Impl*>> g_impls;
 #endif
 
 struct GlfwInst {

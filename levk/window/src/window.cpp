@@ -2,7 +2,6 @@
 #include <ktl/enum_flags/bitflags.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/window/window.hpp>
-#include <unordered_map>
 
 #if defined(LEVK_USE_GLFW)
 #include <ktl/fixed_any.hpp>

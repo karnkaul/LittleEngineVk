@@ -25,7 +25,7 @@ class FontAtlas {
 
   private:
 	TextureAtlas m_atlas;
-	std::unordered_map<Codepoint, Glyph, std::hash<Codepoint::type>> m_glyphs;
+	ktl::hash_table<Codepoint, Glyph, std::hash<Codepoint::type>> m_glyphs;
 	FontFace m_face;
 	not_null<VRAM*> m_vram;
 };

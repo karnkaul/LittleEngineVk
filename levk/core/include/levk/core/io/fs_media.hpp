@@ -11,11 +11,10 @@ class FSMedia final : public Media {
 
 	///
 	/// \brief Obtain full path to directory containing any of anyOf sub-paths.
-	/// \param leaf directory to start searching upwards from
+	/// \param path to start searching upwards from
 	/// \param anyOf list of sub-paths to match against
-	/// \param maxHeight maximum recursive depth
 	///
-	static std::optional<Path> findUpwards(Path const& leaf, Span<Path const> anyOf, u8 maxHeight = 10);
+	static Path findUpwards(Path path, Span<Path const> anyOf);
 
 	Info const& info() const noexcept override { return info_v; }
 

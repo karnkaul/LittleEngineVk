@@ -1,5 +1,6 @@
 #pragma once
 #include <dens/detail/sign.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/utils/expect.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/gameplay/editor/inspect.hpp>
@@ -52,7 +53,7 @@ class Inspector {
 		bool inspect(std::string_view id, dens::entity entity, dens::registry& registry, AssetStore const& store, gui::TreeRoot* tree) const override;
 	};
 
-	using GadgetMap = std::unordered_map<std::string, std::unique_ptr<GadgetBase>>;
+	using GadgetMap = ktl::hash_table<std::string, std::unique_ptr<GadgetBase>>;
 	inline static GadgetMap s_gadgets;
 	inline static GadgetMap s_guiGadgets;
 	friend class Sudo;

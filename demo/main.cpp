@@ -24,11 +24,11 @@ int main(int argc, char const* const argv[]) {
 	// 	}
 	// }
 	auto data = env::findData("demo/data");
-	if (!data) {
+	if (data.empty()) {
 		logE("FATAL: Failed to locate data!");
 		return 1;
 	}
 	io::FSMedia media;
-	media.mount(std::move(*data));
-	return demo::run(media) ? EXIT_SUCCESS : EXIT_FAILURE;
+	media.mount(std::move(data));
+	return env::exitCode(demo::run(media));
 }

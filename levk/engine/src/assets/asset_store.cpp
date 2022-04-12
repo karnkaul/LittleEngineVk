@@ -18,7 +18,7 @@ void AssetStore::clear() { ktl::klock(m_assets)->clear(); }
 
 AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view filter) const {
 	ktl::klock lock(m_assets);
-	std::unordered_map<Sign, std::vector<Base*>, std::hash<Sign::type>> mapped;
+	ktl::hash_table<Sign, std::vector<Base*>, std::hash<Sign::type>> mapped;
 	for (auto const& [hash, asset] : *lock) {
 		EXPECT(asset);
 		if (!filter.empty() && asset->uri.find(filter) == std::string_view::npos) { continue; }
@@ -27,7 +27,7 @@ AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view fil
 	}
 	Index ret;
 	ret.maps.reserve(mapped.size());
-	for (auto& [sign, assets] : mapped) {
+	for (auto const [sign, assets] : mapped) {
 		Index::Map map;
 		map.type = Index::Type{assets[0]->typeName, assets[0]->sign};
 		map.uris.reserve(assets.size());

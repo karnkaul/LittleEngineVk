@@ -1,11 +1,11 @@
 #pragma once
 #include <glm/vec2.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/core/kassert/kassert.hpp>
 #include <levk/gameplay/gui/interact.hpp>
 #include <levk/graphics/material_data.hpp>
 #include <levk/graphics/rgba.hpp>
-#include <unordered_map>
 
 namespace le::gui {
 struct TextStyle {
@@ -47,7 +47,7 @@ class Styles {
 	static Style& getDefault() noexcept { return s_default; }
 
   private:
-	inline static std::unordered_map<Hash, Style> s_map;
+	inline static ktl::hash_table<Hash, Style> s_map;
 	inline static Style s_default;
 };
 

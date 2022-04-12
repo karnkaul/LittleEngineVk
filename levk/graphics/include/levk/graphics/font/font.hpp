@@ -44,7 +44,7 @@ class Font {
   private:
 	bool load(FontAtlas& out, Height size);
 
-	std::unordered_map<Height, FontAtlas> m_atlases;
+	ktl::hash_table<Height, FontAtlas> m_atlases;
 	Info m_info;
 };
 

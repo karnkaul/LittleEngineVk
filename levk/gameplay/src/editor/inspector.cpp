@@ -123,7 +123,7 @@ void Inspector::clear() {
 void Inspector::attach(dens::entity entity, dens::registry& reg, AssetStore const& store) {
 	std::vector<GadgetMap::const_iterator> attachable;
 	attachable.reserve(s_gadgets.size());
-	for (auto it = s_gadgets.cbegin(); it != s_gadgets.cend(); ++it) {
+	for (auto it = s_gadgets.begin(); it != s_gadgets.end(); ++it) {
 		auto const& [id, gadget] = *it;
 		if (!gadget->inspect(id, entity, reg, store, {}) && gadget->attachable()) { attachable.push_back(it); }
 	}

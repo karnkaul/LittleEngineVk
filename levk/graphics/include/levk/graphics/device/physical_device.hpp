@@ -22,7 +22,7 @@ struct PhysicalDevice {
 	std::string toString() const;
 
   private:
-	mutable std::unordered_map<vk::Format, BlitCaps> m_blitCaps;
+	mutable ktl::hash_table<vk::Format, BlitCaps> m_blitCaps;
 };
 
 std::ostream& operator<<(std::ostream& out, PhysicalDevice const& device);

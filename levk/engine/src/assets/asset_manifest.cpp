@@ -325,7 +325,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t samplers(Group const& group) const {
 		using namespace graphics;
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			if (json->contains("min") && json->contains("mag")) {
 				add(order<Sampler>(), std::move(uri), Sampler(&m_engine.device(), samplerInfo(json)));
 				++ret;
@@ -336,7 +336,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t spirV(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			enqueue(order<graphics::SpirV>(), spirVFunc(std::move(uri), m_engine, json));
 			++ret;
 		}
@@ -345,7 +345,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t renderLayers(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			auto const rs = io::fromJson<RenderLayer>(*json);
 			add(order<RenderLayer>(), std::move(uri), rs);
 			++ret;
@@ -355,7 +355,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t textures(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			enqueue(order<graphics::Texture>(), textureFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -364,7 +364,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t renderPipelines(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			auto layer = json->get_as<std::string>("layer");
 			auto shaders = json->get_as<std::vector<std::string>>("shaders");
 			if (!layer.empty() && !shaders.empty()) {
@@ -377,7 +377,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t materials(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			if (json->get_as<std::string_view>("type") == "pbr") {
 				enqueue(order<graphics::PBRMaterialData>(), pbrMaterialFunc(m_engine, std::move(uri), json));
 			} else {
@@ -390,7 +390,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t textureRefs(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			enqueue(order<TextureRefs>(), textureRefsFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -399,7 +399,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t fonts(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			enqueue(order<graphics::Font>(), fontFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -408,7 +408,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t skyboxes(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			if (auto cubemap = json->find_as<std::string>("cubemap")) {
 				enqueue(depend<graphics::Texture>(), skyboxFunc(m_engine, std::move(uri), std::move(*cubemap)));
 				++ret;
@@ -419,7 +419,7 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t meshes(Group const& group) const {
 		std::size_t ret{};
-		for (auto& [uri, json] : group) {
+		for (auto [uri, json] : group) {
 			enqueue(order<graphics::Mesh>(), objMeshFunc(m_engine, std::move(uri), json));
 			++ret;
 		}
@@ -441,7 +441,7 @@ std::size_t loaded(Engine::Service engine, AssetManifest const& manifest) {
 void AssetManifest::Parser::enqueue(Order order, dts::task_t task) const { (*m_stages)[order].push_back(std::move(task)); }
 
 AssetManifest& AssetManifest::include(List add) {
-	for (auto& [uri, group] : add) { list.insert_or_assign(std::move(uri), std::move(group)); }
+	for (auto [uri, group] : add) { list.insert_or_assign(std::move(uri), std::move(group)); }
 	return *this;
 }
 
@@ -455,9 +455,9 @@ AssetManifest::List AssetManifest::populate(dj::json const& root) {
 	for (auto& [name, entries] : root.as<dj::map_t>()) {
 		Group group;
 		for (auto& json : entries->as<dj::vec_t>()) {
-			if (auto uri = json->find_as<std::string>("uri")) { group.insert({std::move(*uri), std::move(json)}); }
+			if (auto uri = json->find_as<std::string>("uri")) { group.insert_or_assign(std::move(*uri), std::move(json)); }
 			if (group.empty()) {
-				for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert({std::move(uri), std::make_shared<dj::json>()}); }
+				for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert_or_assign(std::move(uri), std::make_shared<dj::json>()); }
 			}
 		}
 		if (!group.empty()) { ret.emplace(std::move(name), std::move(group)); }

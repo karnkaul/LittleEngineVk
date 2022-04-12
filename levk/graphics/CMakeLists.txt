@@ -6,22 +6,22 @@ add_library(levk::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
-    src
+  src
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    dyvk::dyvk
-    spirv-cross-glsl
-    vma
-    levk::levk-core
+  dyvk::dyvk
+  spirv-cross-glsl
+  vma
+  levk::levk-core
   PRIVATE
-    levk::levk-compile-options
-    stb-image
-    tinyobjloader
-    freetype
+  levk::levk-compile-options
+  stb-image
+  tinyobjloader
+  freetype
 )
 
 include(graphics_includes.cmake)
@@ -32,13 +32,18 @@ target_source_group(TARGET ${PROJECT_NAME})
 if(LEVK_USE_PCH)
   target_precompile_headers(${PROJECT_NAME}
     PUBLIC
-      <string>
-      <unordered_map>
-      <vector>
-      <vulkan/vulkan.hpp>
+    <string>
+    <unordered_map>
+    <vector>
+    <vulkan/vulkan.hpp>
+
+    <ktl/fixed_vector.hpp>
+    <ktl/hash_table.hpp>
+    <ktl/kunique_ptr.hpp>
+
     PRIVATE
-      <stb/stb_image.h>
-      <tinyobjloader/tiny_obj_loader.h>
+    <stb/stb_image.h>
+    <tinyobjloader/tiny_obj_loader.h>
   )
 endif()
 

@@ -124,9 +124,5 @@ clap::parse_result env::init(int argc, char const* const argv[]) {
 	return clap::parse_args(spec, argc, argv);
 }
 
-std::optional<io::Path> env::findData(io::Path pattern, u8 maxHeight) {
-	auto data = io::FSMedia::findUpwards(os::environment().paths.bin(), pattern, maxHeight);
-	if (!data) { return std::nullopt; }
-	return std::move(data).value();
-}
+io::Path env::findData(io::Path pattern) { return io::FSMedia::findUpwards(os::environment().paths.bin(), pattern); }
 } // namespace le

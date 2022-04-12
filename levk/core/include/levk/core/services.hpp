@@ -1,10 +1,10 @@
 #pragma once
+#include <ktl/hash_table.hpp>
 #include <levk/core/kassert/kassert.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/core/std_types.hpp>
 #include <cstdint>
 #include <typeindex>
-#include <unordered_map>
 
 namespace le {
 ///
@@ -71,6 +71,6 @@ class Services final {
 		return std::type_index(typeid(T));
 	}
 
-	inline static std::unordered_map<id_t, void*> s_ts;
+	inline static ktl::hash_table<id_t, void*> s_ts;
 };
 } // namespace le

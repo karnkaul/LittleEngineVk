@@ -1,11 +1,11 @@
 #pragma once
 #include <ktl/async/kfunction.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/hash.hpp>
 #include <levk/graphics/render/descriptor_set.hpp>
 #include <levk/graphics/render/pipeline.hpp>
 #include <levk/graphics/render/pipeline_spec.hpp>
 #include <levk/graphics/utils/defer.hpp>
-#include <unordered_map>
 
 namespace le::graphics {
 // Manages multiple inputs for a shader via set numbers
@@ -23,7 +23,7 @@ class ShaderInput {
 	VRAM* m_vram{};
 
   private:
-	std::unordered_map<u32, DescriptorPool> m_setPools;
+	ktl::hash_table<u32, DescriptorPool> m_setPools;
 };
 
 struct ShaderInput::PoolData {
@@ -72,7 +72,7 @@ class PipelineFactory {
 		std::vector<Defer<vk::DescriptorSetLayout>> setLayouts;
 		std::vector<ktl::fixed_vector<vk::DescriptorSetLayoutBinding, max_bindings_v>> bindings;
 	};
-	using PassMap = std::unordered_map<vk::RenderPass, Pipe>;
+	using PassMap = ktl::hash_table<vk::RenderPass, Pipe>;
 	struct SpecMap {
 		PassMap map;
 		Spec spec;
@@ -83,7 +83,7 @@ class PipelineFactory {
 	Meta makeMeta(ShaderSpec const& shader) const;
 
 	using SpecHash = Hash;
-	std::unordered_map<SpecHash, SpecMap> m_storage;
+	ktl::hash_table<SpecHash, SpecMap> m_storage;
 	GetSpirV m_getSpirV;
 	not_null<VRAM*> m_vram;
 	Buffering m_buffering;

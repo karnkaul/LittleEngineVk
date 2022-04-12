@@ -1,5 +1,6 @@
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <dumb_json/json.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/io/media.hpp>
 #include <levk/graphics/mesh.hpp>
 
@@ -69,7 +70,7 @@ struct ObjMtlData {
 
 struct ObjMtlLoader {
 	template <typename Key, typename Value>
-	using UMap = std::unordered_map<Key, Value>;
+	using UMap = ktl::hash_table<Key, Value>;
 
 	not_null<VRAM*> vram;
 	io::Media const& media;
@@ -132,7 +133,7 @@ struct ObjMtlLoader {
 		Geometry ret;
 		ret.reserve((u32)attrib.vertices.size(), (u32)shape.mesh.indices.size());
 		UMap<std::size_t, u32> vertIndices;
-		vertIndices.reserve(shape.mesh.indices.size());
+		// vertIndices.reserve(shape.mesh.indices.size());
 		auto const fHash = [](Span<f32 const> fs) {
 			std::size_t ret{};
 			std::size_t offset{};
@@ -196,14 +197,14 @@ std::optional<Mesh> Mesh::fromObjMtl(io::Path const& jsonURI, io::Media const& m
 	}
 	ObjMtlLoader loader{vram, media, sampler, std::move(data.dir), data.origin, data.scale};
 	auto textures = loader.loadTextures(reader.GetMaterials());
-	std::unordered_map<Hash, std::size_t> indices;
-	for (auto& [hash, texture] : textures) {
+	ktl::hash_table<Hash, std::size_t> indices;
+	for (auto const [hash, texture] : textures) {
 		indices[hash] = ret.textures.size();
 		ret.textures.push_back(std::move(texture));
 	}
 	auto materials = loader.loadMaterials(reader.GetMaterials(), indices);
 	indices.clear();
-	for (auto& [hash, mat] : materials) {
+	for (auto const [hash, mat] : materials) {
 		indices[hash] = ret.materials.size();
 		ret.materials.push_back(std::move(mat));
 	}

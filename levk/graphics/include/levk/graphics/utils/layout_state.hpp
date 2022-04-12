@@ -1,8 +1,8 @@
 #pragma once
 #include <ktl/async/kmutex.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/graphics/common.hpp>
-#include <unordered_map>
 
 namespace le::graphics {
 using StageAccess = TPair<vk::PipelineStageFlags, vk::AccessFlags>;
@@ -41,6 +41,6 @@ class LayoutState {
 	void force(vk::Image image, vk::ImageLayout layout);
 
   private:
-	ktl::strict_tmutex<std::unordered_map<vk::Image, vk::ImageLayout>> m_map;
+	ktl::strict_tmutex<ktl::hash_table<vk::Image, vk::ImageLayout>> m_map;
 };
 } // namespace le::graphics

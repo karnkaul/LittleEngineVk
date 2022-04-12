@@ -14,7 +14,6 @@
 #include <memory>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 
 namespace le::graphics {
 struct QuickVertexInput;

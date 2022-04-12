@@ -1,10 +1,10 @@
 #pragma once
 #include <glm/vec2.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/hash_table.hpp>
 #include <levk/core/bitmap.hpp>
 #include <vulkan/vulkan.hpp>
 #include <string_view>
-#include <unordered_map>
 
 namespace le::graphics {
 enum class BlitFlag { eSrc, eDst, eLinearFilter };
@@ -59,7 +59,7 @@ constexpr vk::ShaderStageFlags c = vk::ShaderStageFlagBits::eCompute;
 
 constexpr std::string_view g_name = "Graphics";
 
-inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
+inline ktl::hash_table<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
 	{vk::Result::eErrorOutOfDeviceMemory, "OutOfDeviceMemory"},
 	{vk::Result::eSuccess, "Success"},

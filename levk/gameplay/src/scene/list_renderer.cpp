@@ -48,7 +48,7 @@ ListRenderer::PipeSet ListRenderer::render(RenderPass& out_rp, AssetStore const&
 	if (out_rp.commandBuffers().empty()) { return {}; }
 	std::vector<RenderList> drawLists;
 	drawLists.reserve(map.size());
-	for (auto& [rpipe, list] : map) {
+	for (auto [rpipe, list] : map) {
 		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass())) {
 			drawLists.push_back(RenderList{pipe, std::move(list), rpipe.layer.order});
 		}

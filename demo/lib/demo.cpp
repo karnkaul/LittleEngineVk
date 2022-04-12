@@ -646,7 +646,7 @@ class App : public input::Receiver, public Scene {
 
   private:
 	struct Data {
-		std::unordered_map<Hash, dens::entity> entities;
+		ktl::hash_table<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;

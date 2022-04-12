@@ -4,16 +4,18 @@
 #include <fstream>
 
 namespace le::io {
-std::optional<Path> FSMedia::findUpwards(Path const& leaf, Span<Path const> anyOf, u8 maxHeight) {
-	for (auto const& name : anyOf) {
-		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
-			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return ret / name;
+Path FSMedia::findUpwards(Path leaf, Span<Path const> anyOf) {
+	while (!leaf.empty()) {
+		for (auto const& name : anyOf) {
+			if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
+				auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
+				return ret / name;
+			}
 		}
+		leaf = leaf.parent_path();
+		if (leaf == leaf.parent_path()) { break; }
 	}
-	bool none = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (none) { return std::nullopt; }
-	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
+	return {};
 }
 
 Path FSMedia::fullPath(Path const& uri) const {

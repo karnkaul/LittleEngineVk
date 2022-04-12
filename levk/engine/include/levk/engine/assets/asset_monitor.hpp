@@ -24,7 +24,7 @@ class AssetMonitor {
 	template <typename T>
 	struct Monitor;
 
-	std::unordered_map<Hash, std::unique_ptr<Base>> m_monitors;
+	ktl::hash_table<Hash, std::unique_ptr<Base>> m_monitors;
 };
 
 // impl

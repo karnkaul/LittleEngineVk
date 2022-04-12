@@ -4,6 +4,7 @@
 #endif
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 #if defined(LEVK_DEBUG)
 inline constexpr bool levk_debug = true;

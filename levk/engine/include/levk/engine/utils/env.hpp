@@ -5,12 +5,15 @@
 #include <optional>
 
 namespace le::env {
+enum class ExitCode { eSuccess = 0, eFailure = 10 };
+
+constexpr int exitCode(bool result) { return result ? static_cast<int>(ExitCode::eSuccess) : static_cast<int>(ExitCode::eFailure); }
+
 clap::parse_result init(int argc, char const* const argv[]);
 
 ///
 /// \brief Obtain full path to directory containing pattern, traced from the executable path
 /// \param pattern sub-path to match against
-/// \param maxHeight maximum recursive depth
 ///
-std::optional<io::Path> findData(io::Path pattern = "data", u8 maxHeight = 10);
+io::Path findData(io::Path pattern = "data");
 } // namespace le::env

@@ -1,5 +1,5 @@
 #include <tinyobjloader/tiny_obj_loader.h>
-#include <dumb_json/json.hpp>
+#include <djson/json.hpp>
 #include <ktl/hash_table.hpp>
 #include <levk/core/io/media.hpp>
 #include <levk/graphics/mesh.hpp>
@@ -8,10 +8,11 @@ namespace le::graphics {
 namespace {
 glm::vec3 vec3(dj::json const& json, std::string const& id, glm::vec3 const& fallback = {}) {
 	glm::vec3 ret = fallback;
-	if (auto const& vec = json.find(id)) {
-		ret.x = vec->get_as<f32>("x");
-		ret.y = vec->get_as<f32>("y");
-		ret.z = vec->get_as<f32>("z");
+	if (json.contains(id)) {
+		auto vec = json[id];
+		ret.x = vec["x"].as_number<float>();
+		ret.y = vec["y"].as_number<float>();
+		ret.z = vec["z"].as_number<float>();
 	}
 	return ret;
 }
@@ -45,23 +46,23 @@ struct ObjMtlData {
 		if (jsonURI.empty()) { return {}; }
 		auto const jsonStr = media.string(jsonURI);
 		if (!jsonStr || jsonStr->empty()) { return {}; }
-		dj::json json;
+		auto json = dj::json{};
 		if (!json.read(*jsonStr)) { return {}; }
 		io::Path dir = jsonURI.parent_path();
 		ObjMtlData ret;
-		auto obj = json["obj"].as<std::string_view>();
+		auto obj = json["obj"].as_string_view();
 		if (obj.empty()) { return {}; }
 		auto objStr = media.string(dir / obj);
 		if (!objStr) { return {}; }
-		if (auto mtl = json.find_as<std::string_view>("mtl")) {
-			if (auto mtlStr = media.string(dir / *mtl)) { ret.mtl = std::move(*mtlStr); }
+		if (auto mtl = json["mtl"].as_string_view(); !mtl.empty()) {
+			if (auto mtlStr = media.string(dir / mtl)) { ret.mtl = std::move(*mtlStr); }
 		} else {
 			auto mtlStr = ret.obj.substr(0, ret.obj.find_last_of('.'));
 			mtlStr += ".mtl";
 			if (auto str = media.string(dir / mtlStr)) { ret.mtl = std::move(*str); }
 		}
 		ret.obj = std::move(*objStr);
-		ret.scale = json.get_as<float>("scale", 1.0f);
+		ret.scale = json["scale"].as_number<float>(1.0f);
 		ret.origin = vec3(json, "origin");
 		ret.dir = std::move(dir);
 		return ret;

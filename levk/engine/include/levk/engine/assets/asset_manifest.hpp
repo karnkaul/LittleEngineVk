@@ -1,6 +1,7 @@
 #pragma once
-#include <dumb_json/json.hpp>
+#include <djson/json.hpp>
 #include <dumb_tasks/executor.hpp>
+#include <levk/core/ref.hpp>
 #include <levk/engine/assets/asset_store.hpp>
 #include <levk/engine/engine.hpp>
 #include <levk/engine/render/texture_refs.hpp>
@@ -23,7 +24,7 @@ class Model;
 struct AssetManifest {
 	class Parser;
 
-	using Metadata = dj::ptr<dj::json>;
+	using Metadata = Ref<dj::json const>;
 	using Group = ktl::hash_table<std::string, Metadata>;
 	using List = ktl::hash_table<std::string, Group>;
 

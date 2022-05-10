@@ -66,13 +66,13 @@ graphics::ShaderType shaderTypeFromExt(io::Path const& extension) {
 	return graphics::ShaderType::eFragment;
 }
 
-vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
+vk::SamplerCreateInfo samplerInfo(dj::json const& json) {
 	graphics::TPair<vk::Filter> minMag;
-	minMag.first = (*json)["min"].as<std::string_view>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
-	minMag.second = (*json)["mag"].as<std::string_view>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
+	minMag.first = json["min"].as_string_view() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
+	minMag.second = json["mag"].as_string_view() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
 	vk::SamplerCreateInfo ret;
-	if (auto mipMode = json->find_as<std::string_view>("mip_mode")) {
-		auto const mm = *mipMode == "nearest" ? vk::SamplerMipmapMode::eNearest : vk::SamplerMipmapMode::eLinear;
+	if (auto mipMode = json["mip_mode"].as_string_view(); !mipMode.empty()) {
+		auto const mm = mipMode == "nearest" ? vk::SamplerMipmapMode::eNearest : vk::SamplerMipmapMode::eLinear;
 		ret = graphics::Sampler::info(minMag, mm);
 	} else {
 		ret = graphics::Sampler::info(minMag);
@@ -80,10 +80,10 @@ vk::SamplerCreateInfo samplerInfo(dj::ptr<dj::json> const& json) {
 	return ret;
 }
 
-ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::ptr<dj::json> const& json) {
+ktl::kfunction<void()> spirVFunc(std::string uri, Engine::Service engine, dj::json const& json) {
 	graphics::ShaderType shaderType{};
-	if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
-		shaderType = parseShaderType(type);
+	if (json.contains("type")) {
+		shaderType = parseShaderType(json["type"]);
 	} else {
 		shaderType = shaderTypeFromExt(io::Path(uri).extension());
 	}
@@ -138,17 +138,20 @@ bool constructCubemap(io::Path const& prefix, Span<std::string const> files, io:
 	return out.construct(cube);
 }
 
-ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
-	std::vector<std::string> files = json->get_as<std::vector<std::string>>("files");
-	if (files.empty()) {
-		if (auto file = json->find_as<std::string>("file")) {
-			files.push_back(std::move(*file));
+ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::json const& json) {
+	auto fjson = json["files"].as_array();
+	std::vector<std::string> files{};
+	if (fjson.empty()) {
+		if (json.contains("file")) {
+			files.push_back(json["file"]);
 		} else {
 			files.push_back(uri);
 		}
+	} else {
+		for (auto const& json : fjson) { files.push_back(json); }
 	}
-	Hash samplerURI = json->get_as<std::string>("sampler", "samplers/default");
-	io::Path prefix = json->get_as<std::string>("prefix");
+	Hash samplerURI = json["sampler"].as_string_view("samplers/default");
+	io::Path prefix = json["prefix"].as_string_view();
 	return [uri, samplerURI, prefix, files, engine]() {
 		auto sampler = engine.store().find<graphics::Sampler>(samplerURI);
 		if (!sampler) { return; }
@@ -186,16 +189,16 @@ ktl::kfunction<void()> textureFunc(Engine::Service engine, std::string uri, dj::
 	};
 }
 
-ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::json const& json) {
 	io::Path ttfURI;
-	if (auto file = json->find("file"); file && file->is_string()) {
-		ttfURI = file->as<std::string_view>();
+	if (json.contains("file")) {
+		ttfURI = json["file"].as_string();
 	} else {
 		io::Path path(uri);
 		ttfURI = path / path.filename() + ".ttf";
 	}
-	bool mipMaps = json->get_as<bool>("mip_maps", true);
-	auto height = graphics::Font::Height{json->get_as<u32>("height", u32(graphics::Font::Height::eDefault))};
+	bool mipMaps = json["mip_maps"].as_boolean(true);
+	auto height = graphics::Font::Height{json["height"].as<u32>(u32(graphics::Font::Height::eDefault))};
 	return [uri, ttfURI, mipMaps, height, engine] {
 		auto ttf = engine.store().media().bytes(ttfURI);
 		if (!ttf) { return; }
@@ -208,7 +211,9 @@ ktl::kfunction<void()> fontFunc(Engine::Service engine, std::string uri, dj::ptr
 	};
 }
 
-ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string uri, std::string layer, std::vector<std::string> shaders) {
+ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string uri, std::string layer, dj::array_view shjson) {
+	auto shaders = std::vector<std::string>{};
+	for (auto const& sh : shjson) { shaders.push_back(sh); }
 	return [e = engine, uri = std::move(uri), st = std::move(layer), sh = std::move(shaders)]() {
 		auto layer = e.store().find<RenderLayer>(st);
 		if (!layer) {
@@ -224,57 +229,57 @@ ktl::kfunction<void()> renderPipelineFunc(Engine::Service engine, std::string ur
 
 static graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
 	if (json.is_string()) {
-		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
+		if (auto str = json.as_string_view(); !str.empty() && str[0] == '#') { return Colour(str); }
 	} else if (json.contains("colour")) {
-		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
+		if (auto str = json["colour"].as_string_view(); !str.empty() && str[0] == '#') {
 			graphics::RGBA ret;
 			ret.colour = Colour(str);
-			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
+			ret.type = json["type"].as_string_view() == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
 			return ret;
 		}
 	}
 	return fallback;
 }
 
-ktl::kfunction<void()> bpMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+ktl::kfunction<void()> bpMaterialFunc(Engine::Service engine, std::string uri, dj::json const& json) {
 	graphics::BPMaterialData mat;
-	mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
-	mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
-	mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
-	mat.Tf = parseRGBA(json->get("Tf"), mat.Tf);
-	mat.Ns = json->get_as<f32>("Ns", mat.Ns);
-	mat.d = json->get_as<f32>("d", mat.d);
-	mat.illum = json->get_as<int>("illum", mat.illum);
+	mat.Ka = parseRGBA(json["Ka"], mat.Ka);
+	mat.Kd = parseRGBA(json["Kd"], mat.Kd);
+	mat.Ks = parseRGBA(json["Ks"], mat.Ks);
+	mat.Tf = parseRGBA(json["Tf"], mat.Tf);
+	mat.Ns = json["Ns"].as_number<f32>(mat.Ns);
+	mat.d = json["d"].as_number<f32>(mat.d);
+	mat.illum = json["illum"].as_number<s32>(mat.illum);
 	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
 }
 
-ktl::kfunction<void()> pbrMaterialFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+ktl::kfunction<void()> pbrMaterialFunc(Engine::Service engine, std::string uri, dj::json const& json) {
 	graphics::PBRMaterialData mat;
-	mat.alphaCutoff = json->get_as<f32>("alpha_cutoff", mat.alphaCutoff);
-	mat.baseColourFactor = parseRGBA(json->get("base_colour_factor"), mat.baseColourFactor);
-	mat.emissiveFactor = parseRGBA(json->get("emissive_factor"), mat.emissiveFactor);
-	mat.metallicFactor = json->get_as<f32>("metallic_factor", mat.metallicFactor);
-	mat.roughnessFactor = json->get_as<f32>("roughness_factor", mat.roughnessFactor);
-	if (auto mode = json->find_as<std::string_view>("mode")) {
-		if (*mode == "blend") {
+	mat.alphaCutoff = json["alpha_cutoff"].as_number<f32>(mat.alphaCutoff);
+	mat.baseColourFactor = parseRGBA(json["base_colour_factor"], mat.baseColourFactor);
+	mat.emissiveFactor = parseRGBA(json["emissive_factor"], mat.emissiveFactor);
+	mat.metallicFactor = json["metallic_factor"].as_number<f32>(mat.metallicFactor);
+	mat.roughnessFactor = json["roughness_factor"].as_number<f32>(mat.roughnessFactor);
+	if (auto mode = json["mode"].as_string_view(); !mode.empty()) {
+		if (mode == "blend") {
 			mat.mode = graphics::PBRMaterialData::Mode::eBlend;
-		} else if (*mode == "mask") {
+		} else if (mode == "mask") {
 			mat.mode = graphics::PBRMaterialData::Mode::eMask;
 		}
 	}
 	return [uri = std::move(uri), mat, engine] { engine.store().add(std::move(uri), mat); };
 }
 
-ktl::kfunction<void()> textureRefsFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
+ktl::kfunction<void()> textureRefsFunc(Engine::Service engine, std::string uri, dj::json const& json) {
 	TextureRefs texRefs;
-	texRefs.textures[graphics::MatTexType::eDiffuse] = json->get_as<std::string_view>("diffuse");
-	texRefs.textures[graphics::MatTexType::eSpecular] = json->get_as<std::string_view>("specular");
-	texRefs.textures[graphics::MatTexType::eAlpha] = json->get_as<std::string_view>("alpha");
-	texRefs.textures[graphics::MatTexType::eBump] = json->get_as<std::string_view>("bump");
-	texRefs.textures[graphics::MatTexType::eMetalRough] = json->get_as<std::string_view>("metal_rough");
-	texRefs.textures[graphics::MatTexType::eOcclusion] = json->get_as<std::string_view>("occlusion");
-	texRefs.textures[graphics::MatTexType::eNormal] = json->get_as<std::string_view>("normal");
-	texRefs.textures[graphics::MatTexType::eEmissive] = json->get_as<std::string_view>("emissive");
+	texRefs.textures[graphics::MatTexType::eDiffuse] = json["diffuse"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eSpecular] = json["specular"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eAlpha] = json["alpha"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eBump] = json["bump"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eMetalRough] = json["metal_rough"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eOcclusion] = json["occlusion"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eNormal] = json["normal"].as_string_view();
+	texRefs.textures[graphics::MatTexType::eEmissive] = json["emissive"].as_string_view();
 	return [uri = std::move(uri), texRefs, engine] { engine.store().add(std::move(uri), texRefs); };
 }
 
@@ -288,8 +293,8 @@ ktl::kfunction<void()> skyboxFunc(Engine::Service engine, std::string uri, std::
 	};
 }
 
-ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::ptr<dj::json> const& json) {
-	std::string meshJSON = json->get_as<std::string>("file");
+ktl::kfunction<void()> objMeshFunc(Engine::Service engine, std::string uri, dj::json const& json) {
+	std::string meshJSON = json["file"];
 	if (meshJSON.empty()) {
 		io::Path path = uri;
 		path /= path.filename();
@@ -326,7 +331,7 @@ struct DefaultParser : AssetManifest::Parser {
 		using namespace graphics;
 		std::size_t ret{};
 		for (auto [uri, json] : group) {
-			if (json->contains("min") && json->contains("mag")) {
+			if (json.get().contains("min") && json.get().contains("mag")) {
 				add(order<Sampler>(), std::move(uri), Sampler(&m_engine.device(), samplerInfo(json)));
 				++ret;
 			}
@@ -336,7 +341,9 @@ struct DefaultParser : AssetManifest::Parser {
 
 	std::size_t spirV(Group const& group) const {
 		std::size_t ret{};
+		logI("Enqueuing shaders:");
 		for (auto [uri, json] : group) {
+			logI("{}", uri);
 			enqueue(order<graphics::SpirV>(), spirVFunc(std::move(uri), m_engine, json));
 			++ret;
 		}
@@ -346,7 +353,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t renderLayers(Group const& group) const {
 		std::size_t ret{};
 		for (auto [uri, json] : group) {
-			auto const rs = io::fromJson<RenderLayer>(*json);
+			auto const rs = io::fromJson<RenderLayer>(json);
 			add(order<RenderLayer>(), std::move(uri), rs);
 			++ret;
 		}
@@ -365,8 +372,8 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t renderPipelines(Group const& group) const {
 		std::size_t ret{};
 		for (auto [uri, json] : group) {
-			auto layer = json->get_as<std::string>("layer");
-			auto shaders = json->get_as<std::vector<std::string>>("shaders");
+			auto layer = json.get()["layer"].as_string();
+			auto shaders = json.get()["shaders"].as_array();
 			if (!layer.empty() && !shaders.empty()) {
 				enqueue(order<RenderPipeline>(), renderPipelineFunc(m_engine, std::move(uri), std::move(layer), std::move(shaders)));
 				++ret;
@@ -378,7 +385,7 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t materials(Group const& group) const {
 		std::size_t ret{};
 		for (auto [uri, json] : group) {
-			if (json->get_as<std::string_view>("type") == "pbr") {
+			if (json.get()["type"] == "pbr"sv) {
 				enqueue(order<graphics::PBRMaterialData>(), pbrMaterialFunc(m_engine, std::move(uri), json));
 			} else {
 				enqueue(order<graphics::BPMaterialData>(), bpMaterialFunc(m_engine, std::move(uri), json));
@@ -409,8 +416,8 @@ struct DefaultParser : AssetManifest::Parser {
 	std::size_t skyboxes(Group const& group) const {
 		std::size_t ret{};
 		for (auto [uri, json] : group) {
-			if (auto cubemap = json->find_as<std::string>("cubemap")) {
-				enqueue(depend<graphics::Texture>(), skyboxFunc(m_engine, std::move(uri), std::move(*cubemap)));
+			if (auto cubemap = json.get()["cubemap"].as_string(); !cubemap.empty()) {
+				enqueue(depend<graphics::Texture>(), skyboxFunc(m_engine, std::move(uri), std::move(cubemap)));
 				++ret;
 			}
 		}
@@ -452,15 +459,19 @@ AssetManifest& AssetManifest::exclude(List const& remove) {
 
 AssetManifest::List AssetManifest::populate(dj::json const& root) {
 	List ret;
-	for (auto& [name, entries] : root.as<dj::map_t>()) {
+	for (auto [name, entries] : root.as_object()) {
 		Group group;
-		for (auto& json : entries->as<dj::vec_t>()) {
-			if (auto uri = json->find_as<std::string>("uri")) { group.insert_or_assign(std::move(*uri), std::move(json)); }
+		for (auto const& json : entries.as_array()) {
+			if (json.contains("uri")) { group.insert_or_assign(json["uri"], std::move(json)); }
 			if (group.empty()) {
-				for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert_or_assign(std::move(uri), std::make_shared<dj::json>()); }
+				static auto blank = dj::json{};
+				for (auto const& uri : entries.as_array()) {
+					auto str = uri.as_string();
+					if (!str.empty()) { group.insert_or_assign(std::move(str), blank); }
+				}
 			}
 		}
-		if (!group.empty()) { ret.emplace(std::move(name), std::move(group)); }
+		if (!group.empty()) { ret.emplace(std::string(name), std::move(group)); }
 	}
 	return ret;
 }
@@ -512,10 +523,10 @@ void ManifestLoader::loadBlocking() {
 }
 
 void ManifestLoader::load(io::Path const& jsonURI, Ptr<Parser> custom, bool async, bool reload) {
+	auto json = dj::json{};
 	if (reload || m_manifest.list.empty()) {
-		if (auto json = m_engine.store().media().string(jsonURI)) {
-			dj::json root;
-			if (root.read(*json)) { preload(root, custom); }
+		if (auto jsonStr = m_engine.store().media().string(jsonURI)) {
+			if (json.read(*jsonStr)) { preload(json, custom); }
 		}
 	}
 	if (async) {

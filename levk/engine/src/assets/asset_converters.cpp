@@ -17,7 +17,8 @@ dj::json Jsonify<RenderFlags>::operator()(RenderFlags const& flags) const {
 RenderFlags Jsonify<RenderFlags>::operator()(dj::json const& json) const {
 	RenderFlags ret;
 	if (json.is_array()) {
-		for (auto const flag : json.as<std::vector<std::string_view>>()) {
+		for (auto const& elem : json.as_array()) {
+			auto const flag = elem.as_string_view();
 			if (flag == "all") {
 				ret = graphics::pflags_all;
 				return ret;
@@ -45,11 +46,11 @@ dj::json Jsonify<RenderLayer>::operator()(RenderLayer const& layer) const {
 
 RenderLayer Jsonify<RenderLayer>::operator()(dj::json const& json) const {
 	RenderLayer ret;
-	if (auto mode = json.get_as<std::string_view>("mode"); !mode.empty()) { ret.mode = polygonModes[mode]; }
-	if (auto top = json.get_as<std::string_view>("topology"); !top.empty()) { ret.topology = topologies[top]; }
-	ret.flags = to<RenderFlags>(json.get("flags"));
-	ret.lineWidth = json.get_as<f32>("line_width", ret.lineWidth);
-	ret.order = RenderOrder{json.get_as<s64>("order")};
+	if (auto mode = json["mode"].as_string_view(); !mode.empty()) { ret.mode = polygonModes[mode]; }
+	if (auto top = json["topology"].as_string_view(); !top.empty()) { ret.topology = topologies[top]; }
+	ret.flags = to<RenderFlags>(json["flags"]);
+	ret.lineWidth = json["line_width"].as_number<float>(ret.lineWidth);
+	ret.order = RenderOrder{json["order"].as_number<s64>()};
 	return ret;
 }
 } // namespace le::io

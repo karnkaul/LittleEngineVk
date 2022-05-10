@@ -1,9 +1,11 @@
 #pragma once
-#include <dumb_json/json.hpp>
+#include <djson/json.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <levk/core/std_types.hpp>
+#include <iostream>
+#include <sstream>
 
 namespace le::io {
 template <typename T, typename U>
@@ -53,7 +55,7 @@ T fromJson(dj::json const& json) {
 }
 
 template <typename T>
-	requires dj::json::is_settable<T>
+	requires dj::Literal<T>
 struct Jsonify<T> : Converter<T, dj::json> {
 	dj::json operator()(T const& t) const { return dj::json(t); }
 	T operator()(dj::json const& json) const { return json.as<T>(); }
@@ -117,7 +119,7 @@ struct JsonHelper {
 
 	template <typename T, typename... Ts>
 	static void insert(dj::json& out, std::string key, T value, Ts... others) {
-		out.insert(std::move(key), to(std::move(value)));
+		out.insert(std::move(key), to<T>(std::move(value)));
 		if constexpr (sizeof...(Ts) > 0) { insert(out, std::move(others)...); }
 	}
 
@@ -132,21 +134,19 @@ struct JsonHelper {
 template <typename T>
 struct Jsonify<glm::tvec2<T>> : JsonHelper {
 	dj::json operator()(glm::tvec2<T> t) const { return this->build("x", t.x, "y", t.y); }
-	glm::tvec2<T> operator()(dj::json const& json) const { return {this->to<f32>(json.get("x")), this->to<f32>(json.get("y"))}; }
+	glm::tvec2<T> operator()(dj::json const& json) const { return {this->to<f32>(json["x"]), this->to<f32>(json["y"])}; }
 };
 
 template <typename T>
 struct Jsonify<glm::tvec3<T>> : JsonHelper {
 	dj::json operator()(glm::tvec3<T> t) const { return this->build("x", t.x, "y", t.y, "z", t.z); }
-	glm::tvec3<T> operator()(dj::json const& json) const { return {this->to<f32>(json.get("x")), this->to<f32>(json.get("y")), this->to<f32>(json.get("z"))}; }
+	glm::tvec3<T> operator()(dj::json const& json) const { return {this->to<f32>(json["x"]), this->to<f32>(json["y"]), this->to<f32>(json["z"])}; }
 };
 
 template <>
 struct Jsonify<glm::quat> : JsonHelper {
 	dj::json operator()(glm::quat t) const { return this->build("x", t.x, "y", t.y, "z", t.z, "w", t.w); }
-	glm::quat operator()(dj::json const& json) const {
-		return {to<f32>(json.get("x")), to<f32>(json.get("y")), to<f32>(json.get("z")), to<f32>(json.get("w"))};
-	}
+	glm::quat operator()(dj::json const& json) const { return {to<f32>(json["x"]), to<f32>(json["y"]), to<f32>(json["z"]), to<f32>(json["w"])}; }
 };
 
 template <typename T>

@@ -22,6 +22,7 @@
 #include <levk/graphics/utils/utils.hpp>
 #include <levk/window/glue.hpp>
 #include <levk/window/window.hpp>
+#include <fstream>
 
 namespace le {
 namespace {
@@ -35,8 +36,9 @@ ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 std::optional<utils::EngineConfig> load(io::Path const& path) {
 	if (path.empty()) { return std::nullopt; }
-	if (auto json = dj::json(); json.load(path.generic_string())) { return io::fromJson<utils::EngineConfig>(json); }
-	return std::nullopt;
+	auto json = dj::json{};
+	if (!json.open(path.generic_string().c_str())) { return {}; }
+	return io::fromJson<utils::EngineConfig>(json);
 }
 
 bool save(utils::EngineConfig const& config, io::Path const& path) {
@@ -44,16 +46,15 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 	dj::json original;
 	original.read(path.generic_string());
 	auto overwrite = io::toJson(config);
-	for (auto& [id, json] : overwrite.as<dj::map_t>()) {
-		if (original.contains(id)) {
-			original[id] = std::move(*json);
+	for (auto [id, json] : overwrite.as_object()) {
+		auto idStr = std::string(id);
+		if (original.contains(idStr)) {
+			original[idStr] = std::move(json);
 		} else {
-			original.insert(id, std::move(*json));
+			original.insert(idStr, std::move(json));
 		}
 	}
-	dj::serial_opts_t opts;
-	opts.sort_keys = opts.pretty = true;
-	return original.save(path.generic_string(), opts);
+	return dj::serializer{original}(path.generic_string().c_str());
 }
 
 graphics::Device::MakeSurface makeSurface(window::Window const& winst) {
@@ -108,7 +109,7 @@ struct AssertSaver : AssertRecorder<> {
 			dj::json root;
 			auto const pathStr = path.generic_string();
 			root.insert("assertions", std::move(assertions));
-			root.save(pathStr, dj::serial_opts_t{.sort_keys = true});
+			dj::serializer{root}(pathStr.c_str());
 			logI("[Engine] {} assertion(s) recorded and saved to {}", lock->size(), pathStr);
 		}
 	}

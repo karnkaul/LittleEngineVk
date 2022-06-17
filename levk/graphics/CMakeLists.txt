@@ -36,6 +36,7 @@ if(LEVK_USE_PCH)
     <unordered_map>
     <vector>
     <vulkan/vulkan.hpp>
+    <vulkan/vulkan_hash.hpp>
 
     <ktl/fixed_vector.hpp>
     <ktl/hash_table.hpp>

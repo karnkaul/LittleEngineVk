@@ -47,11 +47,11 @@ void displayScale([[maybe_unused]] f32 renderScale) {
 template <typename T>
 std::string_view inspectAsset(AssetStore const& store, std::string_view name, std::string_view uri) {
 	Text title(uri);
-	auto const id = CStr<128>("{}##inspect_{}", name, name);
+	auto const id = StackString<128>("{}##inspect_{}", name, name);
 	std::string_view ret;
 	if (auto popup = Popup(id)) {
-		static ktl::stack_string<128> s_search;
-		TWidget<char*> search(CStr<128>("Search##inspect_{}", name), s_search.c_str(), s_search.capacity());
+		static StackString<128> s_search{};
+		TWidget<char*> search(fmt::format("Search##inspect_{}", name), s_search.buf, s_search.capacity_v);
 		if (auto select = AssetIndex::list<T>(store, s_search)) {
 			ret = select.item;
 			popup.close();
@@ -72,19 +72,19 @@ void inspectPrimitiveP(Inspect<PrimitiveProvider> primitive) {
 	auto mesh = primitive.get().meshPrimitiveURI();
 	auto mat = primitive.get().materialURI();
 	auto tex = primitive.get().textureRefsURI();
-	if (auto tn = TreeNode(CStr<64>("MeshPrimitive"))) {
+	if (auto tn = TreeNode("MeshPrimitive")) {
 		auto const uri = primitive.store.uri<graphics::MeshPrimitive>(mesh);
 		if (auto select = inspectAsset<graphics::MeshPrimitive>(primitive.store, "MeshPrimitive", uri); !select.empty()) {
 			primitive.get() = PrimitiveProvider(select, mat, tex);
 		}
 	}
-	if (auto tn = TreeNode(CStr<64>("BPMaterial"))) {
+	if (auto tn = TreeNode("BPMaterial")) {
 		auto const uri = primitive.store.uri<graphics::BPMaterialData>(mat);
 		if (auto select = inspectAsset<graphics::BPMaterialData>(primitive.store, "BPMaterial", uri); !select.empty()) {
 			primitive.get() = PrimitiveProvider(mesh, select, tex);
 		}
 	}
-	if (auto tn = TreeNode(CStr<64>("TextureRefs"))) {
+	if (auto tn = TreeNode("TextureRefs")) {
 		auto const uri = primitive.store.uri<TextureRefs>(tex);
 		if (auto select = inspectAsset<TextureRefs>(primitive.store, "TextureRefs", uri); !select.empty()) {
 			primitive.get() = PrimitiveProvider(mesh, mat, select);

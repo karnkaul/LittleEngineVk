@@ -446,12 +446,12 @@ TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(CStr<64>("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) {
+	if (ImGui::ArrowButton(StackString<64>("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) {
 		out_t -= dt;
 		changed = true;
 	}
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(CStr<64>("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) {
+	if (ImGui::ArrowButton(StackString<64>("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) {
 		out_t += dt;
 		changed = true;
 	}

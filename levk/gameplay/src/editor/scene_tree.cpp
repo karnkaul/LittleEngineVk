@@ -60,15 +60,15 @@ void inspect(InspectVerifier& iv, editor::TreeNode& tn, dens::entity entity, gui
 }
 
 template <typename T>
-CStr<128> uniqueGuiName(T const& t) {
-	CStr<128> str;
+StackString<64> uniqueGuiName(T const& t) {
+	StackString<64> str;
 	if constexpr (std::is_base_of_v<gui::View, T>) {
-		str = t.m_name;
+		str = std::string_view(t.m_name);
 	} else {
 		str = utils::tName(&t);
 	}
-	str += CStr<2>("##");
-	str += CStr<16>("{x}", &t);
+	str += StackString<4>("##");
+	str += StackString<32>("{}", static_cast<void const*>(&t));
 	return str;
 }
 
@@ -78,7 +78,7 @@ void walk(SceneNode& node, InspectVerifier& iv, dens::registry const& reg) {
 		auto tn = makeNode(reg.name(entity), iv(entity), node.nodes().empty());
 		if (auto source = DragDrop::Source()) {
 			source.payload("ENTITY", entity);
-			Text(CStr<128>("{} [{}]", reg.name(entity), entity.id));
+			Text(StackString<128>("{} [{}]", reg.name(entity), entity.id));
 		}
 		if (auto target = DragDrop::Target()) {
 			if (auto e = target.payload<dens::entity>("ENTITY")) {

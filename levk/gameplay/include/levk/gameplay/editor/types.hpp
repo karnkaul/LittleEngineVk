@@ -4,9 +4,9 @@
 #include <ktl/async/kfunction.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/n_tree.hpp>
-#include <ktl/stack_string.hpp>
 #include <levk/core/colour.hpp>
 #include <levk/core/span.hpp>
+#include <levk/core/stack_string.hpp>
 #include <levk/core/utils/string.hpp>
 #include <levk/gameplay/editor/scene_ref.hpp>
 #include <levk/gameplay/scene/scene_node.hpp>
@@ -36,14 +36,11 @@ using StyleFlags = ktl::enum_flags<Style, u8>;
 
 enum class WType { eInput, eDrag };
 
-template <std::size_t N = 64>
-using CStr = ktl::stack_string<N>;
-
 f32 getWindowWidth();
 
 struct MenuList {
 	struct Menu {
-		CStr<64> id;
+		StackString<64> id{};
 		ktl::kfunction<void()> callback;
 		bool separator = false;
 	};
@@ -207,7 +204,7 @@ struct TWidgetWrap {
 
 template <typename T>
 struct TInspector {
-	CStr<128> id;
+	StackString<64> id{};
 	std::optional<TreeNode> node;
 	dens::registry* pReg = nullptr;
 	dens::entity entity;
@@ -345,7 +342,7 @@ template <typename T>
 TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 	if (&rhs != this) {
 		node = std::move(rhs.node);
-		id = std::exchange(rhs.id, CStr<128>());
+		id = std::move(rhs.id);
 		pReg = std::exchange(rhs.pReg, nullptr);
 		bNew = std::exchange(rhs.bNew, false);
 		bOpen = std::exchange(rhs.bOpen, false);
@@ -356,7 +353,7 @@ TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
-		if (auto add = TreeNode(CStr<16>("[Add {}]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
+		if (auto add = TreeNode(StackString<64>("[Add {}]", id.get()), false, true, true, false); add.test(GUI::eLeftClicked)) {
 			dens::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}

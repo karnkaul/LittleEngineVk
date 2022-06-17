@@ -16,7 +16,6 @@
 
 #include <levk/gameplay/gui/widgets/dropdown.hpp>
 
-#include <ktl/async/kasync.hpp>
 #include <levk/core/kassert/assert_instance.hpp>
 #include <levk/core/utils/shell.hpp>
 #include <levk/core/utils/tween.hpp>
@@ -772,17 +771,15 @@ bool run(io::Media const& media) {
 			scenes.attach<App>("app", engine.service());
 			scenes.open("app");
 			DeltaTime dt;
-			ktl::kfuture<void> bf;
-			ktl::kasync async;
 			while (!engine.service().closing()) {
 				engine.service().poll(scenes.sceneView(), &poll);
 				if (flags.any(Flags(Flag::eQuit, Flag::eReboot))) { break; }
 				scenes.tick(++dt);
 				scenes.render(RGBA(0x777777ff, RGBA::Type::eAbsolute));
-				if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-					// app.sched().enqueue([]() { KASSERT(false, "test"); });
-					// app.sched().enqueue([]() { KASSERT(false, "test2"); });
-					auto& ctx = engine.service().context();
+				// app.sched().enqueue([]() { KASSERT(false, "test"); });
+				// app.sched().enqueue([]() { KASSERT(false, "test2"); });
+				auto& ctx = engine.service().context();
+				if (flags.test(Flag::eDebug0)) {
 					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.lastDrawn().ref())) {
 						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);

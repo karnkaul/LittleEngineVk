@@ -3,6 +3,7 @@
 #include <ktl/hash_table.hpp>
 #include <levk/core/not_null.hpp>
 #include <levk/graphics/common.hpp>
+#include <vulkan/vulkan_hash.hpp>
 
 namespace le::graphics {
 using StageAccess = TPair<vk::PipelineStageFlags, vk::AccessFlags>;

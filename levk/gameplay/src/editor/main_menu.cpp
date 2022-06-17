@@ -40,14 +40,14 @@ Panes g_panes;
 void Panes::showStats(Engine::Service const& eng) const {
 	if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
 		auto const& s = eng.stats();
-		auto t = Text(CStr<32>("FPS: {}", s.frame.rate));
-		t = Text(CStr<32>("Frame #: {}", s.frame.count));
-		t = Text(CStr<32>("Uptime: {}", time::format(s.upTime).data()));
-		t = Text(CStr<32>("Draw calls: {}", s.gfx.drawCalls));
-		t = Text(CStr<32>("Triangles: {}", s.gfx.triCount));
-		t = Text(CStr<32>("Window: {}x{}", s.gfx.extents.window.x, s.gfx.extents.window.y));
-		t = Text(CStr<32>("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
-		t = Text(CStr<32>("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
+		auto t = Text(StackString<64>("FPS: {}", s.frame.rate));
+		t = Text(StackString<64>("Frame #: {}", s.frame.count));
+		t = Text(StackString<64>("Uptime: {}", time::format(s.upTime).data()));
+		t = Text(StackString<64>("Draw calls: {}", s.gfx.drawCalls));
+		t = Text(StackString<64>("Triangles: {}", s.gfx.triCount));
+		t = Text(StackString<64>("Window: {}x{}", s.gfx.extents.window.x, s.gfx.extents.window.y));
+		t = Text(StackString<64>("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
+		t = Text(StackString<64>("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
 		Styler st(Style::eSeparator);
 		auto& renderer = eng.context().renderer();
 		f32 rs = renderer.renderScale();
@@ -65,7 +65,7 @@ void Panes::showProfiler(Engine::Service const& engine) const {
 		for (auto const& entry : record.entries) {
 			Text t(entry.id);
 			ImGui::SameLine(idLength + 20.0f);
-			ImGui::ProgressBar(entry.dt / total, ImVec2{-1.0f, 0.0f}, CStr<16>("{1.2f}ms", entry.dt.count() * 1000.0f).data());
+			ImGui::ProgressBar(entry.dt / total, ImVec2{-1.0f, 0.0f}, StackString<16>("{:1.2f}ms", entry.dt.count() * 1000.0f).data());
 		}
 	}
 }

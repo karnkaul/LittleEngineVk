@@ -66,7 +66,6 @@ inline ktl::hash_table<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eSuboptimalKHR, "SubmoptimalSurface"},
 	{vk::Result::eErrorDeviceLost, "DeviceLost"},
 	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
-	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
 };
 } // namespace le::graphics

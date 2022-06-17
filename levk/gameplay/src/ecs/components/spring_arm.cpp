@@ -19,7 +19,7 @@ void SpringArm::inspect(editor::Inspect<SpringArm> inspect) {
 	editor::TWidget<f32>("b##springarm", spring.b, 0.001f);
 	editor::TWidget<glm::vec3>("offset##springarm", spring.offset, false);
 	auto const name = inspect.registry.contains(spring.target) ? inspect.registry.name(spring.target) : "[None]";
-	auto const label = ktl::stack_string<128>("{} [{}]", name.data(), inspect.entity.id);
+	auto const label = fmt::format("{} [{}]", name.data(), inspect.entity.id);
 	editor::TWidget<std::string_view> select("target##springarm", label);
 	if (auto target = editor::DragDrop::Target()) {
 		if (auto e = target.payload<dens::entity>("ENTITY")) { spring.target = *e; }

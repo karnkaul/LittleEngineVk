@@ -20,7 +20,7 @@ bool window::Gamepad::pressed(u8 button) const noexcept {
 #if defined(LEVK_USE_GLFW)
 	int max{};
 	glfwGetJoystickButtons(id, &max);
-	if ((int)button < max && button < buttons.size()) { return buttons[button]; }
+	if ((int)button < max && button < buttons.size()) { return buttons[button] == GLFW_PRESS; }
 #endif
 	return false;
 }

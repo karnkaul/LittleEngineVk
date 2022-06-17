@@ -90,7 +90,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 			auto& reg = *Sudo::registry(scene);
 			if (!inspect->tree) {
 				Text(reg.name(inspect->entity));
-				Text(CStr<16>("id: {}", inspect->entity.id));
+				Text(StackString<64>("id: {}", inspect->entity.id));
 				if (reg.attached<RenderPipeline>(inspect->entity) || reg.attached<RenderPipeProvider>(inspect->entity)) {
 					TWidgetWrap<bool> draw;
 					if (draw(shouldDraw(inspect->entity, reg), "Draw", draw.out)) { shouldDraw(inspect->entity, reg, draw.out); }
@@ -99,7 +99,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 				if (auto transform = reg.find<Transform>(inspect->entity)) { TransformWidget{}(*transform); }
 				attach(inspect->entity, reg, *store);
 			} else {
-				auto const name = CStr<128>("{} -> [GUI node]", reg.name(inspect->entity));
+				auto const name = StackString<64>("{} -> [GUI node]", reg.name(inspect->entity));
 				Text txt(name);
 				GuiRect{}(inspect->tree->m_rect);
 				if (auto view = dynamic_cast<gui::View*>(inspect->tree)) {
@@ -131,9 +131,9 @@ void Inspector::attach(dens::entity entity, dens::registry& reg, AssetStore cons
 		Styler(glm::vec2{0.0f, 30.0f});
 		if (Button("Attach")) { Popup::open("attach_component"); }
 		if (auto attach = Popup("attach_component")) {
-			static CStr<128> s_filter;
-			editor::TWidget<char*>("Search##component_filter", s_filter.c_str(), s_filter.capacity());
-			auto filter = s_filter.get();
+			static StackString<64> s_filter{};
+			editor::TWidget<char*>("Search##component_filter", s_filter.buf, s_filter.capacity_v);
+			auto filter = std::string_view(s_filter);
 			for (auto const& kvp : attachable) {
 				auto const& [id, gadget] = *kvp;
 				Pane sub("component_list", {0.0f, 80.0f});

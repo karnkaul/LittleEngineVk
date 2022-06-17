@@ -305,12 +305,9 @@ bool Device::isBusy(vk::Fence fence) const {
 }
 
 void Device::waitFor(Span<vk::Fence const> fences, stdch::nanoseconds const wait) const {
-	if constexpr (levk_debug) {
-		auto const result = m_device->waitForFences(u32(fences.size()), fences.data(), true, static_cast<u64>(wait.count()));
-		KASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-	} else {
-		m_device->waitForFences(u32(fences.size()), fences.data(), true, maths::max<u64>());
-	}
+	u64 const count = levk_debug ? static_cast<u64>(wait.count()) : maths::max<u64>();
+	auto const result = m_device->waitForFences(u32(fences.size()), fences.data(), true, count);
+	KASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 }
 
 void Device::resetFence(vk::Fence optional, bool wait) const {
@@ -321,7 +318,10 @@ void Device::resetFence(vk::Fence optional, bool wait) const {
 }
 
 void Device::resetAll(Span<vk::Fence const> fences) const {
-	if (!fences.empty()) { m_device->resetFences(u32(fences.size()), fences.data()); }
+	if (!fences.empty()) {
+		auto const result = m_device->resetFences(u32(fences.size()), fences.data());
+		KASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence reset failure!");
+	}
 }
 
 void Device::resetCommandPool(vk::CommandPool pool) const {

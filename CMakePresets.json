@@ -1,0 +1,98 @@
+{
+	"version": 2,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 20,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "default",
+			"description": "Build configuration using Ninja Multi-config",
+			"generator": "Ninja Multi-Config",
+			"binaryDir": "${sourceDir}/out/default",
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+			}
+		},
+		{
+			"name": "ninja-clang",
+			"description": "Build configuration using Ninja Multi-config / clang",
+			"inherits": "default",
+			"binaryDir": "${sourceDir}/out/clang",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang++"
+			}
+		},
+		{
+			"name": "ninja-ubsan",
+			"description": "UBSan build configuration using Ninja Multi-config",
+			"inherits": "default",
+			"binaryDir": "${sourceDir}/out/ubsan",
+			"cacheVariables": {
+				"CMAKE_CXX_FLAGS": "-fsanitize=undefined"
+			}
+		},
+		{
+			"name": "vs19",
+			"description": "Build configuration using Visual Studio 16 (2019)",
+			"generator": "Visual Studio 16 2019",
+			"binaryDir": "${sourceDir}/out/vs",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			}
+		},
+		{
+			"name": "vs22",
+			"description": "Build configuration using Visual Studio 17 (2022)",
+			"inherits": "vs19",
+			"generator": "Visual Studio 17 2022"
+		},
+		{
+			"name": "pre-install",
+			"description": "Debug build using Ninja Multi-config and install prefix",
+			"inherits": "default",
+			"binaryDir": "${sourceDir}/out/pre",
+			"cacheVariables": {
+				"CMAKE_PREFIX_PATH": "${sourceDir}/out/install",
+				"RR_PREINSTALLED": "ON"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "Debug",
+			"configurePreset": "default",
+			"configuration": "Debug"
+		},
+		{
+			"name": "Release",
+			"configurePreset": "default",
+			"configuration": "Release"
+		},
+		{
+			"name": "RelWithDebInfo",
+			"configurePreset": "default",
+			"configuration": "RelWithDebInfo"
+		}
+	],
+	"testPresets": [
+		{
+			"name": "Debug",
+			"configurePreset": "default",
+			"configuration": "Debug"
+		},
+		{
+			"name": "Release",
+			"configurePreset": "default",
+			"configuration": "Release"
+		},
+		{
+			"name": "RelWithDebInfo",
+			"configurePreset": "default",
+			"configuration": "RelWithDebInfo"
+		}
+	]
+}

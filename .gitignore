@@ -1,0 +1,17 @@
+**/.vs/*
+**/.vscode/*
+build/*
+out/*
+screenshots
+.cache
+.DS_Store
+
+CMakeSettings.json
+compile_commands.json
+/CMakeUserPresets.json
+
+wiki
+imgui.ini
+
+spaced.log*
+spaced.conf*

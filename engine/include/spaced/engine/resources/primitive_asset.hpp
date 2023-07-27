@@ -10,7 +10,7 @@ class PrimitiveAsset : public Asset {
 	[[nodiscard]] auto type_name() const -> std::string_view final { return type_name_v; }
 	[[nodiscard]] auto try_load(Uri const& uri) -> bool final;
 
-	[[nodiscard]] auto save_to(char const* path) const -> bool;
+	static auto bin_pack_to(std::vector<std::uint8_t>& out, graphics::Geometry const& geometry) -> void;
 
 	graphics::StaticPrimitive primitive{};
 };

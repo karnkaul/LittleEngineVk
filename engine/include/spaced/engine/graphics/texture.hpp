@@ -1,6 +1,7 @@
 #pragma once
 #include <spaced/engine/graphics/bitmap.hpp>
 #include <spaced/engine/graphics/defer.hpp>
+#include <spaced/engine/graphics/image_view.hpp>
 #include <spaced/engine/graphics/resource.hpp>
 #include <spaced/engine/graphics/texture_sampler.hpp>
 

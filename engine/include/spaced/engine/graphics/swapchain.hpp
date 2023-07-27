@@ -1,6 +1,6 @@
 #pragma once
 #include <glm/vec2.hpp>
-#include <spaced/engine/graphics/resource.hpp>
+#include <spaced/engine/graphics/image_view.hpp>
 #include <deque>
 #include <optional>
 #include <span>

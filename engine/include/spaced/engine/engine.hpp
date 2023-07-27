@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
+#include <spaced/engine/build_version.hpp>
 #include <spaced/engine/graphics/device.hpp>
 #include <spaced/engine/graphics/renderer.hpp>
 #include <spaced/engine/input/state.hpp>

@@ -2,9 +2,9 @@
 #include <spaced/engine/graphics/material.hpp>
 
 namespace spaced::graphics {
-auto Material::default_instance() -> Material const& {
+auto Material::or_default(Ptr<Material const> material) -> Material const& {
 	static auto const ret = UnlitMaterial{};
-	return ret;
+	return material != nullptr ? *material : ret;
 }
 
 auto UnlitMaterial::bind_set(vk::CommandBuffer const cmd) const -> void {

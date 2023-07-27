@@ -2,6 +2,8 @@
 #include <djson/json.hpp>
 #include <spaced/engine/core/named_type.hpp>
 #include <spaced/engine/vfs/uri.hpp>
+#include <cstdint>
+#include <vector>
 
 namespace spaced {
 class Asset : public NamedType {

@@ -1,23 +1,19 @@
 #include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/resources/bin_data.hpp>
 #include <spaced/engine/resources/material_asset.hpp>
 #include <spaced/engine/resources/mesh_asset.hpp>
 #include <spaced/engine/resources/primitive_asset.hpp>
 #include <spaced/engine/resources/resources.hpp>
+#include <spaced/engine/resources/skeleton_asset.hpp>
 #include <spaced/engine/vfs/file_reader.hpp>
 
 namespace spaced {
-static_assert(bin::TrivialT<graphics::Vertex>);
+namespace {
+auto const g_log{logger::Logger{"MeshAsset"}};
+}
 
 auto MeshAsset::try_load(Uri const& uri) -> bool {
 	auto const json = read_json(uri);
 	if (!json) { return false; }
-
-	auto const mesh_type = json["mesh_type"].as_string();
-	if (mesh_type != "static") {
-		logger::g_log.warn("mesh type '{}' is currently unsupported", mesh_type);
-		return false;
-	}
 
 	mesh = {};
 	for (auto const& in_primitive : json["primitives"].array_view()) {
@@ -32,6 +28,11 @@ auto MeshAsset::try_load(Uri const& uri) -> bool {
 		}();
 		auto const* material = material_asset != nullptr ? material_asset->material.get() : nullptr;
 		mesh.primitives.push_back(graphics::MeshPrimitive{&primitive_asset->primitive, material});
+		if (auto const& skeleton_uri = json["skeleton"]) {
+			auto const* skeleton_asset = Resources::self().load<SkeletonAsset>(skeleton_uri.as<std::string>());
+			if (skeleton_asset == nullptr) { return false; }
+			mesh.skeleton = &skeleton_asset->skeleton;
+		}
 	}
 	return true;
 }

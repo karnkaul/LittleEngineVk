@@ -68,14 +68,12 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 		object.material->bind_set(cmd);
 
 		auto const instances = build_instances(object.parent, object.instances);
-		DescriptorUpdater{object_layout.set}.write_storage(object_layout.instances, instances.data(), instances.size_bytes()).bind_set(cmd);
+		DescriptorUpdater{object_layout.set}
+			.write_storage(object_layout.instances, instances.data(), instances.size_bytes())
+			.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes())
+			.bind_set(cmd);
 
-		if (!object.joints.empty()) {
-			DescriptorUpdater{object_layout.joints}
-				.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes())
-				.bind_set(cmd);
-		}
-
+		camera.bind_set(m_data.projection, cmd);
 		object.primitive->draw(static_cast<std::uint32_t>(object.instances.size()), cmd);
 	}
 }

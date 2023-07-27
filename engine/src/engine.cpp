@@ -131,7 +131,7 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 	setup_signals(ret->m_window.get());
 
 	auto rdci = graphics::Device::CreateInfo{
-		.validation = true,
+		.validation = debug_v,
 	};
 	ret->m_graphics_device = std::make_unique<graphics::Device>(ret->m_window.get(), rdci);
 

@@ -1,4 +1,5 @@
 add_subdirectory(cache)
+add_subdirectory(animation)
 
 target_sources(${PROJECT_NAME} PRIVATE
   allocator.cpp

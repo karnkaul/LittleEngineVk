@@ -16,7 +16,10 @@ target_link_libraries(spaced-engine PUBLIC
 
 target_include_directories(spaced-engine PUBLIC
   include
-  "${CMAKE_CURRENT_BINARY_DIR}/include"
+)
+
+target_include_directories(spaced-engine PRIVATE
+  .
 )
 
 target_compile_features(spaced-engine PUBLIC
@@ -32,12 +35,13 @@ target_sources(spaced-engine PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
 )
 
 if(SPACED_PCH)
-  target_precompile_headers(spaced-game PRIVATE
+  target_precompile_headers(spaced-engine PRIVATE
     <vulkan/vulkan.hpp>
     <algorithm>
     <atomic>
     <chrono>
     <cstdint>
+    <deque>
     <filesystem>
     <format>
     <functional>

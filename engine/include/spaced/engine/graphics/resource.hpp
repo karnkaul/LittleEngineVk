@@ -1,7 +1,7 @@
 #pragma once
 #include <vk_mem_alloc.h>
 #include <glm/vec2.hpp>
-#include <spaced/engine/graphics/common.hpp>
+#include <vulkan/vulkan.hpp>
 #include <span>
 
 namespace spaced::graphics {

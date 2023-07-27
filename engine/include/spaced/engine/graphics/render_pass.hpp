@@ -1,5 +1,5 @@
 #pragma once
-#include <spaced/engine/graphics/common.hpp>
+#include <spaced/engine/graphics/image_view.hpp>
 #include <spaced/engine/graphics/pipeline_state.hpp>
 #include <spaced/engine/graphics/render_camera.hpp>
 #include <spaced/engine/graphics/render_object.hpp>

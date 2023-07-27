@@ -31,7 +31,7 @@ add_library(stb::image ALIAS stb-image)
 
 add_subdirectory(src/djson)
 
-set(GLTF2CPP_BUILD_TESTS ON)
+set(GLTF2CPP_BUILD_TESTS OFF)
 add_subdirectory(src/gltf2cpp)
 
 if(SPACED_USE_FREETYPE)

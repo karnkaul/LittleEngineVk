@@ -35,8 +35,9 @@ auto const g_log{logger::Logger{MaterialAsset::type_name_v}};
 	return ret;
 }
 
-[[nodiscard]] auto make_lit(dj::Json const& json) -> std::unique_ptr<graphics::LitMaterial> {
-	auto ret = std::make_unique<graphics::LitMaterial>();
+template <std::derived_from<graphics::LitMaterial> T = graphics::LitMaterial>
+[[nodiscard]] auto make_lit(dj::Json const& json) -> std::unique_ptr<T> {
+	auto ret = std::make_unique<T>();
 
 	if (auto const& base_colour = json["base_colour"]) {
 		if (auto* texture_asset = Resources::self().load<TextureAsset>(base_colour.as<std::string>())) { ret->base_colour = &texture_asset->texture; }
@@ -62,9 +63,6 @@ auto const g_log{logger::Logger{MaterialAsset::type_name_v}};
 	ret->alpha_cutoff = json["alpha_cutoff"].as<float>(ret->alpha_cutoff);
 	ret->alpha_mode = to_alpha_mode(json["alpha_mode"].as_string(), ret->alpha_mode);
 
-	ret->shader.vertex = std::string{json["shader"]["vertex"].as_string(ret->shader.vertex)};
-	ret->shader.fragment = std::string{json["shader"]["fragment"].as_string(ret->shader.fragment)};
-
 	return ret;
 }
 } // namespace
@@ -76,6 +74,11 @@ auto MaterialAsset::try_load(Uri const& uri) -> bool {
 	auto const material_type = json["material_type"].as_string();
 	if (material_type == graphics::LitMaterial::material_type_v) {
 		material = make_lit(json);
+		return true;
+	}
+
+	if (material_type == graphics::SkinnedMaterial::material_type_v) {
+		material = make_lit<graphics::SkinnedMaterial>(json);
 		return true;
 	}
 

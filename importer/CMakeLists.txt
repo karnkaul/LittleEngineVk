@@ -14,6 +14,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   SPACED_IMPORTER_VERSION="${PROJECT_VERSION}"
 )
 
-target_sources(${PROJECT_NAME} PRIVATE
-  importer.cpp
+target_include_directories(${PROJECT_NAME} PRIVATE
+  src
 )
+
+add_subdirectory(src)

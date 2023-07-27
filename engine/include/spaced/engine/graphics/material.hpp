@@ -20,8 +20,7 @@ class Material {
 
 	virtual ~Material() = default;
 
-	static auto default_instance() -> Material const&;
-	static auto or_default(Ptr<Material const> material) -> Material const& { return material != nullptr ? *material : default_instance(); }
+	static auto or_default(Ptr<Material const> material) -> Material const&;
 
 	[[nodiscard]] virtual auto get_shader() const -> Shader const& = 0;
 	virtual auto bind_set(vk::CommandBuffer cmd) const -> void = 0;
@@ -68,5 +67,12 @@ class LitMaterial : public Material {
 	float roughness{0.5f};
 	float alpha_cutoff{};
 	AlphaMode alpha_mode{AlphaMode::eOpaque};
+};
+
+class SkinnedMaterial : public LitMaterial {
+  public:
+	static constexpr std::string_view material_type_v{"skinned"};
+
+	SkinnedMaterial() { shader.vertex = "shaders/skinned.vert"; }
 };
 } // namespace spaced::graphics

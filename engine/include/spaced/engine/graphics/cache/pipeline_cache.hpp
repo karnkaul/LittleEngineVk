@@ -8,19 +8,6 @@
 #include <unordered_map>
 
 namespace spaced::graphics {
-struct PipelineKey {
-	PipelineFormat format{};
-	NotNull<Uri const*> vertex_shader;
-	NotNull<Uri const*> fragment_shader;
-	NotNull<PipelineState const*> state;
-
-	mutable std::size_t cached_hash_{};
-
-	[[nodiscard]] auto hash() const -> std::size_t;
-
-	auto operator==(PipelineKey const& rhs) const -> bool { return hash() == rhs.hash(); }
-};
-
 class PipelineCache : public MonoInstance<PipelineCache> {
   public:
 	explicit PipelineCache(ShaderLayout shader_layout = {});
@@ -34,15 +21,30 @@ class PipelineCache : public MonoInstance<PipelineCache> {
 	[[nodiscard]] auto descriptor_set_layouts() const -> std::span<vk::DescriptorSetLayout const> { return m_descriptor_set_layouts_view; }
 
   private:
+	struct Key {
+	  public:
+		Key(PipelineFormat format, NotNull<Uri const*> vertex, NotNull<Uri const*> fragment, NotNull<PipelineState const*> state);
+
+		[[nodiscard]] auto hash() const -> std::size_t { return cached_hash; }
+
+		auto operator==(Key const& rhs) const -> bool { return hash() == rhs.hash(); }
+
+		PipelineFormat format{};
+		NotNull<Uri const*> vert;
+		NotNull<Uri const*> frag;
+		NotNull<PipelineState const*> state;
+		std::size_t cached_hash{};
+	};
+
 	struct Hasher {
-		auto operator()(PipelineKey const& key) const -> std::size_t { return key.hash(); }
+		auto operator()(Key const& key) const -> std::size_t { return key.hash(); }
 	};
 
 	mutable std::mutex m_mutex{};
 
-	[[nodiscard]] auto build(PipelineKey const& key) -> vk::UniquePipeline;
+	[[nodiscard]] auto build(Key const& key) -> vk::UniquePipeline;
 
-	std::unordered_map<PipelineKey, vk::UniquePipeline, Hasher> m_map{};
+	std::unordered_map<Key, vk::UniquePipeline, Hasher> m_map{};
 	ShaderLayout m_shader_layout{};
 	std::vector<vk::UniqueDescriptorSetLayout> m_descriptor_set_layouts{};
 	std::vector<vk::DescriptorSetLayout> m_descriptor_set_layouts_view{};

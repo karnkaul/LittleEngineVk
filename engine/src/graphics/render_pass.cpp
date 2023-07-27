@@ -43,8 +43,6 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 	auto const pipeline_format = PipelineFormat{.colour = m_data.render_target.colour.format, .depth = m_data.render_target.depth.format};
 	auto const& object_layout = PipelineCache::self().shader_layout().object;
 
-	camera.bind_set(m_data.projection, cmd);
-
 	auto build_instances = [this](glm::mat4 const& parent, std::span<RenderInstance const> in) -> std::span<Std430Instance const> {
 		m_instances.clear();
 		m_instances.reserve(in.size());
@@ -57,6 +55,8 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 		return m_instances;
 	};
 
+	camera.bind_set(m_data.projection, cmd);
+
 	for (auto const& object : objects) {
 		if (object.instances.empty()) { continue; }
 
@@ -65,15 +65,17 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 		auto const pipeline = PipelineCache::self().load(pipeline_format, shader.vertex, shader.fragment, object.pipeline_state);
 		if (!Renderer::self().bind_pipeline(pipeline)) { continue; }
 
-		object.material->bind_set(cmd);
+		if (m_data.last_bound != &material) {
+			material.bind_set(cmd);
+			m_data.last_bound = &material;
+		}
 
 		auto const instances = build_instances(object.parent, object.instances);
-		DescriptorUpdater{object_layout.set}
-			.write_storage(object_layout.instances, instances.data(), instances.size_bytes())
-			.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes())
-			.bind_set(cmd);
+		auto object_set = DescriptorUpdater{object_layout.set};
+		object_set.write_storage(object_layout.instances, instances.data(), instances.size_bytes());
+		if (!object.joints.empty()) { object_set.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes()); }
+		object_set.bind_set(cmd);
 
-		camera.bind_set(m_data.projection, cmd);
 		object.primitive->draw(static_cast<std::uint32_t>(object.instances.size()), cmd);
 	}
 }

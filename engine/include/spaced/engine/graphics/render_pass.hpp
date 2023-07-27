@@ -47,6 +47,7 @@ class RenderPass {
 		RenderTarget render_target{};
 		ImageView swapchain_image{};
 		glm::vec2 projection{};
+		Ptr<Material const> last_bound{};
 	};
 
 	struct Std430Instance {

@@ -1,4 +1,5 @@
 #include <spaced/engine/core/hash_combine.hpp>
+#include <spaced/engine/core/logger.hpp>
 #include <spaced/engine/graphics/cache/pipeline_cache.hpp>
 #include <spaced/engine/graphics/device.hpp>
 #include <spaced/engine/resources/resources.hpp>
@@ -45,14 +46,14 @@ struct PipelineShaderLayout {
 		return ret;
 	}
 };
+
+auto const g_log{logger::Logger{"PipelineCache"}};
 } // namespace
 
-auto PipelineKey::hash() const -> std::size_t {
-	if (cached_hash_ != 0) {
-		cached_hash_ = make_combined_hash(vertex_shader->hash(), fragment_shader->hash(), state->topology, state->polygon_mode, state->depth_compare,
-										  state->depth_test_write, format.colour, format.depth);
-	}
-	return cached_hash_;
+PipelineCache::Key::Key(PipelineFormat format, NotNull<Uri const*> vertex, NotNull<Uri const*> fragment, NotNull<PipelineState const*> state)
+	: format(format), vert(vertex), frag(fragment), state(state) {
+	cached_hash = make_combined_hash(vertex->hash(), fragment->hash(), state->topology, state->polygon_mode, state->depth_compare, state->depth_test_write,
+									 format.colour, format.depth);
 }
 
 PipelineCache::PipelineCache(ShaderLayout shader_layout) { set_shader_layout(std::move(shader_layout)); }
@@ -73,11 +74,11 @@ auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 }
 
 auto PipelineCache::load(PipelineFormat format, Uri const& vert, Uri const& frag, PipelineState const& state) -> vk::Pipeline {
-	auto const key = PipelineKey{
-		.format = format,
-		.vertex_shader = &vert,
-		.fragment_shader = &frag,
-		.state = &state,
+	auto const key = Key{
+		format,
+		&vert,
+		&frag,
+		&state,
 	};
 	auto lock = std::unique_lock{m_mutex};
 	auto itr = m_map.find(key);
@@ -88,19 +89,21 @@ auto PipelineCache::load(PipelineFormat format, Uri const& vert, Uri const& frag
 		lock.lock();
 		auto const [inserted, _] = m_map.insert_or_assign(key, std::move(ret));
 		itr = inserted;
+
+		g_log.debug("new Vulkan Pipeline created [{}] (total: {})", key.hash(), m_map.size());
 	}
 	assert(itr != m_map.end());
 	return *itr->second;
 }
 
-auto PipelineCache::build(PipelineKey const& key) -> vk::UniquePipeline {
+auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 	auto shader_stages = std::array<vk::PipelineShaderStageCreateInfo, 2>{};
 	shader_stages[0].stage = vk::ShaderStageFlagBits::eVertex;
 	shader_stages[1].stage = vk::ShaderStageFlagBits::eFragment;
 	shader_stages[0].pName = shader_stages[1].pName = "main";
 
-	auto* vertex_shader = Resources::self().load<ShaderAsset>(*key.vertex_shader);
-	auto* fragment_shader = Resources::self().load<ShaderAsset>(*key.fragment_shader);
+	auto* vertex_shader = Resources::self().load<ShaderAsset>(*key.vert);
+	auto* fragment_shader = Resources::self().load<ShaderAsset>(*key.frag);
 	if (vertex_shader == nullptr || fragment_shader == nullptr) { return {}; }
 
 	shader_stages[0].module = *vertex_shader->module;

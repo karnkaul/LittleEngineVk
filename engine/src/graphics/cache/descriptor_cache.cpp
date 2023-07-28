@@ -1,7 +1,7 @@
-#include <spaced/engine/error.hpp>
-#include <spaced/engine/graphics/cache/descriptor_cache.hpp>
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/graphics/renderer.hpp>
+#include <spaced/error.hpp>
+#include <spaced/graphics/cache/descriptor_cache.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/graphics/renderer.hpp>
 
 namespace spaced::graphics {
 namespace {

@@ -1,7 +1,7 @@
-#include <spaced/engine/graphics/cache/pipeline_cache.hpp>
-#include <spaced/engine/graphics/descriptor_updater.hpp>
-#include <spaced/engine/graphics/render_pass.hpp>
-#include <spaced/engine/graphics/renderer.hpp>
+#include <spaced/graphics/cache/pipeline_cache.hpp>
+#include <spaced/graphics/descriptor_updater.hpp>
+#include <spaced/graphics/render_pass.hpp>
+#include <spaced/graphics/renderer.hpp>
 
 namespace spaced::graphics {
 namespace {
@@ -38,6 +38,29 @@ struct RenderingInfoBuilder {
 	}
 };
 } // namespace
+
+auto RenderCamera::bind_set(glm::vec2 const projection, vk::CommandBuffer const cmd) const -> void {
+	auto const view = Std140View{
+		.mat_vp = camera->projection(projection) * camera->view(),
+		.vpos_exposure = {camera->transform.position(), camera->exposure},
+	};
+
+	auto dir_lights = std::vector<Std430DirLight>{};
+	dir_lights.reserve(lights->directional.size());
+	for (auto const& in : lights->directional) {
+		dir_lights.push_back(Std430DirLight{
+			.direction = glm::vec4{in.direction.value(), 0.0f},
+			.diffuse = in.diffuse.to_vec4(),
+			.ambient = in.diffuse.Rgba::to_vec4(in.ambient),
+		});
+	}
+
+	auto const& layout = PipelineCache::self().shader_layout().camera;
+	DescriptorUpdater{layout.set}
+		.write_storage(layout.directional_lights, dir_lights.data(), std::span{dir_lights}.size_bytes())
+		.write_uniform(layout.view, &view, sizeof(view))
+		.bind_set(cmd);
+}
 
 auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObject const> objects, vk::CommandBuffer cmd) -> void {
 	auto const pipeline_format = PipelineFormat{.colour = m_data.render_target.colour.format, .depth = m_data.render_target.depth.format};
@@ -88,7 +111,7 @@ auto RenderPass::do_setup(RenderTarget const& swapchain) -> void {
 
 void RenderPass::do_render(vk::CommandBuffer cmd) {
 	auto builder = RenderingInfoBuilder{};
-	auto const vri = builder.build(m_data.render_target, m_clear_colour, m_colour_load_op);
+	auto const vri = builder.build(m_data.render_target, clear_colour, m_colour_load_op);
 	cmd.beginRendering(vri);
 	render(cmd);
 	cmd.endRendering();

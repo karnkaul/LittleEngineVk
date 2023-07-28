@@ -1,7 +1,7 @@
-#include <spaced/engine/node_tree_serializer.hpp>
-#include <spaced/engine/resources/animation_asset.hpp>
-#include <spaced/engine/resources/resources.hpp>
-#include <spaced/engine/resources/skeleton_asset.hpp>
+#include <spaced/node/node_tree_serializer.hpp>
+#include <spaced/resources/animation_asset.hpp>
+#include <spaced/resources/resources.hpp>
+#include <spaced/resources/skeleton_asset.hpp>
 
 namespace spaced {
 auto SkeletonAsset::try_load(Uri const& uri) -> bool {

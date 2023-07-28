@@ -1,3 +1,3 @@
-#include <spaced/engine/graphics/mesh.hpp>
+#include <spaced/graphics/mesh.hpp>
 
 namespace spaced::graphics {}

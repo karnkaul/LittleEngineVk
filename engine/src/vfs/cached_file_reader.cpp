@@ -1,4 +1,4 @@
-#include <spaced/engine/vfs/cached_file_reader.hpp>
+#include <spaced/vfs/cached_file_reader.hpp>
 
 namespace spaced {
 auto CachedFileReader::read_bytes(Uri const& uri) -> std::vector<std::uint8_t> {

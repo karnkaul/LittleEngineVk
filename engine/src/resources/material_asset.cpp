@@ -1,9 +1,9 @@
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/resources/bin_data.hpp>
-#include <spaced/engine/resources/material_asset.hpp>
-#include <spaced/engine/resources/resources.hpp>
-#include <spaced/engine/resources/texture_asset.hpp>
-#include <spaced/engine/vfs/file_reader.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/resources/bin_data.hpp>
+#include <spaced/resources/material_asset.hpp>
+#include <spaced/resources/resources.hpp>
+#include <spaced/resources/texture_asset.hpp>
+#include <spaced/vfs/file_reader.hpp>
 
 namespace spaced {
 namespace {

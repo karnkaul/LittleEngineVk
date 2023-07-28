@@ -1,6 +1,6 @@
 #include <stb/stb_image.h>
 #include <glm/vec3.hpp>
-#include <spaced/engine/graphics/image_file.hpp>
+#include <spaced/graphics/image_file.hpp>
 
 namespace spaced::graphics {
 struct ImageFile::Impl {

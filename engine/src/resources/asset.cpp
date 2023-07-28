@@ -1,6 +1,6 @@
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/resources/asset.hpp>
-#include <spaced/engine/vfs/vfs.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/resources/asset.hpp>
+#include <spaced/vfs/vfs.hpp>
 
 namespace spaced {
 namespace {

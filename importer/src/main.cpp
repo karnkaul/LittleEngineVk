@@ -1,6 +1,6 @@
 #include <clap/clap.hpp>
 #include <importer/importer.hpp>
-#include <spaced/engine/error.hpp>
+#include <spaced/error.hpp>
 #include <format>
 #include <iostream>
 

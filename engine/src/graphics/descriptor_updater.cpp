@@ -1,8 +1,8 @@
-#include <spaced/engine/graphics/cache/descriptor_cache.hpp>
-#include <spaced/engine/graphics/cache/sampler_cache.hpp>
-#include <spaced/engine/graphics/cache/scratch_buffer_cache.hpp>
-#include <spaced/engine/graphics/descriptor_updater.hpp>
-#include <spaced/engine/graphics/device.hpp>
+#include <spaced/graphics/cache/descriptor_cache.hpp>
+#include <spaced/graphics/cache/sampler_cache.hpp>
+#include <spaced/graphics/cache/scratch_buffer_cache.hpp>
+#include <spaced/graphics/descriptor_updater.hpp>
+#include <spaced/graphics/device.hpp>
 
 namespace spaced::graphics {
 namespace {

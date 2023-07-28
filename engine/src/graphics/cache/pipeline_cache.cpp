@@ -1,9 +1,9 @@
-#include <spaced/engine/core/hash_combine.hpp>
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/graphics/cache/pipeline_cache.hpp>
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/resources/resources.hpp>
-#include <spaced/engine/resources/shader_asset.hpp>
+#include <spaced/core/hash_combine.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/graphics/cache/pipeline_cache.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/resources/resources.hpp>
+#include <spaced/resources/shader_asset.hpp>
 #include <vulkan/vulkan_hash.hpp>
 #include <algorithm>
 #include <map>

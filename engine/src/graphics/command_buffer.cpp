@@ -1,6 +1,6 @@
-#include <spaced/engine/error.hpp>
-#include <spaced/engine/graphics/command_buffer.hpp>
-#include <spaced/engine/graphics/device.hpp>
+#include <spaced/error.hpp>
+#include <spaced/graphics/command_buffer.hpp>
+#include <spaced/graphics/device.hpp>
 
 namespace spaced::graphics {
 CommandBuffer::CommandBuffer() {

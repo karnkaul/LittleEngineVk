@@ -1,4 +1,4 @@
-#include <spaced/engine/core/logger.hpp>
+#include <spaced/core/logger.hpp>
 #include <array>
 #include <atomic>
 #include <cassert>

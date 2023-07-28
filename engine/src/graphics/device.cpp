@@ -1,9 +1,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/graphics/resource.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/graphics/resource.hpp>
 
 namespace spaced::graphics {
 namespace {

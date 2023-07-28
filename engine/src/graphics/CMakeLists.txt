@@ -3,6 +3,7 @@ add_subdirectory(animation)
 
 target_sources(${PROJECT_NAME} PRIVATE
   allocator.cpp
+  camera.cpp
   command_buffer.cpp
   dear_imgui.cpp
   descriptor_updater.cpp
@@ -13,9 +14,9 @@ target_sources(${PROJECT_NAME} PRIVATE
   image_file.cpp
   image_barrier.cpp
   material.cpp
+  particle.cpp
   primitive.cpp
   rgba.cpp
-  render_camera.cpp
   renderer.cpp
   resource.cpp
   render_pass.cpp

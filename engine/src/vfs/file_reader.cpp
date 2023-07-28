@@ -1,4 +1,4 @@
-#include <spaced/engine/vfs/file_reader.hpp>
+#include <spaced/vfs/file_reader.hpp>
 #include <filesystem>
 #include <fstream>
 

@@ -1,18 +1,26 @@
-set(prefix include/spaced/engine)
+set(prefix include/spaced)
 
 set(core_headers
   ${prefix}/core/enumerate.hpp
   ${prefix}/core/hash_combine.hpp
+  ${prefix}/core/id.hpp
   ${prefix}/core/mono_instance.hpp
   ${prefix}/core/logger.hpp
   ${prefix}/core/named_type.hpp
   ${prefix}/core/not_null.hpp
   ${prefix}/core/nvec3.hpp
   ${prefix}/core/ptr.hpp
+  ${prefix}/core/random.hpp
   ${prefix}/core/signal.hpp
   ${prefix}/core/time.hpp
   ${prefix}/core/visitor.hpp
   ${prefix}/core/zip_ranges.hpp
+)
+
+set(node_headers
+  ${prefix}/node/node_tree_serializer.hpp
+  ${prefix}/node/node_tree.hpp
+  ${prefix}/node/node.hpp
 )
 
 set(input_headers
@@ -52,6 +60,7 @@ set(graphics_headers
   ${prefix}/graphics/allocator.hpp
   ${prefix}/graphics/bitmap.hpp
   ${prefix}/graphics/buffering.hpp
+  ${prefix}/graphics/camera.hpp
   ${prefix}/graphics/command_buffer.hpp
   ${prefix}/graphics/dear_imgui.hpp
   ${prefix}/graphics/descriptor_updater.hpp
@@ -64,11 +73,11 @@ set(graphics_headers
   ${prefix}/graphics/image_view.hpp
   ${prefix}/graphics/lights.hpp
   ${prefix}/graphics/material.hpp
+  ${prefix}/graphics/particle.hpp
   ${prefix}/graphics/pipeline_state.hpp
   ${prefix}/graphics/primitive.hpp
   ${prefix}/graphics/rect.hpp
   ${prefix}/graphics/rgba.hpp
-  ${prefix}/graphics/render_camera.hpp
   ${prefix}/graphics/render_object.hpp
   ${prefix}/graphics/renderer.hpp
   ${prefix}/graphics/resource.hpp
@@ -80,20 +89,30 @@ set(graphics_headers
   ${prefix}/graphics/texture.hpp
 )
 
+set(scene_headers
+  ${prefix}/scene/component.hpp
+  ${prefix}/scene/entity.hpp
+  ${prefix}/scene/freecam_controller.hpp
+  ${prefix}/scene/mesh_animator.hpp
+  ${prefix}/scene/mesh_renderer.hpp
+  ${prefix}/scene/particle_system.hpp
+  ${prefix}/scene/render_component.hpp
+  ${prefix}/scene/scene_manager.hpp
+  ${prefix}/scene/scene_renderer.hpp
+  ${prefix}/scene/scene_switcher.hpp
+  ${prefix}/scene/scene.hpp
+)
+
 set(header_list
   ${core_headers}
   ${input_headers}
   ${vfs_headers}
   ${resources_headers}
   ${graphics_headers}
+  ${scene_headers}
 
   ${prefix}/build_version.hpp
-  ${prefix}/camera.hpp
   ${prefix}/engine.hpp
-  ${prefix}/id.hpp
-  ${prefix}/node_tree_serializer.hpp
-  ${prefix}/node_tree.hpp
-  ${prefix}/node.hpp
   ${prefix}/error.hpp
-  ${prefix}/transform.hpp
+  ${prefix}/runtime.hpp
 )

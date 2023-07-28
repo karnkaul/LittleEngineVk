@@ -1,5 +1,5 @@
-#include <spaced/engine/vfs/file_reader.hpp>
-#include <spaced/engine/vfs/vfs.hpp>
+#include <spaced/vfs/file_reader.hpp>
+#include <spaced/vfs/vfs.hpp>
 
 namespace spaced {
 namespace {

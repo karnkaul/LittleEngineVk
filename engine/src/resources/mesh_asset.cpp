@@ -1,10 +1,10 @@
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/resources/material_asset.hpp>
-#include <spaced/engine/resources/mesh_asset.hpp>
-#include <spaced/engine/resources/primitive_asset.hpp>
-#include <spaced/engine/resources/resources.hpp>
-#include <spaced/engine/resources/skeleton_asset.hpp>
-#include <spaced/engine/vfs/file_reader.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/resources/material_asset.hpp>
+#include <spaced/resources/mesh_asset.hpp>
+#include <spaced/resources/primitive_asset.hpp>
+#include <spaced/resources/resources.hpp>
+#include <spaced/resources/skeleton_asset.hpp>
+#include <spaced/vfs/file_reader.hpp>
 
 namespace spaced {
 namespace {

@@ -1,6 +1,6 @@
-#include <spaced/engine/resources/bin_data.hpp>
-#include <spaced/engine/resources/primitive_asset.hpp>
-#include <spaced/engine/vfs/file_reader.hpp>
+#include <spaced/resources/bin_data.hpp>
+#include <spaced/resources/primitive_asset.hpp>
+#include <spaced/vfs/file_reader.hpp>
 
 namespace spaced {
 static_assert(BinaryT<graphics::Vertex>);

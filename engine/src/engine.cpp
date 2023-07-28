@@ -1,8 +1,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <spaced/engine/engine.hpp>
-#include <spaced/engine/error.hpp>
+#include <spaced/engine.hpp>
+#include <spaced/error.hpp>
 #include <format>
 
 namespace spaced {
@@ -25,6 +25,14 @@ constexpr auto to_action(int const input) -> input::Action {
 	}
 }
 
+constexpr auto screen_to_world(glm::vec2 screen, glm::vec2 extent, glm::vec2 display_ratio) -> glm::vec2 {
+	auto const he = 0.5f * glm::vec2{extent};
+	auto ret = glm::vec2{screen.x - he.x, he.y - screen.y};
+	auto const dr = display_ratio;
+	if (dr.x == 0.0f || dr.y == 0.0f) { return ret; }
+	return dr * ret;
+}
+
 // NOLINTNEXTLINE
 auto g_input_state = input::State{};
 
@@ -35,15 +43,15 @@ auto setup_signals(GLFWwindow* window) -> void {
 		g_input_state.changed |= input::State::eFocus;
 	});
 	glfwSetWindowSizeCallback(window, [](GLFWwindow*, int width, int height) {
-		g_input_state.window_size = glm::ivec2{width, height};
+		g_input_state.window_extent = glm::ivec2{width, height};
 		g_input_state.changed |= input::State::eWindowSize;
 	});
 	glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int width, int height) {
-		g_input_state.framebuffer_size = glm::ivec2{width, height};
+		g_input_state.framebuffer_extent = glm::ivec2{width, height};
 		g_input_state.changed |= input::State::eFramebufferSize;
 	});
 	glfwSetCursorPosCallback(window, [](GLFWwindow*, double pos_x, double pos_y) {
-		g_input_state.cursor_position = glm::dvec2{pos_x, pos_y};
+		g_input_state.raw_cursor_position = glm::dvec2{pos_x, pos_y};
 		g_input_state.changed |= input::State::eCursorPosition;
 	});
 	glfwSetKeyCallback(window, [](GLFWwindow*, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
@@ -83,15 +91,22 @@ auto Engine::input_state() const -> input::State const& { return g_input_state; 
 
 auto Engine::next_frame() -> bool {
 	g_input_state.changed = {};
-	for (auto& action : g_input_state.keyboard) {
-		switch (action) {
-		case input::Action::eRelease: action = input::Action::eNone; break;
-		case input::Action::ePress:
-		case input::Action::eHold:
-		case input::Action::eRepeat: action = input::Action::eHold; break;
-		default: break;
+	auto advance = [](auto& action_array) {
+		for (auto& action : action_array) {
+			switch (action) {
+			case input::Action::eRelease: action = input::Action::eNone; break;
+			case input::Action::ePress:
+			case input::Action::eHold:
+			case input::Action::eRepeat: action = input::Action::eHold; break;
+			default: break;
+			}
 		}
-	}
+	};
+
+	advance(g_input_state.keyboard);
+	advance(g_input_state.mouse_buttons);
+
+	g_input_state.cursor_position = screen_to_world(g_input_state.raw_cursor_position, g_input_state.window_extent, g_input_state.display_ratio());
 
 	glfwPollEvents();
 	if (!is_running()) { return false; }

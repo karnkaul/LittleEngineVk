@@ -1,6 +1,6 @@
-#include <spaced/engine/core/hash_combine.hpp>
-#include <spaced/engine/graphics/cache/sampler_cache.hpp>
-#include <spaced/engine/graphics/device.hpp>
+#include <spaced/core/hash_combine.hpp>
+#include <spaced/graphics/cache/sampler_cache.hpp>
+#include <spaced/graphics/device.hpp>
 
 namespace spaced::graphics {
 namespace {

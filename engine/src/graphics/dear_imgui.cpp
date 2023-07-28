@@ -3,10 +3,10 @@
 #include <imgui.h>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
-#include <spaced/engine/error.hpp>
-#include <spaced/engine/graphics/command_buffer.hpp>
-#include <spaced/engine/graphics/dear_imgui.hpp>
-#include <spaced/engine/graphics/device.hpp>
+#include <spaced/error.hpp>
+#include <spaced/graphics/command_buffer.hpp>
+#include <spaced/graphics/dear_imgui.hpp>
+#include <spaced/graphics/device.hpp>
 
 namespace spaced::graphics {
 DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth) {

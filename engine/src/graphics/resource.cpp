@@ -1,8 +1,8 @@
-#include <spaced/engine/graphics/allocator.hpp>
-#include <spaced/engine/graphics/command_buffer.hpp>
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/graphics/image_barrier.hpp>
-#include <spaced/engine/graphics/resource.hpp>
+#include <spaced/graphics/allocator.hpp>
+#include <spaced/graphics/command_buffer.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/graphics/image_barrier.hpp>
+#include <spaced/graphics/resource.hpp>
 #include <algorithm>
 #include <cmath>
 #include <numeric>

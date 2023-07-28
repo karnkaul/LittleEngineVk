@@ -1,5 +1,5 @@
-#include <spaced/engine/error.hpp>
-#include <spaced/engine/graphics/swapchain.hpp>
+#include <spaced/error.hpp>
+#include <spaced/graphics/swapchain.hpp>
 
 namespace spaced::graphics {
 namespace {

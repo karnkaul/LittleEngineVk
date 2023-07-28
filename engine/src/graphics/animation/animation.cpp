@@ -1,5 +1,5 @@
-#include <spaced/engine/core/visitor.hpp>
-#include <spaced/engine/graphics/animation/animation.hpp>
+#include <spaced/core/visitor.hpp>
+#include <spaced/graphics/animation/animation.hpp>
 
 namespace spaced::graphics {
 auto Animation::Channel::duration() const -> Duration {

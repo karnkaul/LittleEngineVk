@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/cache/scratch_buffer_cache.hpp>
-#include <spaced/engine/graphics/renderer.hpp>
+#include <spaced/graphics/cache/scratch_buffer_cache.hpp>
+#include <spaced/graphics/renderer.hpp>
 
 namespace spaced::graphics {
 auto ScratchBufferCache::allocate(vk::BufferUsageFlags const usage) -> HostBuffer& {

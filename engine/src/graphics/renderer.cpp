@@ -1,6 +1,6 @@
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/graphics/image_barrier.hpp>
-#include <spaced/engine/graphics/renderer.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/graphics/image_barrier.hpp>
+#include <spaced/graphics/renderer.hpp>
 
 namespace spaced::graphics {
 namespace {

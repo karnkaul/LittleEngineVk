@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/image_file.hpp>
-#include <spaced/engine/resources/texture_asset.hpp>
+#include <spaced/graphics/image_file.hpp>
+#include <spaced/resources/texture_asset.hpp>
 
 namespace spaced {
 namespace {

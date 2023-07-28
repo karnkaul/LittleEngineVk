@@ -1,5 +1,5 @@
-#include <spaced/engine/core/nvec3.hpp>
-#include <spaced/engine/graphics/geometry.hpp>
+#include <spaced/core/nvec3.hpp>
+#include <spaced/graphics/geometry.hpp>
 #include <algorithm>
 #include <array>
 #include <optional>

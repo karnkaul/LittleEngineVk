@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/descriptor_updater.hpp>
-#include <spaced/engine/graphics/material.hpp>
+#include <spaced/graphics/descriptor_updater.hpp>
+#include <spaced/graphics/material.hpp>
 
 namespace spaced::graphics {
 auto Material::or_default(Ptr<Material const> material) -> Material const& {

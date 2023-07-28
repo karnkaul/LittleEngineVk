@@ -1,5 +1,5 @@
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/resources/resources.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/resources/resources.hpp>
 
 namespace spaced {
 namespace {

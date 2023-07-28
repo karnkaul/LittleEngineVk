@@ -1,4 +1,4 @@
-#include <spaced/engine/vfs/uri.hpp>
+#include <spaced/vfs/uri.hpp>
 #include <filesystem>
 
 namespace spaced {

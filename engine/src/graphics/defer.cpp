@@ -1,5 +1,5 @@
-#include <spaced/engine/core/logger.hpp>
-#include <spaced/engine/graphics/defer.hpp>
+#include <spaced/core/logger.hpp>
+#include <spaced/graphics/defer.hpp>
 
 namespace spaced::graphics {
 namespace {

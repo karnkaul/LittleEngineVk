@@ -1,4 +1,4 @@
-#include <spaced/engine/graphics/allocator.hpp>
+#include <spaced/graphics/allocator.hpp>
 
 namespace spaced::graphics {
 Allocator::Allocator(vk::Instance instance, vk::PhysicalDevice physical_device, vk::Device device) : m_device(device) {

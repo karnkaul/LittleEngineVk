@@ -1,6 +1,6 @@
-#include <spaced/engine/core/visitor.hpp>
-#include <spaced/engine/resources/animation_asset.hpp>
-#include <spaced/engine/resources/bin_data.hpp>
+#include <spaced/core/visitor.hpp>
+#include <spaced/resources/animation_asset.hpp>
+#include <spaced/resources/bin_data.hpp>
 
 namespace spaced {
 namespace {

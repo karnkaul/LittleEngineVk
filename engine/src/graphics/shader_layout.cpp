@@ -1,6 +1,6 @@
 #include <glm/mat4x4.hpp>
-#include <spaced/engine/graphics/geometry.hpp>
-#include <spaced/engine/graphics/shader_layout.hpp>
+#include <spaced/graphics/geometry.hpp>
+#include <spaced/graphics/shader_layout.hpp>
 
 namespace spaced::graphics {
 auto VertexLayout::make(Buffers const& buffers) -> VertexLayout {

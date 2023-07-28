@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/primitive.hpp>
-#include <spaced/engine/graphics/renderer.hpp>
+#include <spaced/graphics/primitive.hpp>
+#include <spaced/graphics/renderer.hpp>
 #include <utility>
 
 namespace spaced::graphics {

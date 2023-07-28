@@ -1,5 +1,5 @@
-#include <spaced/engine/core/zip_ranges.hpp>
-#include <spaced/engine/graphics/texture.hpp>
+#include <spaced/core/zip_ranges.hpp>
+#include <spaced/graphics/texture.hpp>
 #include <algorithm>
 #include <array>
 

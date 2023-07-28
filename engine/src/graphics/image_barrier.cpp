@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/image_barrier.hpp>
-#include <spaced/engine/graphics/resource.hpp>
+#include <spaced/graphics/image_barrier.hpp>
+#include <spaced/graphics/resource.hpp>
 
 namespace spaced::graphics {
 ImageBarrier::ImageBarrier(vk::Image image, std::uint32_t mip_levels, std::uint32_t array_layers) {

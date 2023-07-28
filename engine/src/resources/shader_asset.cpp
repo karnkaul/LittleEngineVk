@@ -1,5 +1,5 @@
-#include <spaced/engine/graphics/device.hpp>
-#include <spaced/engine/resources/shader_asset.hpp>
+#include <spaced/graphics/device.hpp>
+#include <spaced/resources/shader_asset.hpp>
 
 namespace spaced {
 namespace {

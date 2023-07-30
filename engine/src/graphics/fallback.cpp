@@ -3,7 +3,7 @@
 namespace spaced::graphics {
 Fallback::Fallback() {
 	auto pixel = std::array<std::uint8_t, 4>{};
-	auto bitmap = Bitmap{pixel, {1, 1}, 4};
+	auto bitmap = Bitmap{pixel, {1, 1}};
 	auto make_cubemap = [&] { return std::array{bitmap, bitmap, bitmap, bitmap, bitmap, bitmap}; };
 
 	pixel = {0xff, 0xff, 0xff, 0xff};

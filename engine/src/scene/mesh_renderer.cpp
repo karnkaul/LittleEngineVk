@@ -18,7 +18,6 @@ auto MeshRenderer::update_joints(NodeLocator node_locator) -> void {
 
 auto MeshRenderer::render_to(std::vector<graphics::RenderObject>& out) const -> void {
 	if (m_mesh == nullptr) { return; }
-	static auto const default_instance{graphics::RenderInstance{}};
 	auto const parent = get_entity().get_transform().matrix();
 	out.reserve(out.size() + m_mesh->primitives.size());
 	for (auto const& primitive : m_mesh->primitives) {
@@ -26,7 +25,7 @@ auto MeshRenderer::render_to(std::vector<graphics::RenderObject>& out) const -> 
 			.material = &graphics::Material::or_default(primitive.material),
 			.primitive = primitive.primitive,
 			.parent = parent,
-			.instances = instances.empty() ? std::span{&default_instance, 1} : instances,
+			.instances = instances,
 			.joints = m_joint_matrices,
 			.pipeline_state = pipeline_state,
 		});

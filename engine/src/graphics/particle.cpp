@@ -73,16 +73,10 @@ void Particle::Emitter::update(glm::quat const& view, Duration dt) {
 	for (auto [particle, instance] : zip_ranges(m_particles, m_instances)) {
 		particle.elapsed += dt;
 		particle.alpha = std::clamp(particle.elapsed / particle.ttl, 0.0f, 1.0f);
-		for (auto const& modifier : modifiers) {
-			auto const visitor = Visitor{
-				[p = &particle, dt](Translate) { translate(*p, dt); },
-				[p = &particle, dt](Rotate) { rotate(*p, dt); },
-				[p = &particle](Scale) { scaleify(*p); },
-				[p = &particle](Tint) { tintify(*p); },
-			};
-			std::visit(visitor, modifier);
-		}
-
+		if ((modifiers & eTranslate) != 0) { translate(particle, dt); }
+		if ((modifiers & eRotate) != 0) { rotate(particle, dt); }
+		if ((modifiers & eScale) != 0) { scaleify(particle); }
+		if ((modifiers & eTint) != 0) { tintify(particle); }
 		auto const orientation = view_inverse * glm::rotate(glm::identity<glm::quat>(), particle.rotation.value, front_v);
 		instance.transform.set_orientation(orientation);
 		instance.transform.set_position(particle.position);

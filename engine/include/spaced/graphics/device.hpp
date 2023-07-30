@@ -1,6 +1,7 @@
 #pragma once
 #include <spaced/core/ptr.hpp>
 #include <spaced/graphics/allocator.hpp>
+#include <spaced/graphics/font/font_library.hpp>
 #include <vulkan/vulkan.hpp>
 #include <limits>
 #include <mutex>
@@ -35,6 +36,8 @@ class Device : public MonoInstance<Device> {
 	[[nodiscard]] auto queue_family() const -> std::uint32_t { return m_queue_family; }
 	[[nodiscard]] auto mutex() const -> std::mutex& { return m_mutex; }
 
+	[[nodiscard]] auto font_library() const -> FontLibrary& { return *m_font_library; }
+
 	auto wait_for(vk::Fence fence, std::uint64_t timeout = max_timeout_v) const -> bool;
 	auto reset(vk::Fence fence, bool wait_first = true) const -> bool;
 
@@ -53,6 +56,7 @@ class Device : public MonoInstance<Device> {
 	vk::UniqueDevice m_device{};
 	vk::Queue m_queue{};
 	std::unique_ptr<Allocator> m_allocator{};
+	std::unique_ptr<FontLibrary> m_font_library{FontLibrary::make()};
 
 	vk::PhysicalDeviceProperties m_device_properties{};
 	std::uint32_t m_queue_family{};

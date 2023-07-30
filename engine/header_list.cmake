@@ -9,6 +9,7 @@ set(core_headers
   ${prefix}/core/named_type.hpp
   ${prefix}/core/not_null.hpp
   ${prefix}/core/nvec3.hpp
+  ${prefix}/core/offset_span.hpp
   ${prefix}/core/ptr.hpp
   ${prefix}/core/random.hpp
   ${prefix}/core/signal.hpp
@@ -38,6 +39,7 @@ set(vfs_headers
 set(resources_headers
   ${prefix}/resources/asset.hpp
   ${prefix}/resources/bin_data.hpp
+  ${prefix}/resources/font_asset.hpp
   ${prefix}/resources/material_asset.hpp
   ${prefix}/resources/mesh_asset.hpp
   ${prefix}/resources/primitive_asset.hpp
@@ -57,6 +59,14 @@ set(graphics_headers
   ${prefix}/graphics/animation/interpolator.hpp
   ${prefix}/graphics/animation/animation.hpp
 
+  ${prefix}/graphics/font/codepoint.hpp
+  ${prefix}/graphics/font/font_atlas.hpp
+  ${prefix}/graphics/font/font_library.hpp
+  ${prefix}/graphics/font/font.hpp
+  ${prefix}/graphics/font/glyph_page.hpp
+  ${prefix}/graphics/font/glyph_slot.hpp
+  ${prefix}/graphics/font/text_height.hpp
+
   ${prefix}/graphics/allocator.hpp
   ${prefix}/graphics/bitmap.hpp
   ${prefix}/graphics/buffering.hpp
@@ -66,6 +76,7 @@ set(graphics_headers
   ${prefix}/graphics/descriptor_updater.hpp
   ${prefix}/graphics/defer.hpp
   ${prefix}/graphics/device.hpp
+  ${prefix}/graphics/dynamic_atlas.hpp
   ${prefix}/graphics/fallback.hpp
   ${prefix}/graphics/geometry.hpp
   ${prefix}/graphics/image_file.hpp
@@ -82,7 +93,7 @@ set(graphics_headers
   ${prefix}/graphics/renderer.hpp
   ${prefix}/graphics/resource.hpp
   ${prefix}/graphics/rgba.hpp
-  ${prefix}/graphics/render_pass.hpp
+  ${prefix}/graphics/subpass.hpp
   ${prefix}/graphics/shader_layout.hpp
   ${prefix}/graphics/swapchain.hpp
   ${prefix}/graphics/texture_sampler.hpp
@@ -90,6 +101,11 @@ set(graphics_headers
 )
 
 set(scene_headers
+  ${prefix}/scene/ui/primitive_renderer.hpp
+  ${prefix}/scene/ui/rect_transform.hpp
+  ${prefix}/scene/ui/text.hpp
+  ${prefix}/scene/ui/view.hpp
+
   ${prefix}/scene/component.hpp
   ${prefix}/scene/entity.hpp
   ${prefix}/scene/freecam_controller.hpp

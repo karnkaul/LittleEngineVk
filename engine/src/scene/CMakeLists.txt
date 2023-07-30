@@ -1,3 +1,5 @@
+add_subdirectory(ui)
+
 target_sources(${PROJECT_NAME} PRIVATE
   component.cpp
   entity.cpp

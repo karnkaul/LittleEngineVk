@@ -13,21 +13,22 @@ auto SceneManager::tick(Duration dt) -> void {
 	m_switcher.m_active->tick(dt);
 }
 
-auto SceneManager::set_clear_colour(graphics::Rgba clear) -> void {
-	auto const rgba = graphics::Rgba::to_linear(clear.to_tint());
-	m_renderer->clear_colour = std::array{rgba.x, rgba.y, rgba.z, rgba.w};
-}
-
 auto SceneManager::render() const -> void {
-	auto subpasses = std::array<Ptr<graphics::RenderPass>, 1>{m_renderer.get()};
+	m_renderer->scene = &m_switcher.get_active_scene();
+	auto subpasses = std::array<NotNull<graphics::Subpass*>, 1>{m_renderer.get()};
 	Engine::self().render(subpasses);
 }
 
-auto SceneManager::render(std::span<Ptr<graphics::RenderPass> const> subpasses) const -> void {
-	auto render_passes = std::vector<Ptr<graphics::RenderPass>>{};
-	render_passes.reserve(subpasses.size() + 1);
-	render_passes.push_back(m_renderer.get());
-	render_passes.insert(render_passes.end(), subpasses.begin(), subpasses.end());
-	Engine::self().render(render_passes);
+auto SceneManager::render(std::span<Ptr<graphics::Subpass> const> subpasses) const -> void {
+	auto subass_ptrs = std::vector<NotNull<graphics::Subpass*>>{};
+	subass_ptrs.reserve(subpasses.size() + 2);
+	subass_ptrs.emplace_back(m_renderer.get());
+	subass_ptrs.insert(subass_ptrs.end(), subpasses.begin(), subpasses.end());
+	Engine::self().render(subass_ptrs);
+}
+
+auto SceneManager::set_renderer(std::unique_ptr<SceneRenderer> renderer) -> void {
+	if (!renderer) { return; }
+	m_renderer = std::move(renderer);
 }
 } // namespace spaced

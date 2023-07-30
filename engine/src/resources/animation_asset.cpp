@@ -99,9 +99,9 @@ auto AnimationAsset::bin_unpack_from(std::span<std::uint8_t const> bytes, graphi
 	auto count = std::uint64_t{};
 	if (!reader.read(std::span{&count, 1})) { return false; }
 	if (count == 0) { return true; }
-	auto start = out.channels.size();
+	auto const offset = out.channels.size();
 	auto bin_channels = std::vector<BinChannel>(count);
-	auto const span = std::span{bin_channels}.subspan(start);
+	auto const span = std::span{bin_channels}.subspan(offset);
 	out.channels.reserve(out.channels.size() + count);
 	for (auto& channel : span) {
 		if (!unpack_channel(reader, channel)) { return false; }

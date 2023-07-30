@@ -1,5 +1,6 @@
 add_subdirectory(cache)
 add_subdirectory(animation)
+add_subdirectory(font)
 
 target_sources(${PROJECT_NAME} PRIVATE
   allocator.cpp
@@ -9,6 +10,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   descriptor_updater.cpp
   defer.cpp
   device.cpp
+  dynamic_atlas.cpp
   fallback.cpp
   geometry.cpp
   image_file.cpp
@@ -19,8 +21,8 @@ target_sources(${PROJECT_NAME} PRIVATE
   rgba.cpp
   renderer.cpp
   resource.cpp
-  render_pass.cpp
   shader_layout.cpp
+  subpass.cpp
   swapchain.cpp
   texture.cpp
 )

@@ -10,8 +10,8 @@ Entity::~Entity() {
 	m_components.clear();
 }
 
-auto Entity::get_node() const -> Node const& { return m_scene->node_tree().get(m_node_id); }
-auto Entity::get_node() -> Node& { return m_scene->node_locator().get(m_node_id); }
+auto Entity::get_node() const -> Node const& { return m_scene->get_node_tree().get(m_node_id); }
+auto Entity::get_node() -> Node& { return m_scene->make_node_locator().get(m_node_id); }
 
 auto Entity::tick(Duration dt) -> void {
 	m_cache.clear();

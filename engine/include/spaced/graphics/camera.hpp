@@ -2,6 +2,7 @@
 #include <spaced/core/nvec3.hpp>
 #include <spaced/core/radians.hpp>
 #include <spaced/core/transform.hpp>
+#include <spaced/graphics/rgba.hpp>
 #include <string>
 #include <variant>
 
@@ -43,5 +44,6 @@ struct Camera {
 	std::variant<Perspective, Orthographic> type{Perspective{}};
 	float exposure{2.0f};
 	Face face{Face::eNegativeZ};
+	Rgba clear_colour{black_v};
 };
 } // namespace spaced::graphics

@@ -29,38 +29,35 @@ struct RenderCamera {
 	NotNull<Lights const*> lights;
 };
 
-class RenderPass {
+class Subpass {
   public:
-	RenderPass() = default;
-	RenderPass(RenderPass const&) = default;
-	RenderPass(RenderPass&&) = default;
-	auto operator=(RenderPass const&) -> RenderPass& = default;
-	auto operator=(RenderPass&&) -> RenderPass& = default;
+	struct Load {
+		vk::ClearColorValue clear_colour{std::array{0.0f, 0.0f, 0.0f, 1.0f}};
+		vk::AttachmentLoadOp load_op{vk::AttachmentLoadOp::eClear};
+	};
 
-	virtual ~RenderPass() = default;
+	Subpass() = default;
+	Subpass(Subpass const&) = default;
+	Subpass(Subpass&&) = default;
+	auto operator=(Subpass const&) -> Subpass& = default;
+	auto operator=(Subpass&&) -> Subpass& = default;
+
+	virtual ~Subpass() = default;
 
 	[[nodiscard]] auto swapchain_image() const -> ImageView const& { return m_data.swapchain_image; }
 	[[nodiscard]] auto framebuffer_extent() const -> glm::uvec2 { return {m_data.swapchain_image.extent.width, m_data.swapchain_image.extent.height}; }
-
-	vk::ClearColorValue clear_colour{};
 
   protected:
 	using Object = RenderObject;
 	using Instance = RenderInstance;
 
+	[[nodiscard]] virtual auto get_load() const -> Load { return {}; }
 	virtual auto render(vk::CommandBuffer cmd) -> void = 0;
-
-	virtual auto setup_framebuffer() -> void {}
-
-	auto set_colour(ImageView const& colour) -> void { m_data.render_target.colour = colour; }
-	auto set_depth(ImageView const& depth) -> void { m_data.render_target.depth = depth; }
 
 	[[nodiscard]] auto get_projection() const -> glm::vec2 { return m_data.projection; }
 	auto set_projection(glm::vec2 extent) -> void { m_data.projection = extent; }
 
 	auto render_objects(RenderCamera const& camera, std::span<RenderObject const> objects, vk::CommandBuffer cmd) -> void;
-
-	vk::AttachmentLoadOp m_colour_load_op{vk::AttachmentLoadOp::eClear};
 
   private:
 	struct Data {

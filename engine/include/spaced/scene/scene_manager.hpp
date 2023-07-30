@@ -7,11 +7,11 @@ class SceneManager {
   public:
 	auto tick(Duration dt) -> void;
 	auto render() const -> void;
-	auto render(std::span<Ptr<graphics::RenderPass> const> subpasses) const -> void;
-
-	auto set_clear_colour(graphics::Rgba clear) -> void;
+	auto render(std::span<Ptr<graphics::Subpass> const> subpasses) const -> void;
 
 	[[nodiscard]] auto get_active_scene() const -> Scene& { return m_switcher.get_active_scene(); }
+
+	auto set_renderer(std::unique_ptr<SceneRenderer> renderer) -> void;
 
   private:
 	SceneSwitcher m_switcher{};

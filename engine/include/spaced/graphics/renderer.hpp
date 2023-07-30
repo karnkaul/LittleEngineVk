@@ -7,7 +7,7 @@
 #include <spaced/graphics/dear_imgui.hpp>
 #include <spaced/graphics/defer.hpp>
 #include <spaced/graphics/fallback.hpp>
-#include <spaced/graphics/render_pass.hpp>
+#include <spaced/graphics/subpass.hpp>
 #include <spaced/graphics/swapchain.hpp>
 #include <optional>
 
@@ -25,17 +25,18 @@ class Renderer : public MonoInstance<Renderer> {
 	[[nodiscard]] static constexpr auto to_viewport(glm::vec2 extent) -> vk::Viewport { return vk::Viewport{0.0f, 0.0f, extent.x, extent.y}; }
 	[[nodiscard]] static constexpr auto to_rect2d(vk::Viewport const& rect) -> vk::Rect2D;
 
-	[[nodiscard]] auto frame_index() const -> FrameIndex { return m_frame.frame_index; }
-	[[nodiscard]] auto colour_format() const -> vk::Format;
-	[[nodiscard]] auto depth_format() const -> vk::Format;
+	[[nodiscard]] auto get_frame_index() const -> FrameIndex { return m_frame.frame_index; }
+	[[nodiscard]] auto get_colour_format() const -> vk::Format;
+	[[nodiscard]] auto get_depth_format() const -> vk::Format;
 
-	[[nodiscard]] auto pipeline_cache() const -> PipelineCache const& { return m_pipeline_cache; }
-	[[nodiscard]] auto pipeline_cache() -> PipelineCache& { return m_pipeline_cache; }
-	[[nodiscard]] auto pipeline_format() const -> PipelineFormat { return {colour_format(), depth_format()}; }
-	[[nodiscard]] auto shader_layout() const -> ShaderLayout const& { return m_pipeline_cache.shader_layout(); }
+	[[nodiscard]] auto get_pipeline_cache() const -> PipelineCache const& { return m_pipeline_cache; }
+	[[nodiscard]] auto get_pipeline_cache() -> PipelineCache& { return m_pipeline_cache; }
+	[[nodiscard]] auto get_pipeline_format() const -> PipelineFormat { return {get_colour_format(), get_depth_format()}; }
+	[[nodiscard]] auto get_shader_layout() const -> ShaderLayout const& { return m_pipeline_cache.shader_layout(); }
+	[[nodiscard]] auto get_dear_imgui() const -> DearImGui& { return *m_imgui; }
 
 	[[nodiscard]] auto wait_for_frame(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
-	auto render(std::span<Ptr<RenderPass> const> passes, std::uint32_t image_index) -> void;
+	auto render(std::span<NotNull<Subpass*> const> passes, std::uint32_t image_index) -> void;
 	auto submit_frame(std::uint32_t image_index) -> bool;
 
 	auto recreate_swapchain(std::optional<glm::uvec2> extent, std::optional<vk::PresentModeKHR> mode) -> bool;
@@ -81,7 +82,7 @@ class Renderer : public MonoInstance<Renderer> {
 
 	Fallback m_fallback{};
 
-	Ptr<RenderPass> m_current_pass{};
+	Ptr<Subpass> m_current_pass{};
 	bool m_rendering{};
 };
 

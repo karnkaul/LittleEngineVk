@@ -1,11 +1,11 @@
 #pragma once
 #include <spaced/core/ptr.hpp>
-#include <spaced/graphics/render_pass.hpp>
+#include <spaced/graphics/subpass.hpp>
 
 struct GLFWwindow;
 
 namespace spaced::graphics {
-class DearImGui : public RenderPass {
+class DearImGui : public Subpass {
   public:
 	DearImGui(DearImGui&&) = delete;
 	DearImGui(DearImGui const&) = delete;
@@ -22,6 +22,7 @@ class DearImGui : public RenderPass {
   private:
 	enum class State { eNewFrame, eEndFrame };
 
+	[[nodiscard]] auto get_load() const -> Load override;
 	auto render(vk::CommandBuffer cmd) -> void final;
 
 	vk::UniqueDescriptorPool m_pool{};

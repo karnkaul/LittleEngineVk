@@ -11,12 +11,14 @@ struct Particle {
 	struct Config;
 	class Emitter;
 
-	struct Translate {};
-	struct Rotate {};
-	struct Scale {};
-	struct Tint {};
+	enum Flag : std::uint32_t {
+		eTranslate = 1 << 0,
+		eRotate = 1 << 1,
+		eScale = 1 << 2,
+		eTint = 1 << 3,
+	};
 
-	using Modifier = std::variant<Translate, Rotate, Scale, Tint>;
+	using Modifiers = std::uint32_t;
 
 	template <typename Type>
 	using Range = std::pair<Type, Type>;
@@ -67,7 +69,7 @@ class Particle::Emitter {
   public:
 	Config config{};
 	graphics::UnlitMaterial material{};
-	std::vector<Modifier> modifiers{};
+	Modifiers modifiers{eTranslate};
 	Transform transform{};
 
 	auto respawn_all(glm::quat const& view) -> void;

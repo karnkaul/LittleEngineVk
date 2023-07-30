@@ -7,6 +7,8 @@ target_compile_definitions(spaced-engine PUBLIC
 
 target_compile_definitions(spaced-engine PRIVATE
   $<$<BOOL:${SPACED_PCH}>:SPACED_PCH>
+  $<$<BOOL:${SPACED_USE_FREETYPE}>:SPACED_USE_FREETYPE>
+  $<$<BOOL:${SPACED_USE_OPENAL}>:SPACED_USE_OPENAL>
   SPACED_VERSION="${PROJECT_VERSION}"
 )
 

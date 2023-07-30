@@ -12,7 +12,7 @@ auto const g_log{logger::Logger{"Freecam"}};
 }
 
 void FreecamController::tick(Duration dt) {
-	auto data = get_scene().camera.transform.data();
+	auto data = get_scene().main_camera.transform.data();
 	auto* window = Engine::self().window();
 	auto const& input = Engine::self().input_state();
 
@@ -24,7 +24,6 @@ void FreecamController::tick(Duration dt) {
 
 	auto dxy = glm::vec2{};
 	auto const input_mode = glfwGetInputMode(window, GLFW_CURSOR);
-	g_log.debug("input mode: {}", input_mode);
 
 	if (input_mode != GLFW_CURSOR_DISABLED) {
 		m_prev_cursor = input.cursor_position;
@@ -58,6 +57,6 @@ void FreecamController::tick(Duration dt) {
 	data.orientation = glm::vec3{pitch, yaw, 0.0f};
 	m_prev_cursor = input.cursor_position;
 
-	get_scene().camera.transform.set_data(data);
+	get_scene().main_camera.transform.set_data(data);
 }
 } // namespace spaced

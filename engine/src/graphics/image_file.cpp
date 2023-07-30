@@ -15,13 +15,13 @@ auto ImageFile::Deleter::operator()(Impl* ptr) const -> void {
 	std::default_delete<Impl>{}(ptr);
 }
 
-auto ImageFile::decompress(std::span<std::uint8_t const> compressed, int const channels) -> bool {
-	if (compressed.empty() || channels <= 0) { return false; }
+auto ImageFile::decompress(std::span<std::uint8_t const> compressed) -> bool {
+	if (compressed.empty()) { return false; }
 	auto extent = glm::ivec3{};
-	auto* ptr = stbi_load_from_memory(compressed.data(), static_cast<int>(compressed.size_bytes()), &extent.x, &extent.y, &extent.z, channels);
+	auto* ptr = stbi_load_from_memory(compressed.data(), static_cast<int>(compressed.size_bytes()), &extent.x, &extent.y, &extent.z, 4);
 	if (ptr == nullptr) { return false; }
-	auto const size = static_cast<std::size_t>(extent.x * extent.y * channels);
-	m_impl = std::unique_ptr<Impl, Deleter>{new Impl{ptr, size, extent, channels}};
+	auto const size = static_cast<std::size_t>(extent.x * extent.y * 4);
+	m_impl = std::unique_ptr<Impl, Deleter>{new Impl{ptr, size, extent, 4}};
 	return true;
 }
 
@@ -31,7 +31,6 @@ auto ImageFile::bitmap() const -> Bitmap {
 	return Bitmap{
 		.bytes = {m_impl->stb_data, m_impl->size},
 		.extent = m_impl->extent,
-		.channels = static_cast<std::size_t>(m_impl->channels),
 	};
 }
 } // namespace spaced::graphics

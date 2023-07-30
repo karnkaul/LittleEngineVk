@@ -25,7 +25,7 @@ auto make_descriptor_pool(vk::Device device) -> vk::UniqueDescriptorPool {
 } // namespace
 
 auto DescriptorCache::try_allocate(vk::DescriptorSetLayout const& layout, vk::DescriptorSet& out) const -> bool {
-	auto const& data = m_data[Renderer::self().frame_index()];
+	auto const& data = m_data[Renderer::self().get_frame_index()];
 	if (!data.active) { return false; }
 	auto dsai = vk::DescriptorSetAllocateInfo{};
 	dsai.descriptorPool = *data.active;
@@ -38,7 +38,7 @@ auto DescriptorCache::allocate(vk::DescriptorSetLayout const& layout) -> vk::Des
 	static constexpr auto max_loops{5};
 	auto const device = Device::self().device();
 	auto ret = vk::DescriptorSet{};
-	auto& data = m_data[Renderer::self().frame_index()];
+	auto& data = m_data[Renderer::self().get_frame_index()];
 	for (int i = 0; i < max_loops; ++i) {
 		if (try_allocate(layout, ret)) { return ret; }
 		if (data.active) { data.used.push_back(std::move(data.active)); }
@@ -51,7 +51,7 @@ auto DescriptorCache::allocate(vk::DescriptorSetLayout const& layout) -> vk::Des
 
 auto DescriptorCache::next_frame() -> void {
 	auto const device = Device::self().device();
-	auto& data = m_data[Renderer::self().frame_index()];
+	auto& data = m_data[Renderer::self().get_frame_index()];
 	if (data.active) { data.used.push_back(std::move(data.active)); }
 	for (auto& pool : data.used) { device.resetDescriptorPool(*pool); }
 	std::ranges::move(data.used, std::back_inserter(data.free));

@@ -28,8 +28,22 @@ struct Rect2D {
 		return lt.x <= point.x && point.x <= rb.x && rb.y <= point.y && point.y <= lt.y;
 	}
 
+	constexpr auto operator*=(float const scale) -> Rect2D& {
+		lt *= scale;
+		rb *= scale;
+		return *this;
+	}
+
+	friend constexpr auto operator*(float const scale, Rect2D const& rect) {
+		auto ret = rect;
+		ret *= scale;
+		return ret;
+	}
+
 	auto operator==(Rect2D const&) const -> bool = default;
 };
+
+using OffsetRect = Rect2D<std::int32_t>;
 
 using UvRect = Rect2D<float>;
 

@@ -76,9 +76,6 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth
 	ImGui_ImplVulkan_CreateFontsTexture(command_buffer.get());
 	command_buffer.submit();
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
-
-	// overlay UI on existing colour image
-	m_colour_load_op = vk::AttachmentLoadOp::eLoad;
 }
 
 DearImGui::~DearImGui() {
@@ -102,6 +99,11 @@ auto DearImGui::end_frame() -> void {
 	if (m_state == State::eNewFrame) { new_frame(); }
 	ImGui::Render();
 	m_state = State::eNewFrame;
+}
+
+auto DearImGui::get_load() const -> Load {
+	// overlay UI on existing colour image
+	return Load{.load_op = vk::AttachmentLoadOp::eLoad};
 }
 
 auto DearImGui::render(vk::CommandBuffer const cmd) -> void {

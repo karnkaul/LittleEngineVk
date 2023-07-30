@@ -1,5 +1,4 @@
 #pragma once
-#include <spaced/graphics/bitmap.hpp>
 #include <spaced/graphics/defer.hpp>
 #include <spaced/graphics/image_view.hpp>
 #include <spaced/graphics/resource.hpp>
@@ -12,9 +11,11 @@ class Texture {
   public:
 	using Sampler = TextureSampler;
 
-	explicit Texture(ColourSpace colour_space = ColourSpace::eSrgb);
+	explicit Texture(ColourSpace colour_space = ColourSpace::eSrgb, bool mip_map = true);
 
-	auto write(Bitmap const& bitmap) -> bool;
+	auto write(Bitmap const& bitmap, glm::uvec2 top_left = {}) -> bool;
+
+	auto set_image(std::unique_ptr<Image> image) -> bool;
 
 	[[nodiscard]] auto image() const -> Image const& { return *m_image.get(); }
 	[[nodiscard]] auto view() const -> ImageView;
@@ -27,6 +28,8 @@ class Texture {
 	Texture(ImageCreateInfo const& create_info);
 
 	Defer<std::unique_ptr<Image>> m_image{};
+
+	friend class DynamicAtlas;
 };
 
 class Cubemap : public Texture {

@@ -4,7 +4,7 @@
 #include <vector>
 
 namespace spaced {
-enum struct Layer : std::uint32_t {
+enum struct Layer : std::int32_t {
 	eDefault = 0,
 };
 

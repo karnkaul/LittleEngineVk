@@ -1,4 +1,5 @@
 #pragma once
+#include <spaced/core/offset_span.hpp>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -28,6 +29,8 @@ struct BinReader {
 	}
 };
 
+auto resize_and_overwrite(std::vector<std::uint8_t>& out_bytes, std::span<std::uint8_t const> bytes) -> OffsetSpan;
+
 struct BinWriter {
 	// NOLINTNEXTLINE
 	std::vector<std::uint8_t>& out_bytes;
@@ -35,11 +38,9 @@ struct BinWriter {
 	template <BinaryT Type>
 	auto write(std::span<Type> data) -> BinWriter& {
 		if (data.empty()) { return *this; }
-		auto const start = out_bytes.size();
-		out_bytes.resize(out_bytes.size() + data.size_bytes());
-		auto const span = std::span{out_bytes}.subspan(start);
-		assert(span.size() >= data.size_bytes());
-		std::memcpy(span.data(), data.data(), data.size_bytes());
+		// NOLINTNEXTLINE
+		auto const span = std::span<std::uint8_t const>{reinterpret_cast<std::uint8_t const*>(data.data()), data.size_bytes()};
+		resize_and_overwrite(out_bytes, span);
 		return *this;
 	}
 };

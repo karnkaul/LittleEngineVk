@@ -1,6 +1,8 @@
 target_sources(${PROJECT_NAME} PRIVATE
   animation_asset.cpp
   asset.cpp
+  bin_data.cpp
+  font_asset.cpp
   material_asset.cpp
   mesh_asset.cpp
   primitive_asset.cpp

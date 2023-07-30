@@ -65,9 +65,9 @@ Renderer::~Renderer() {
 	m_defer.clear();
 }
 
-auto Renderer::colour_format() const -> vk::Format { return m_swapchain.create_info.imageFormat; }
+auto Renderer::get_colour_format() const -> vk::Format { return m_swapchain.create_info.imageFormat; }
 
-auto Renderer::depth_format() const -> vk::Format { return m_frame.depth_images[0]->format(); }
+auto Renderer::get_depth_format() const -> vk::Format { return m_frame.depth_images[0]->format(); }
 
 auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optional<std::uint32_t> {
 	if (framebuffer_extent.x == 0 || framebuffer_extent.y == 0) { return {}; }
@@ -79,7 +79,7 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 	}
 
 	auto& device = Device::self();
-	auto& sync = m_frame.syncs[frame_index()];
+	auto& sync = m_frame.syncs[get_frame_index()];
 
 	if (!device.reset(*sync.drawn)) { throw Error{"Failed to wait for frame fence"}; }
 
@@ -96,13 +96,13 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 	return ret;
 }
 
-auto Renderer::render(std::span<Ptr<RenderPass> const> passes, std::uint32_t const image_index) -> void {
-	auto& sync = m_frame.syncs[frame_index()];
+auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t const image_index) -> void {
+	auto& sync = m_frame.syncs[get_frame_index()];
 	sync.command_buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
 	auto const swapchain_image = m_swapchain.active.images[image_index];
-	auto& depth_image = m_frame.depth_images[frame_index()];
-	if (depth_image->extent() != swapchain_image.extent) { depth_image->resize(swapchain_image.extent); }
+	auto& depth_image = m_frame.depth_images[get_frame_index()];
+	if (depth_image->extent() != swapchain_image.extent) { depth_image->recreate(swapchain_image.extent); }
 
 	auto colour_image_barrier = ImageBarrier{swapchain_image.image};
 	colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
@@ -116,7 +116,7 @@ auto Renderer::render(std::span<Ptr<RenderPass> const> passes, std::uint32_t con
 		.format = depth_image->format(),
 	};
 
-	auto execute_pass = [&](RenderPass& pass) {
+	auto execute_pass = [&](Subpass& pass) {
 		m_rendering = true;
 		m_current_pass = &pass;
 		pass.do_setup({.colour = swapchain_image, .depth = depth_image_view});
@@ -124,10 +124,7 @@ auto Renderer::render(std::span<Ptr<RenderPass> const> passes, std::uint32_t con
 		m_rendering = false;
 	};
 
-	for (auto* pass : passes) {
-		assert(pass);
-		execute_pass(*pass);
-	}
+	for (auto const& pass : passes) { execute_pass(*pass); }
 	execute_pass(*m_imgui);
 
 	colour_image_barrier.set_optimal_to_present();
@@ -137,7 +134,7 @@ auto Renderer::render(std::span<Ptr<RenderPass> const> passes, std::uint32_t con
 }
 
 auto Renderer::submit_frame(std::uint32_t const image_index) -> bool {
-	auto& sync = m_frame.syncs[frame_index()];
+	auto& sync = m_frame.syncs[get_frame_index()];
 
 	auto vsi = vk::SubmitInfo2{};
 	auto const cbsi = vk::CommandBufferSubmitInfo{sync.command_buffer};
@@ -226,7 +223,7 @@ auto Renderer::recreate_swapchain(std::optional<glm::uvec2> extent, std::optiona
 auto Renderer::bind_pipeline(vk::Pipeline pipeline) -> bool {
 	if (!m_rendering || !pipeline) { return false; }
 	if (m_frame.last_bound != pipeline) {
-		auto const cmd = m_frame.syncs[frame_index()].command_buffer;
+		auto const cmd = m_frame.syncs[get_frame_index()].command_buffer;
 		cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 		m_frame.last_bound = pipeline;
 	}
@@ -239,7 +236,7 @@ auto Renderer::set_viewport(vk::Viewport viewport) -> bool {
 	if (!m_rendering || !m_frame.last_bound) { return false; }
 	if (viewport == vk::Viewport{}) { viewport = to_viewport(m_frame.framebuffer_extent); }
 	auto const flipped_viewport = vk::Viewport{viewport.x, viewport.height + viewport.y, viewport.width, -viewport.height, 0.0f, 1.0f};
-	auto command_buffer = m_frame.syncs[frame_index()].command_buffer;
+	auto command_buffer = m_frame.syncs[get_frame_index()].command_buffer;
 	command_buffer.setViewport(0, flipped_viewport);
 	command_buffer.setScissor(0, to_rect2d(viewport));
 	return true;
@@ -247,13 +244,13 @@ auto Renderer::set_viewport(vk::Viewport viewport) -> bool {
 
 auto Renderer::set_scissor(vk::Rect2D scissor) -> bool {
 	if (!m_rendering || !m_frame.last_bound) { return false; }
-	m_frame.syncs[frame_index()].command_buffer.setScissor(0, scissor);
+	m_frame.syncs[get_frame_index()].command_buffer.setScissor(0, scissor);
 	return true;
 }
 
 auto Renderer::acquire_next_image(glm::uvec2 const framebuffer_extent) -> std::optional<std::uint32_t> {
 	auto& device = Device::self();
-	auto& sync = m_frame.syncs[frame_index()];
+	auto& sync = m_frame.syncs[get_frame_index()];
 
 	auto image_index = std::uint32_t{};
 	auto const result = device.acquire_next_image(*m_swapchain.active.swapchain, image_index, *sync.draw);

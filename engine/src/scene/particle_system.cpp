@@ -3,7 +3,7 @@
 
 namespace spaced {
 auto ParticleSystem::tick(Duration dt) -> void {
-	for (auto& emitter : emitters) { emitter.update(get_scene().camera.view(), dt); }
+	for (auto& emitter : emitters) { emitter.update(get_scene().main_camera.view(), dt); }
 }
 
 auto ParticleSystem::render_to(std::vector<graphics::RenderObject>& out) const -> void {

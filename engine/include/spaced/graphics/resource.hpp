@@ -1,6 +1,6 @@
 #pragma once
 #include <vk_mem_alloc.h>
-#include <glm/vec2.hpp>
+#include <spaced/graphics/bitmap.hpp>
 #include <vulkan/vulkan.hpp>
 #include <span>
 
@@ -85,6 +85,11 @@ struct ImageCreateInfo {
 	bool mip_map{true};
 };
 
+struct ImageWrite {
+	Bitmap bitmap{};
+	glm::uvec2 top_left{};
+};
+
 class Image : Resource {
   public:
 	using Layer = std::span<std::uint8_t const>;
@@ -103,8 +108,12 @@ class Image : Resource {
 
 	~Image() override;
 
+	auto copy_from(std::span<Layer const> layers, vk::Extent2D target_extent) -> bool;
+
+	auto recreate(vk::Extent2D extent) -> void;
+	auto overwrite(Bitmap const& bitmap, glm::uvec2 top_left) -> bool;
+	auto overwrite(std::span<ImageWrite const> writes) -> bool;
 	auto resize(vk::Extent2D extent) -> void;
-	auto copy_from(std::span<Layer const> layers, vk::Extent2D target_extent, vk::Offset2D offset) -> bool;
 
 	[[nodiscard]] auto image() const -> vk::Image { return m_image; }
 	[[nodiscard]] auto extent() const -> vk::Extent2D { return m_extent; }
@@ -113,6 +122,8 @@ class Image : Resource {
 	[[nodiscard]] auto view_type() const -> vk::ImageViewType { return m_create_info.view_type; }
 	[[nodiscard]] auto layout() const -> vk::ImageLayout { return m_layout; }
 	[[nodiscard]] auto mip_levels() const -> std::uint32_t { return m_mip_levels; }
+
+	[[nodiscard]] auto create_info() const -> ImageCreateInfo const& { return m_create_info; }
 
 	operator vk::Image() const { return m_image; }
 	operator vk::ImageView() const { return *m_view; }

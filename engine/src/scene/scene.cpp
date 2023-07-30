@@ -66,17 +66,22 @@ auto Scene::tick(Duration dt) -> void {
 			m_node_tree.remove(entity.m_node_id);
 			continue;
 		}
-		// this is done so late in order to discard all destroyed entities
+
+		if (!entity.is_active()) { continue; }
+
+		// this is delayed to here in order to cull all destroyed entities
 		entity.fill(m_active.render_components);
 	}
 	// remove destroyed entities
 	for (auto const destroyed : m_destroyed) { m_entity_map.erase(destroyed); }
 
-	// sort render components in order of layers (since render_to() is const)
+	// sort render components in order of layers (since render_entities() is const)
 	std::ranges::sort(m_active.render_components, [](Ptr<RenderComponent const> a, Ptr<RenderComponent const> b) { return a->layer < b->layer; });
+
+	m_ui_root.tick(dt);
 }
 
-auto Scene::render_to(std::vector<graphics::RenderObject>& out) const -> void {
+auto Scene::render_entities(std::vector<graphics::RenderObject>& out) const -> void {
 	for (auto const& render_component : m_active.render_components) { render_component->render_to(out); }
 }
 } // namespace spaced

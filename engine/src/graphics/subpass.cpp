@@ -1,7 +1,7 @@
 #include <spaced/graphics/cache/pipeline_cache.hpp>
 #include <spaced/graphics/descriptor_updater.hpp>
-#include <spaced/graphics/render_pass.hpp>
 #include <spaced/graphics/renderer.hpp>
+#include <spaced/graphics/subpass.hpp>
 
 namespace spaced::graphics {
 namespace {
@@ -9,11 +9,11 @@ struct RenderingInfoBuilder {
 	vk::RenderingAttachmentInfo colour{};
 	vk::RenderingAttachmentInfo depth{};
 
-	[[nodiscard]] auto build(RenderTarget const& target, vk::ClearColorValue const& clear_colour, vk::AttachmentLoadOp load_op) -> vk::RenderingInfo {
+	[[nodiscard]] auto build(RenderTarget const& target, Subpass::Load const& load) -> vk::RenderingInfo {
 		auto vri = vk::RenderingInfo{};
 
-		colour.clearValue = clear_colour;
-		colour.loadOp = load_op;
+		colour.clearValue = load.clear_colour;
+		colour.loadOp = load.load_op;
 		colour.storeOp = vk::AttachmentStoreOp::eStore;
 		colour.imageView = target.colour.view;
 		colour.imageLayout = vk::ImageLayout::eAttachmentOptimal;
@@ -62,7 +62,9 @@ auto RenderCamera::bind_set(glm::vec2 const projection, vk::CommandBuffer const 
 		.bind_set(cmd);
 }
 
-auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObject const> objects, vk::CommandBuffer cmd) -> void {
+auto Subpass::render_objects(RenderCamera const& camera, std::span<RenderObject const> objects, vk::CommandBuffer cmd) -> void {
+	static auto const default_instance{graphics::RenderInstance{}};
+
 	auto const pipeline_format = PipelineFormat{.colour = m_data.render_target.colour.format, .depth = m_data.render_target.depth.format};
 	auto const& object_layout = PipelineCache::self().shader_layout().object;
 
@@ -81,7 +83,7 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 	camera.bind_set(m_data.projection, cmd);
 
 	for (auto const& object : objects) {
-		if (object.instances.empty()) { continue; }
+		auto const instances = object.instances.empty() ? std::span{&default_instance, 1} : object.instances;
 
 		auto const& material = Material::or_default(object.material);
 		auto const& shader = material.get_shader();
@@ -93,25 +95,25 @@ auto RenderPass::render_objects(RenderCamera const& camera, std::span<RenderObje
 			m_data.last_bound = &material;
 		}
 
-		auto const instances = build_instances(object.parent, object.instances);
+		auto const render_instances = build_instances(object.parent, instances);
 		auto object_set = DescriptorUpdater{object_layout.set};
-		object_set.write_storage(object_layout.instances, instances.data(), instances.size_bytes());
+		object_set.write_storage(object_layout.instances, render_instances.data(), render_instances.size_bytes());
 		if (!object.joints.empty()) { object_set.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes()); }
 		object_set.bind_set(cmd);
 
-		object.primitive->draw(static_cast<std::uint32_t>(object.instances.size()), cmd);
+		object.primitive->draw(static_cast<std::uint32_t>(render_instances.size()), cmd);
 	}
 }
 
-auto RenderPass::do_setup(RenderTarget const& swapchain) -> void {
+auto Subpass::do_setup(RenderTarget const& swapchain) -> void {
 	m_data = Data{.render_target = swapchain, .swapchain_image = swapchain.colour};
 	m_data.projection = glm::uvec2{m_data.swapchain_image.extent.width, m_data.swapchain_image.extent.height};
-	setup_framebuffer();
 }
 
-void RenderPass::do_render(vk::CommandBuffer cmd) {
+void Subpass::do_render(vk::CommandBuffer cmd) {
 	auto builder = RenderingInfoBuilder{};
-	auto const vri = builder.build(m_data.render_target, clear_colour, m_colour_load_op);
+	auto const load = get_load();
+	auto const vri = builder.build(m_data.render_target, load);
 	cmd.beginRendering(vri);
 	render(cmd);
 	cmd.endRendering();

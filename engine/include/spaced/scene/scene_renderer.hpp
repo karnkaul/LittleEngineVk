@@ -1,12 +1,13 @@
 #pragma once
-#include <spaced/graphics/render_pass.hpp>
+#include <spaced/graphics/subpass.hpp>
 #include <spaced/scene/scene.hpp>
 
 namespace spaced {
-class SceneRenderer : public graphics::RenderPass {
+class SceneRenderer : public graphics::Subpass {
   public:
-	explicit SceneRenderer(NotNull<Scene const*> scene, graphics::Rgba clear = graphics::black_v);
+	explicit SceneRenderer(NotNull<Scene const*> scene);
 
+	[[nodiscard]] auto get_load() const -> Load final;
 	auto render(vk::CommandBuffer cmd) -> void override;
 
 	NotNull<Scene const*> scene;

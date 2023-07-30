@@ -3,6 +3,7 @@
 
 namespace spaced::graphics {
 namespace {
+// NOLINTNEXTLINE
 constexpr vk::Format srgb_formats_v[] = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb, vk::Format::eA8B8G8R8SrgbPack32};
 } // namespace
 

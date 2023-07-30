@@ -36,7 +36,7 @@ class Engine : public MonoInstance<Engine> {
 
 	[[nodiscard]] auto is_running() const -> bool { return glfwWindowShouldClose(m_window.get()) != GLFW_TRUE; }
 	[[nodiscard]] auto next_frame() -> bool;
-	auto render(std::span<Ptr<graphics::RenderPass> const> passes) -> void;
+	auto render(std::span<NotNull<graphics::Subpass*> const> passes) -> void;
 	auto shutdown() -> void;
 
 	Engine([[maybe_unused]] ConstructTag tag) noexcept {}

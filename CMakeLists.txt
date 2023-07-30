@@ -8,6 +8,7 @@ project(spaced-engine VERSION 0.1.0)
 
 option(SPACED_PCH "Use PCH for spaced" ON)
 option(SPACED_IMPORTER "Build spaced-importer" ON)
+option(SPACED_USE_FREETYPE "Use Freetype as the font backend" ON)
 
 add_library(spaced-compile-options INTERFACE)
 add_library(spaced::spaced-compile-options ALIAS spaced-compile-options)

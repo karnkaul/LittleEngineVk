@@ -5,7 +5,7 @@
 namespace spaced::graphics {
 class ImageFile {
   public:
-	auto decompress(std::span<std::uint8_t const> compressed, int channels = 4) -> bool;
+	auto decompress(std::span<std::uint8_t const> compressed) -> bool;
 
 	[[nodiscard]] auto bitmap() const -> Bitmap;
 

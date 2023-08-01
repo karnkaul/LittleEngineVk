@@ -4,7 +4,7 @@
 
 namespace spaced::ui {
 Text::Text() {
-	if (auto* font = Resources::self().load<FontAsset>(default_font)) { m_font = &*font->font; }
+	if (auto* font = Resources::self().load<FontAsset>(default_font_uri)) { m_font = &*font->font; }
 }
 
 auto Text::set_font(NotNull<graphics::Font*> font) -> Text& {
@@ -37,7 +37,9 @@ auto Text::refresh() const -> void {
 
 	auto const n_offset = [&] {
 		switch (m_align) {
+		// NOLINTNEXTLINE
 		case Align::eLeft: return -0.5f;
+		// NOLINTNEXTLINE
 		case Align::eRight: return +0.5f;
 		default: return 0.0f;
 		}
@@ -52,17 +54,11 @@ auto Text::refresh() const -> void {
 	m_dirty = false;
 }
 
-auto Text::render_tree(Rect2D<> const& parent_frame, std::vector<graphics::RenderObject>& out) const -> void {
+auto Text::render_tree(std::vector<graphics::RenderObject>& out) const -> void {
 	if (m_dirty) { refresh(); }
 
-	auto const obj = graphics::RenderObject{
-		.material = &m_material,
-		.primitive = &m_primitive,
-		.parent = transform.matrix(),
-		.pipeline_state = PrimitiveRenderer::pipeline_state_v,
-	};
-	out.push_back(obj);
+	render_to(out, &m_material, &m_primitive);
 
-	View::render_tree(parent_frame, out);
+	Renderable::render_tree(out);
 }
 } // namespace spaced::ui

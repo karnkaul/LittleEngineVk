@@ -1,3 +1,4 @@
+#include <spaced/engine.hpp>
 #include <spaced/error.hpp>
 #include <spaced/scene/scene.hpp>
 #include <algorithm>
@@ -45,7 +46,6 @@ auto Scene::clear_entities() -> void {
 auto Scene::tick(Duration dt) -> void {
 	// clear cache
 	m_active.entities.clear();
-	m_active.render_components.clear();
 	m_destroyed.clear();
 
 	// cache all non-destroyed and active entities
@@ -66,22 +66,26 @@ auto Scene::tick(Duration dt) -> void {
 			m_node_tree.remove(entity.m_node_id);
 			continue;
 		}
-
-		if (!entity.is_active()) { continue; }
-
-		// this is delayed to here in order to cull all destroyed entities
-		entity.fill(m_active.render_components);
 	}
 	// remove destroyed entities
 	for (auto const destroyed : m_destroyed) { m_entity_map.erase(destroyed); }
 
-	// sort render components in order of layers (since render_entities() is const)
-	std::ranges::sort(m_active.render_components, [](Ptr<RenderComponent const> a, Ptr<RenderComponent const> b) { return a->layer < b->layer; });
-
+	m_ui_root.transform.extent = Engine::self().framebuffer_extent();
 	m_ui_root.tick(dt);
 }
 
 auto Scene::render_entities(std::vector<graphics::RenderObject>& out) const -> void {
+	// clear cache
+	m_active.render_components.clear();
+
+	for (auto const& [id, entity] : m_entity_map) {
+		if (!entity.is_active()) { continue; }
+		entity.fill(m_active.render_components);
+	}
+
+	// sort render components in order of layers (since render_entities() is const)
+	std::ranges::sort(m_active.render_components, [](Ptr<RenderComponent const> a, Ptr<RenderComponent const> b) { return a->layer < b->layer; });
+
 	for (auto const& render_component : m_active.render_components) { render_component->render_to(out); }
 }
 } // namespace spaced

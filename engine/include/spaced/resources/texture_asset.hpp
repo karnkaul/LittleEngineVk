@@ -15,4 +15,14 @@ class TextureAsset : public Asset {
 	[[nodiscard]] auto type_name() const -> std::string_view final { return type_name_v; }
 	[[nodiscard]] auto try_load(Uri const& uri) -> bool final;
 };
+
+class CubemapAsset : public Asset {
+  public:
+	static constexpr std::string_view type_name_v{"CubemapAsset"};
+
+	graphics::Cubemap cubemap{};
+
+	[[nodiscard]] auto type_name() const -> std::string_view final { return type_name_v; }
+	[[nodiscard]] auto try_load(Uri const& uri) -> bool final;
+};
 } // namespace spaced

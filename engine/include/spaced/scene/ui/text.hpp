@@ -1,15 +1,15 @@
 #pragma once
 #include <spaced/graphics/font/font.hpp>
-#include <spaced/scene/ui/primitive_renderer.hpp>
+#include <spaced/scene/ui/renderable.hpp>
 #include <spaced/vfs/uri.hpp>
 
 namespace spaced::ui {
-class Text : public View {
+class Text : public Renderable {
   public:
 	enum class Align : std::uint8_t { eLeft, eMid, eRight };
 
 	// NOLINTNEXTLINE
-	inline static Uri default_font{"fonts/default.ttf"};
+	inline static Uri default_font_uri{"fonts/default.ttf"};
 
 	Text();
 
@@ -25,7 +25,7 @@ class Text : public View {
 	[[nodiscard]] auto get_align() const -> Align { return m_align; }
 	auto set_align(Align align) -> Text&;
 
-	auto render_tree(Rect2D<> const& parent_frame, std::vector<graphics::RenderObject>& out) const -> void override;
+	auto render_tree(std::vector<graphics::RenderObject>& out) const -> void override;
 
   private:
 	auto set_dirty() -> Text&;

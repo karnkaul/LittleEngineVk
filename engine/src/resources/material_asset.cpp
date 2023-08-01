@@ -25,11 +25,12 @@ constexpr auto to_alpha_mode(std::string_view const in, graphics::AlphaMode cons
 
 auto const g_log{logger::Logger{MaterialAsset::type_name_v}};
 
-[[nodiscard]] auto make_unlit(dj::Json const& json) -> std::unique_ptr<graphics::UnlitMaterial> {
-	auto ret = std::make_unique<graphics::UnlitMaterial>();
+template <std::derived_from<graphics::UnlitMaterial> T = graphics::UnlitMaterial>
+[[nodiscard]] auto make_unlit(dj::Json const& json) -> std::unique_ptr<T> {
+	auto ret = std::make_unique<T>();
 
 	if (auto const& base_colour = json["base_colour"]) {
-		if (auto* texture_asset = Resources::self().load<TextureAsset>(base_colour.as<std::string>())) { ret->texture = &texture_asset->texture; }
+		if (auto* texture_asset = Resources::self().load<TextureAsset>(base_colour.as_string())) { ret->texture = &texture_asset->texture; }
 	}
 
 	return ret;
@@ -40,15 +41,13 @@ template <std::derived_from<graphics::LitMaterial> T = graphics::LitMaterial>
 	auto ret = std::make_unique<T>();
 
 	if (auto const& base_colour = json["base_colour"]) {
-		if (auto* texture_asset = Resources::self().load<TextureAsset>(base_colour.as<std::string>())) { ret->base_colour = &texture_asset->texture; }
+		if (auto* texture_asset = Resources::self().load<TextureAsset>(base_colour.as_string())) { ret->base_colour = &texture_asset->texture; }
 	}
 	if (auto const& metallic_roughness = json["metallic_roughness"]) {
-		if (auto* texture_asset = Resources::self().load<TextureAsset>(metallic_roughness.as<std::string>())) {
-			ret->metallic_roughness = &texture_asset->texture;
-		}
+		if (auto* texture_asset = Resources::self().load<TextureAsset>(metallic_roughness.as_string())) { ret->metallic_roughness = &texture_asset->texture; }
 	}
 	if (auto const& emissive = json["emissive"]) {
-		if (auto* texture_asset = Resources::self().load<TextureAsset>(emissive.as<std::string>())) { ret->emissive = &texture_asset->texture; }
+		if (auto* texture_asset = Resources::self().load<TextureAsset>(emissive.as_string())) { ret->emissive = &texture_asset->texture; }
 	}
 
 	if (auto const& in_albedo = json["albedo"]) {
@@ -79,6 +78,11 @@ auto MaterialAsset::try_load(Uri const& uri) -> bool {
 
 	if (material_type == graphics::SkinnedMaterial::material_type_v) {
 		material = make_lit<graphics::SkinnedMaterial>(json);
+		return true;
+	}
+
+	if (material_type == graphics::SkyboxMaterial::material_type_v) {
+		material = make_unlit<graphics::SkyboxMaterial>(json);
 		return true;
 	}
 

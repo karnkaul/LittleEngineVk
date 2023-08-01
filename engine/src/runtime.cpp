@@ -20,7 +20,9 @@ auto Runtime::run() -> void {
 	}
 }
 
-auto Runtime::tick(Duration dt) -> void { m_scene_manager.tick(dt); }
+auto Runtime::setup() -> void { m_scene_manager = std::make_unique<SceneManager>(); }
 
-auto Runtime::render() const -> void { m_scene_manager.render(); }
+auto Runtime::tick(Duration dt) -> void { m_scene_manager->tick(dt); }
+
+auto Runtime::render() const -> void { m_scene_manager->render(); }
 } // namespace spaced

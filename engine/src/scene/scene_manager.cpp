@@ -1,11 +1,20 @@
+#include <spaced/core/logger.hpp>
 #include <spaced/engine.hpp>
 #include <spaced/scene/scene_manager.hpp>
 
 namespace spaced {
+namespace {
+auto const g_log{logger::Logger{"SceneManager"}};
+}
+
 auto SceneManager::tick(Duration dt) -> void {
 	if (m_switcher.m_standby) {
+		g_log.debug("Switching Scene...");
 		m_switcher.m_active = std::move(m_switcher.m_standby);
+		g_log.debug("Clearing resources...");
+		Resources::self().clear();
 		m_switcher.m_active->setup();
+		g_log.debug("... Scene switched");
 		// reset dt, it isn't valid for a new scene
 		dt = {};
 	}

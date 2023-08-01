@@ -1,4 +1,5 @@
 add_subdirectory(core)
+add_subdirectory(input)
 add_subdirectory(node)
 add_subdirectory(vfs)
 add_subdirectory(resources)

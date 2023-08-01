@@ -5,6 +5,10 @@
 #include <memory>
 
 namespace spaced::ui {
+using graphics::Material;
+using graphics::Primitive;
+using graphics::RenderObject;
+
 class View {
   public:
 	View() = default;
@@ -17,7 +21,7 @@ class View {
 
 	virtual auto setup() -> void {}
 	virtual auto tick(Duration dt) -> void;
-	virtual auto render_tree(Rect2D<> const& parent, std::vector<graphics::RenderObject>& out) const -> void;
+	virtual auto render_tree(std::vector<RenderObject>& out) const -> void;
 
 	auto push_sub_view(std::unique_ptr<View> sub_view) -> void;
 
@@ -26,10 +30,13 @@ class View {
 
 	[[nodiscard]] auto get_parent() const -> Ptr<View> { return m_parent; }
 
+	[[nodiscard]] auto get_parent_mat() const -> glm::mat4 { return m_parent_mat; }
+
 	RectTransform transform{};
 
   private:
 	std::vector<std::unique_ptr<View>> m_sub_views{};
+	glm::mat4 m_parent_mat{1.0f};
 	std::vector<Ptr<View>> m_cache{};
 	Ptr<View> m_parent{};
 	bool m_destroyed{};

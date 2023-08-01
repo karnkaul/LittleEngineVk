@@ -42,6 +42,7 @@ class Scene {
 	graphics::Lights lights{};
 	graphics::Camera main_camera{};
 	graphics::Camera ui_camera{.type = graphics::Camera::Orthographic{}};
+	Ptr<graphics::Cubemap const> skybox{};
 
   private:
 	std::unordered_map<Id<Entity>, Entity, std::hash<Id<Entity>::id_type>> m_entity_map{};
@@ -51,7 +52,7 @@ class Scene {
 
 	struct {
 		std::vector<Ptr<Entity>> entities{};
-		std::vector<NotNull<RenderComponent const*>> render_components{};
+		mutable std::vector<NotNull<RenderComponent const*>> render_components{};
 	} m_active{};
 	std::vector<Id<Entity>> m_destroyed{};
 };

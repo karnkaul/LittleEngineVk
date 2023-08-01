@@ -20,20 +20,21 @@ constexpr auto make_new_extent(glm::uvec2 existing, std::optional<std::uint32_t>
 	return existing;
 }
 
-auto make_texture(glm::uvec2 extent, bool mip_map) -> Texture {
-	auto bytes = std::vector<std::uint8_t>(extent.x * extent.y * 4);
+auto make_texture(DynamicAtlas::CreateInfo const& create_info) -> Texture {
+	auto bytes = std::vector<std::uint8_t>(create_info.initial_extent.x * create_info.initial_extent.y * 4);
 	auto sampler = TextureSampler{};
-	sampler.wrap_s = sampler.wrap_t = TextureSampler::Wrap::eClampEdge;
-	sampler.min = sampler.mag = TextureSampler::Filter::eLinear;
-	auto ret = Texture{ColourSpace::eSrgb, mip_map};
-	auto const bitmap = Bitmap{.bytes = bytes, .extent = extent};
+	sampler.wrap_s = sampler.wrap_t = TextureSampler::Wrap::eClampBorder;
+	sampler.min = sampler.mag = TextureSampler::Filter::eNearest;
+	sampler.border = TextureSampler::Border::eTransparentBlack;
+	auto ret = Texture{ColourSpace::eSrgb, create_info.mip_map};
+	auto const bitmap = Bitmap{.bytes = bytes, .extent = create_info.initial_extent};
 	ret.write(bitmap);
 	return ret;
 }
 } // namespace
 
 DynamicAtlas::DynamicAtlas(CreateInfo const& create_info)
-	: m_texture(make_texture(create_info.initial_extent, create_info.mip_map)), m_padding(create_info.padding), m_cursor(create_info.padding) {}
+	: m_texture(make_texture(create_info)), m_padding(create_info.padding), m_cursor(create_info.padding) {}
 
 auto DynamicAtlas::uv_rect_for(OffsetRect const& offset) const -> UvRect {
 	glm::vec2 const image_extent = glm::uvec2{m_texture.image().extent().width, m_texture.image().extent().height};

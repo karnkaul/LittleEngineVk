@@ -13,7 +13,7 @@ auto SkeletonAsset::try_load(Uri const& uri) -> bool {
 	for (auto const& joint : json["ordered_joint_ids"].array_view()) { skeleton.ordered_joint_ids.emplace_back(joint.as<Id<Node>::id_type>()); }
 	for (auto const& ibm : json["inverse_bind_matrices"].array_view()) { io::from_json(ibm, skeleton.inverse_bind_matrices.emplace_back()); }
 	for (auto const& animation_uri : json["animations"].array_view()) {
-		auto const* animation_asset = Resources::self().load<AnimationAsset>(animation_uri.as<std::string>());
+		auto const* animation_asset = Resources::self().load<AnimationAsset>(animation_uri.as_string());
 		if (animation_asset == nullptr) { continue; }
 		skeleton.animations.push_back(&animation_asset->animation);
 	}

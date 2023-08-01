@@ -41,7 +41,8 @@ struct RenderingInfoBuilder {
 
 auto RenderCamera::bind_set(glm::vec2 const projection, vk::CommandBuffer const cmd) const -> void {
 	auto const view = Std140View{
-		.mat_vp = camera->projection(projection) * camera->view(),
+		.view = camera->view(),
+		.projection = camera->projection(projection),
 		.vpos_exposure = {camera->transform.position(), camera->exposure},
 	};
 
@@ -86,8 +87,7 @@ auto Subpass::render_objects(RenderCamera const& camera, std::span<RenderObject 
 		auto const instances = object.instances.empty() ? std::span{&default_instance, 1} : object.instances;
 
 		auto const& material = Material::or_default(object.material);
-		auto const& shader = material.get_shader();
-		auto const pipeline = PipelineCache::self().load(pipeline_format, shader.vertex, shader.fragment, object.pipeline_state);
+		auto const pipeline = PipelineCache::self().load(pipeline_format, &material.get_shader(), &object.pipeline_state);
 		if (!Renderer::self().bind_pipeline(pipeline)) { continue; }
 
 		if (m_data.last_bound != &material) {

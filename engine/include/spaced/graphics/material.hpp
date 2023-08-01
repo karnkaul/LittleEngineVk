@@ -1,17 +1,12 @@
 #pragma once
 #include <spaced/core/ptr.hpp>
 #include <spaced/graphics/rgba.hpp>
+#include <spaced/graphics/shader.hpp>
 #include <spaced/graphics/texture.hpp>
-#include <spaced/vfs/uri.hpp>
 
 namespace spaced::graphics {
 class Material {
   public:
-	struct Shader {
-		Uri vertex{};
-		Uri fragment{};
-	};
-
 	Material() = default;
 	Material(Material const&) = default;
 	Material(Material&&) = delete;
@@ -74,5 +69,15 @@ class SkinnedMaterial : public LitMaterial {
 	static constexpr std::string_view material_type_v{"skinned"};
 
 	SkinnedMaterial() { shader.vertex = "shaders/skinned.vert"; }
+};
+
+class SkyboxMaterial : public UnlitMaterial {
+  public:
+	static constexpr std::string_view material_type_v{"skybox"};
+
+	SkyboxMaterial() {
+		shader.vertex = "shaders/skybox.vert";
+		shader.fragment = "shaders/skybox.frag";
+	}
 };
 } // namespace spaced::graphics

@@ -26,7 +26,8 @@ FontAtlas::FontAtlas(NotNull<GlyphSlot::Factory*> slot_factory, CreateInfo creat
 			auto const glyph_bitmap = m_page.make_bitmap(slot.pixmap);
 			bitmap_buffer.reserve(glyph_bitmap.bytes.size_bytes() * 4);
 			for (auto const byte : glyph_bitmap.bytes) {
-				for (int i = 0; i < 4; ++i) { bitmap_buffer.push_back(byte); }
+				auto const bytes = std::array<std::uint8_t, Bitmap::channels_v>{0xff, 0xff, 0xff, byte};
+				bitmap_buffer.insert(bitmap_buffer.end(), bytes.begin(), bytes.end());
 			}
 			auto const bitmap = Bitmap{.bytes = bitmap_buffer, .extent = glyph_bitmap.extent};
 			entry.uv_offset = writer.enqueue(bitmap);

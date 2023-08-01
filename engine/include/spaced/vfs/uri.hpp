@@ -32,6 +32,13 @@ class Uri {
 };
 
 struct Uri::Hasher {
+	using is_transparent = void;
+
 	auto operator()(Uri const& uri) const { return uri.hash(); }
+
+	template <std::constructible_from<std::string_view> T>
+	auto operator()(T const& uri) const {
+		return std::hash<std::string_view>{}(std::string_view{uri});
+	}
 };
 } // namespace spaced

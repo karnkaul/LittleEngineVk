@@ -93,4 +93,6 @@ class Entity final {
 
 	friend class Scene;
 };
+
+using EntityId = Id<Entity>;
 } // namespace spaced

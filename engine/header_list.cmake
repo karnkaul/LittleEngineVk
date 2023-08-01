@@ -25,7 +25,10 @@ set(node_headers
 )
 
 set(input_headers
+  ${prefix}/input/key_axis.hpp
+  ${prefix}/input/range.hpp
   ${prefix}/input/state.hpp
+  ${prefix}/input/trigger.hpp
 )
 
 set(vfs_headers
@@ -93,6 +96,7 @@ set(graphics_headers
   ${prefix}/graphics/renderer.hpp
   ${prefix}/graphics/resource.hpp
   ${prefix}/graphics/rgba.hpp
+  ${prefix}/graphics/shader.hpp
   ${prefix}/graphics/subpass.hpp
   ${prefix}/graphics/shader_layout.hpp
   ${prefix}/graphics/swapchain.hpp
@@ -103,6 +107,7 @@ set(graphics_headers
 set(scene_headers
   ${prefix}/scene/ui/primitive_renderer.hpp
   ${prefix}/scene/ui/rect_transform.hpp
+  ${prefix}/scene/ui/renderable.hpp
   ${prefix}/scene/ui/text.hpp
   ${prefix}/scene/ui/view.hpp
 

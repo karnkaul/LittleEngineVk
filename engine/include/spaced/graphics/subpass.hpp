@@ -13,7 +13,8 @@ struct RenderTarget {
 
 struct RenderCamera {
 	struct Std140View {
-		glm::mat4 mat_vp;
+		glm::mat4 view;
+		glm::mat4 projection;
 		glm::vec4 vpos_exposure;
 	};
 

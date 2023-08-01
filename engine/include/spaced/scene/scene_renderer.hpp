@@ -13,6 +13,11 @@ class SceneRenderer : public graphics::Subpass {
 	NotNull<Scene const*> scene;
 
   protected:
+	auto render_skybox(graphics::Cubemap const& cubemap) -> void;
+
+	graphics::StaticPrimitive m_skybox_cube{};
+	graphics::SkyboxMaterial m_skybox_mat{};
+	graphics::PipelineState m_skybox_pipeline{};
 	std::vector<graphics::RenderObject> m_objects{};
 };
 } // namespace spaced

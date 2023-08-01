@@ -9,6 +9,8 @@ namespace spaced {
 class Entity;
 class Scene;
 
+using EntityId = Id<Entity>;
+
 class Component {
   public:
 	Component(Component const&) = delete;

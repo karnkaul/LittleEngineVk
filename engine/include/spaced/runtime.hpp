@@ -20,13 +20,13 @@ class Runtime {
 	virtual auto run() -> void;
 
   protected:
-	virtual auto setup() -> void {}
+	virtual auto setup() -> void;
 	virtual auto tick(Duration dt) -> void;
 	virtual auto render() const -> void;
 
 	std::shared_ptr<logger::File> m_log_file{};
 	std::unique_ptr<Engine> m_engine{};
 
-	SceneManager m_scene_manager{};
+	std::unique_ptr<SceneManager> m_scene_manager{};
 };
 } // namespace spaced

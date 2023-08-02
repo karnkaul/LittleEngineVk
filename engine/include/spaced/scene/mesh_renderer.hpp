@@ -8,7 +8,7 @@ class MeshRenderer : public RenderComponent {
 	std::vector<graphics::RenderInstance> instances{};
 	graphics::PipelineState pipeline_state{};
 
-	auto tick([[maybe_unused]] Duration dt) -> void override {}
+	auto tick(Duration /*dt*/) -> void override {}
 	auto render_to(std::vector<graphics::RenderObject>& out) const -> void override;
 
 	auto set_mesh(NotNull<graphics::Mesh const*> mesh) -> void;

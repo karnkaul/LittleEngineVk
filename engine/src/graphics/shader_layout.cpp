@@ -6,7 +6,7 @@ namespace spaced::graphics {
 auto VertexLayout::make(Buffers const& buffers) -> VertexLayout {
 	auto ret = VertexLayout{.buffers = buffers};
 
-	auto const& gbo = buffers.geometry;
+	auto const& gbo = buffers.vertex;
 	auto const& sbo = buffers.skeleton;
 
 	ret.attributes = {

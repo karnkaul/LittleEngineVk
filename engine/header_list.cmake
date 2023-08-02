@@ -4,6 +4,7 @@ set(core_headers
   ${prefix}/core/enumerate.hpp
   ${prefix}/core/hash_combine.hpp
   ${prefix}/core/id.hpp
+  ${prefix}/core/inclusive_range.hpp
   ${prefix}/core/mono_instance.hpp
   ${prefix}/core/logger.hpp
   ${prefix}/core/named_type.hpp
@@ -58,6 +59,7 @@ set(graphics_headers
   ${prefix}/graphics/cache/pipeline_cache.hpp
   ${prefix}/graphics/cache/sampler_cache.hpp
   ${prefix}/graphics/cache/scratch_buffer_cache.hpp
+  ${prefix}/graphics/cache/vertex_buffer_cache.hpp
 
   ${prefix}/graphics/animation/interpolator.hpp
   ${prefix}/graphics/animation/animation.hpp
@@ -96,6 +98,7 @@ set(graphics_headers
   ${prefix}/graphics/renderer.hpp
   ${prefix}/graphics/resource.hpp
   ${prefix}/graphics/rgba.hpp
+  ${prefix}/graphics/scale_extent.hpp
   ${prefix}/graphics/shader.hpp
   ${prefix}/graphics/subpass.hpp
   ${prefix}/graphics/shader_layout.hpp
@@ -111,6 +114,7 @@ set(scene_headers
   ${prefix}/scene/ui/text.hpp
   ${prefix}/scene/ui/view.hpp
 
+  ${prefix}/scene/collision.hpp
   ${prefix}/scene/component.hpp
   ${prefix}/scene/entity.hpp
   ${prefix}/scene/freecam_controller.hpp
@@ -122,6 +126,7 @@ set(scene_headers
   ${prefix}/scene/scene_renderer.hpp
   ${prefix}/scene/scene_switcher.hpp
   ${prefix}/scene/scene.hpp
+  ${prefix}/scene/shape_renderer.hpp
 )
 
 set(header_list

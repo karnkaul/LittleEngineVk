@@ -1,4 +1,5 @@
 #pragma once
+#include <spaced/core/inclusive_range.hpp>
 #include <spaced/core/time.hpp>
 #include <spaced/core/transform.hpp>
 #include <spaced/graphics/material.hpp>
@@ -20,17 +21,14 @@ struct Particle {
 
 	using Modifiers = std::uint32_t;
 
-	template <typename Type>
-	using Range = std::pair<Type, Type>;
-
 	struct {
 		glm::vec3 linear{};
 		Radians angular{};
 	} velocity{};
 
 	struct {
-		Range<graphics::Rgba> tint{};
-		Range<glm::vec2> scale{};
+		InclusiveRange<graphics::Rgba> tint{};
+		InclusiveRange<glm::vec2> scale{};
 	} lerp{};
 
 	Duration ttl{};
@@ -45,21 +43,21 @@ struct Particle {
 
 struct Particle::Config {
 	struct {
-		Range<glm::vec3> position{};
-		Range<Radians> rotation{};
+		InclusiveRange<glm::vec3> position{};
+		InclusiveRange<Radians> rotation{};
 	} initial{};
 
 	struct {
-		Range<glm::vec3> linear{glm::vec3{-1.0f}, glm::vec3{1.0f}};
-		Range<Radians> angular{Degrees{-90.0f}, Degrees{90.0f}};
+		InclusiveRange<glm::vec3> linear{glm::vec3{-1.0f}, glm::vec3{1.0f}};
+		InclusiveRange<Radians> angular{Degrees{-90.0f}, Degrees{90.0f}};
 	} velocity{};
 
 	struct {
-		Range<graphics::Rgba> tint{graphics::white_v, graphics::Rgba{.channels = {0xff, 0xff, 0xff, 0x0}}};
-		Range<glm::vec2> scale{glm::vec3{1.0f}, glm::vec3{0.0f}};
+		InclusiveRange<graphics::Rgba> tint{graphics::white_v, graphics::Rgba{.channels = {0xff, 0xff, 0xff, 0x0}}};
+		InclusiveRange<glm::vec2> scale{glm::vec3{1.0f}, glm::vec3{0.0f}};
 	} lerp{};
 
-	Range<Duration> ttl{2s, 10s};
+	InclusiveRange<Duration> ttl{2s, 10s};
 	glm::vec2 quad_size{100.0f};
 	std::size_t count{100};
 	bool respawn{true};

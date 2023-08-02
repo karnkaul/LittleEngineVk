@@ -26,6 +26,17 @@ class NodeTree {
 	auto insert_or_assign(Id<Node> id, CreateInfo const& create_info) -> Node&;
 	void remove(Id<Node> id);
 
+	template <typename FuncT>
+	auto remove(Id<Node> id, FuncT&& foreach_removed) {
+		if (auto it = m_nodes.find(id); it != m_nodes.end()) {
+			remove_child_from_parent(it->second);
+			destroy_children(it->second, foreach_removed);
+			foreach_removed(it->second);
+			m_nodes.erase(it);
+			std::erase(m_roots, id);
+		}
+	}
+
 	[[nodiscard]] auto find(Id<Node> id) const -> Ptr<Node const>;
 	auto find(Id<Node> id) -> Ptr<Node>;
 
@@ -57,7 +68,18 @@ class NodeTree {
 	[[nodiscard]] static auto make_node(Id<Node> self, std::vector<Id<Node>> children, CreateInfo create_info = {}) -> Node;
 
 	void remove_child_from_parent(Node& out);
-	void destroy_children(Node& out);
+
+	template <typename FuncT>
+	void destroy_children(Node& out, FuncT&& foreach_removed) {
+		for (auto const id : out.m_children) {
+			if (auto it = m_nodes.find(id); it != m_nodes.end()) {
+				destroy_children(it->second, foreach_removed);
+				foreach_removed(it->second);
+				m_nodes.erase(it);
+			}
+		}
+		out.m_children.clear();
+	}
 
 	Map m_nodes{};
 	std::vector<Id<Node>> m_roots{};

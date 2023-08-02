@@ -13,5 +13,6 @@ struct PipelineState {
 	vk::PolygonMode polygon_mode{vk::PolygonMode::eFill};
 	vk::CompareOp depth_compare{vk::CompareOp::eLess};
 	vk::Bool32 depth_test_write{1};
+	float line_width{1.0f};
 };
 } // namespace spaced::graphics

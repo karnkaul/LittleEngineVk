@@ -8,7 +8,7 @@ namespace spaced::graphics {
 struct GlyphSlot {
 	using Pixmap = BitmapByteSpan<1>;
 
-	struct Factory;
+	class Factory;
 
 	Pixmap pixmap{};
 	glm::ivec2 left_top{};

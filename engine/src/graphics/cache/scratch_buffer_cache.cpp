@@ -2,13 +2,13 @@
 #include <spaced/graphics/renderer.hpp>
 
 namespace spaced::graphics {
-auto ScratchBufferCache::allocate(vk::BufferUsageFlags const usage) -> HostBuffer& {
+auto ScratchBufferCache::allocate_host(vk::BufferUsageFlags const usage) -> HostBuffer& {
 	auto& pool = m_maps[Renderer::self().get_frame_index()][usage];
 	if (pool.next >= pool.buffers.size()) { pool.buffers.push_back(std::make_unique<HostBuffer>(usage)); }
 	return *pool.buffers[pool.next++];
 }
 
-auto ScratchBufferCache::empty_buffer(vk::BufferUsageFlags const usage) -> DeviceBuffer const& {
+auto ScratchBufferCache::get_empty_buffer(vk::BufferUsageFlags const usage) -> DeviceBuffer const& {
 	auto& pool = m_maps[Renderer::self().get_frame_index()][usage];
 	if (!pool.empty_buffer) {
 		pool.empty_buffer = std::make_unique<DeviceBuffer>(usage, 1);

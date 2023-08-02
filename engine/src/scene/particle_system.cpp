@@ -8,6 +8,11 @@ auto ParticleSystem::tick(Duration dt) -> void {
 
 auto ParticleSystem::render_to(std::vector<graphics::RenderObject>& out) const -> void {
 	out.reserve(out.size() + emitters.size());
-	for (auto const& emitter : emitters) { out.push_back(emitter.render_object()); }
+	auto const parent = get_scene().get_node_tree().global_transform(get_entity().get_node());
+	for (auto const& emitter : emitters) {
+		auto object = emitter.render_object();
+		object.parent = parent * object.parent;
+		out.push_back(object);
+	}
 }
 } // namespace spaced

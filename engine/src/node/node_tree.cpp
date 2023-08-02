@@ -26,7 +26,7 @@ auto NodeTree::insert_or_assign(Id<Node> id, CreateInfo const& create_info) -> N
 			g_log.warn("Invalid parent Id<Node>: {}", create_info.parent->value());
 		}
 	}
-	if (node.m_parent == 0u) { m_roots.push_back(node.m_id); }
+	if (!node.m_parent) { m_roots.push_back(node.m_id); }
 	auto [it, _] = m_nodes.insert_or_assign(node.m_id, std::move(node));
 	return it->second;
 }
@@ -34,12 +34,7 @@ auto NodeTree::insert_or_assign(Id<Node> id, CreateInfo const& create_info) -> N
 auto NodeTree::add(CreateInfo const& create_info) -> Node& { return insert_or_assign(m_next_id, create_info); }
 
 void NodeTree::remove(Id<Node> id) {
-	if (auto it = m_nodes.find(id); it != m_nodes.end()) {
-		remove_child_from_parent(it->second);
-		destroy_children(it->second);
-		m_nodes.erase(it);
-		std::erase(m_roots, id);
-	}
+	remove(id, [](auto&&) {});
 }
 
 void NodeTree::reparent(Node& out, std::optional<Id<Node>> new_parent) {
@@ -131,17 +126,6 @@ void NodeTree::remove_child_from_parent(Node& out) {
 	}
 }
 
-// NOLINTNEXTLINE
-void NodeTree::destroy_children(Node& out) {
-	for (auto const id : out.m_children) {
-		if (auto it = m_nodes.find(id); it != m_nodes.end()) {
-			destroy_children(it->second);
-			m_nodes.erase(it);
-		}
-	}
-	out.m_children.clear();
-}
-
 auto NodeTree::find(Id<Node> id) const -> Ptr<Node const> {
 	if (auto it = m_nodes.find(id); it != m_nodes.end()) { return &it->second; }
 	return {};
@@ -151,9 +135,8 @@ auto NodeTree::find(Id<Node> id) const -> Ptr<Node const> {
 auto NodeTree::find(Id<Node> id) -> Ptr<Node> { return const_cast<Node*>(std::as_const(*this).find(id)); }
 
 auto NodeTree::get(Id<Node> id) const -> Node const& {
-	auto const* ret = find(id);
-	if (ret == nullptr) { throw Error{std::format("Invalid entity id: {}", id.value())}; }
-	return *ret;
+	if (auto const* ret = find(id)) { return *ret; }
+	throw Error{std::format("Invalid Id<Node>: {}", id.value())};
 }
 
 // NOLINTNEXTLINE

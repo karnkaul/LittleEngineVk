@@ -31,9 +31,10 @@ class Primitive {
 
   protected:
 	struct Buffers {
-		Ptr<Buffer const> geometry{};
-		Ptr<Buffer const> indices{};
-		Ptr<Buffer const> bones{};
+		vk::Buffer vertices{};
+		vk::Buffer indices{};
+		vk::Buffer bones{};
+		vk::DeviceSize index_offset{};
 	};
 
 	auto draw(Buffers const& buffers, std::uint32_t instances, vk::CommandBuffer cmd) const -> void;
@@ -48,9 +49,9 @@ class StaticPrimitive : public Primitive {
 
   protected:
 	struct Data {
-		std::unique_ptr<DeviceBuffer> vertices{};
-		std::unique_ptr<DeviceBuffer> indices{};
+		std::unique_ptr<DeviceBuffer> vertices_indices{};
 		std::unique_ptr<DeviceBuffer> bones{};
+		vk::DeviceSize index_offset{};
 	};
 
 	Defer<Data> m_data{};
@@ -65,14 +66,10 @@ class DynamicPrimitive : public Primitive {
 	auto draw(std::uint32_t instances, vk::CommandBuffer cmd) const -> void final;
 
   protected:
-	struct Data {
-		Buffered<std::unique_ptr<Buffer>> vertices{};
-		Buffered<std::unique_ptr<Buffer>> indices{};
-	};
-
 	auto write_at(FrameIndex index) const -> void;
 
 	Geometry m_geometry{};
-	Defer<Data> m_data{};
+	Buffered<std::shared_ptr<HostBuffer>> m_vertices_indices{};
+	mutable vk::DeviceSize m_index_offset{};
 };
 } // namespace spaced::graphics

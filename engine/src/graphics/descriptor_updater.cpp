@@ -63,11 +63,11 @@ auto DescriptorUpdater::update_texture(std::uint32_t binding, Texture const& tex
 auto DescriptorUpdater::write(std::uint32_t binding, vk::DescriptorType type, void const* data, std::size_t size, vk::DeviceSize count) -> DescriptorUpdater& {
 	auto const usage = type == vk::DescriptorType::eStorageBuffer ? vk::BufferUsageFlagBits::eStorageBuffer : vk::BufferUsageFlagBits::eUniformBuffer;
 	if (data == nullptr || size == 0) {
-		auto const& empty = ScratchBufferCache::self().empty_buffer(usage);
+		auto const& empty = ScratchBufferCache::self().get_empty_buffer(usage);
 		return update(binding, type, vk::DescriptorBufferInfo{empty.buffer(), {}, empty.size()}, count);
 	}
 
-	auto& buffer = ScratchBufferCache::self().allocate(usage);
+	auto& buffer = ScratchBufferCache::self().allocate_host(usage);
 	buffer.write(data, size);
 	return update(binding, type, vk::DescriptorBufferInfo{buffer.buffer(), {}, buffer.size()}, count);
 }

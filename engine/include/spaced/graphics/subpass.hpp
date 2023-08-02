@@ -1,4 +1,5 @@
 #pragma once
+#include <spaced/core/inclusive_range.hpp>
 #include <spaced/graphics/camera.hpp>
 #include <spaced/graphics/image_view.hpp>
 #include <spaced/graphics/lights.hpp>
@@ -66,6 +67,7 @@ class Subpass {
 		ImageView swapchain_image{};
 		glm::vec2 projection{};
 		Ptr<Material const> last_bound{};
+		InclusiveRange<float> line_width_limit{};
 	};
 
 	struct Std430Instance {
@@ -73,7 +75,7 @@ class Subpass {
 		glm::vec4 tint;
 	};
 
-	auto do_setup(RenderTarget const& swapchain) -> void;
+	auto do_setup(RenderTarget const& swapchain, InclusiveRange<float> line_width_limit) -> void;
 	auto do_render(vk::CommandBuffer cmd) -> void;
 
 	Data m_data{};

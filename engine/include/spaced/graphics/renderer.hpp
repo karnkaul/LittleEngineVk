@@ -1,9 +1,11 @@
 #pragma once
+#include <spaced/core/inclusive_range.hpp>
 #include <spaced/core/mono_instance.hpp>
 #include <spaced/graphics/cache/descriptor_cache.hpp>
 #include <spaced/graphics/cache/pipeline_cache.hpp>
 #include <spaced/graphics/cache/sampler_cache.hpp>
 #include <spaced/graphics/cache/scratch_buffer_cache.hpp>
+#include <spaced/graphics/cache/vertex_buffer_cache.hpp>
 #include <spaced/graphics/dear_imgui.hpp>
 #include <spaced/graphics/defer.hpp>
 #include <spaced/graphics/fallback.hpp>
@@ -74,14 +76,16 @@ class Renderer : public MonoInstance<Renderer> {
 	std::unique_ptr<DearImGui> m_imgui{};
 	PipelineCache m_pipeline_cache;
 	SamplerCache m_sampler_cache{};
-	DescriptorCache m_descriptor_allocator{};
-	ScratchBufferCache m_scratch_buffer_allocator{};
+	DescriptorCache m_descriptor_cache{};
+	ScratchBufferCache m_scratch_buffer_cache{};
+	VertexBufferCache m_vertex_buffer_cache{};
 	Swapchain m_swapchain{};
 	Frame m_frame{};
 	DeferQueue m_defer{};
 
 	Fallback m_fallback{};
 
+	InclusiveRange<float> m_line_width_limit{};
 	Ptr<Subpass> m_current_pass{};
 	bool m_rendering{};
 };

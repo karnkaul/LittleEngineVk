@@ -10,8 +10,8 @@
 namespace spaced::graphics {
 class ScratchBufferCache : public MonoInstance<ScratchBufferCache> {
   public:
-	auto allocate(vk::BufferUsageFlags usage) -> HostBuffer&;
-	auto empty_buffer(vk::BufferUsageFlags usage) -> DeviceBuffer const&;
+	auto allocate_host(vk::BufferUsageFlags usage) -> HostBuffer&;
+	auto get_empty_buffer(vk::BufferUsageFlags usage) -> DeviceBuffer const&;
 
 	auto next_frame() -> void;
 	auto clear() -> void;

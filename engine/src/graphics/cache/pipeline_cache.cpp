@@ -47,7 +47,7 @@ struct PipelineShaderLayout {
 	}
 };
 
-auto const g_log{logger::Logger{"PipelineCache"}};
+auto const g_log{logger::Logger{"Cache"}};
 } // namespace
 
 PipelineCache::Key::Key(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state)

@@ -1,13 +1,14 @@
 #pragma once
+#include <spaced/core/inclusive_range.hpp>
 #include <spaced/graphics/dynamic_atlas.hpp>
 #include <spaced/graphics/font/glyph.hpp>
 #include <spaced/graphics/font/glyph_page.hpp>
 
 namespace spaced::graphics {
 struct FontAtlasCreateInfo {
-	static constexpr std::pair<Codepoint, Codepoint> ascii_range_v{Codepoint::eAsciiFirst, Codepoint::eAsciiLast};
+	static constexpr InclusiveRange<Codepoint> ascii_range_v{Codepoint::eAsciiFirst, Codepoint::eAsciiLast};
 
-	std::span<std::pair<Codepoint, Codepoint> const> codepoint_ranges{&ascii_range_v, 1};
+	std::span<InclusiveRange<Codepoint> const> codepoint_ranges{&ascii_range_v, 1};
 	TextHeight height{TextHeight::eDefault};
 };
 

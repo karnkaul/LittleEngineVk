@@ -90,6 +90,8 @@ auto Subpass::render_objects(RenderCamera const& camera, std::span<RenderObject 
 		auto const pipeline = PipelineCache::self().load(pipeline_format, &material.get_shader(), &object.pipeline_state);
 		if (!Renderer::self().bind_pipeline(pipeline)) { continue; }
 
+		cmd.setLineWidth(m_data.line_width_limit.clamp(object.pipeline_state.line_width));
+
 		if (m_data.last_bound != &material) {
 			material.bind_set(cmd);
 			m_data.last_bound = &material;
@@ -105,8 +107,8 @@ auto Subpass::render_objects(RenderCamera const& camera, std::span<RenderObject 
 	}
 }
 
-auto Subpass::do_setup(RenderTarget const& swapchain) -> void {
-	m_data = Data{.render_target = swapchain, .swapchain_image = swapchain.colour};
+auto Subpass::do_setup(RenderTarget const& swapchain, InclusiveRange<float> line_width_limit) -> void {
+	m_data = Data{.render_target = swapchain, .swapchain_image = swapchain.colour, .line_width_limit = line_width_limit};
 	m_data.projection = glm::uvec2{m_data.swapchain_image.extent.width, m_data.swapchain_image.extent.height};
 }
 

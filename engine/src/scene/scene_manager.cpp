@@ -1,5 +1,6 @@
 #include <spaced/core/logger.hpp>
 #include <spaced/engine.hpp>
+#include <spaced/graphics/cache/vertex_buffer_cache.hpp>
 #include <spaced/scene/scene_manager.hpp>
 
 namespace spaced {
@@ -13,6 +14,9 @@ auto SceneManager::tick(Duration dt) -> void {
 		m_switcher.m_active = std::move(m_switcher.m_standby);
 		g_log.debug("Clearing resources...");
 		Resources::self().clear();
+		g_log.debug("Clearing Vertex Buffer Cache...");
+		graphics::VertexBufferCache::self().clear();
+		g_log.debug("Setting up Scene...");
 		m_switcher.m_active->setup();
 		g_log.debug("... Scene switched");
 		// reset dt, it isn't valid for a new scene

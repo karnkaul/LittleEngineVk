@@ -1,6 +1,6 @@
 #include <spaced/core/enumerate.hpp>
-#include <spaced/scene/entity.hpp>
 #include <spaced/scene/mesh_renderer.hpp>
+#include <spaced/scene/scene.hpp>
 
 namespace spaced {
 auto MeshRenderer::set_mesh(NotNull<graphics::Mesh const*> mesh) -> void {
@@ -18,7 +18,7 @@ auto MeshRenderer::update_joints(NodeLocator node_locator) -> void {
 
 auto MeshRenderer::render_to(std::vector<graphics::RenderObject>& out) const -> void {
 	if (m_mesh == nullptr) { return; }
-	auto const parent = get_entity().get_transform().matrix();
+	auto const parent = get_scene().get_node_tree().global_transform(get_entity().get_node());
 	out.reserve(out.size() + m_mesh->primitives.size());
 	for (auto const& primitive : m_mesh->primitives) {
 		out.push_back(graphics::RenderObject{

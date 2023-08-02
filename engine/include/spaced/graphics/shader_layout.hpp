@@ -12,7 +12,7 @@ struct VertexBinding {
 
 struct VertexLayout {
 	struct Buffers {
-		VertexBinding geometry{0, 0};
+		VertexBinding vertex{0, 0};
 		VertexBinding skeleton{1, 4};
 	};
 

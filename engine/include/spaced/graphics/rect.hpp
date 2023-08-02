@@ -2,7 +2,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-namespace spaced {
+namespace spaced::graphics {
 template <typename Type = float>
 struct Rect2D {
 	glm::tvec2<Type> lt{};
@@ -48,4 +48,4 @@ using OffsetRect = Rect2D<std::int32_t>;
 using UvRect = Rect2D<float>;
 
 inline constexpr UvRect uv_rect_v{.lt = {0.0f, 0.0f}, .rb = {1.0f, 1.0f}};
-} // namespace spaced
+} // namespace spaced::graphics

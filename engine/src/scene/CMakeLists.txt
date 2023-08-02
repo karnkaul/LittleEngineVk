@@ -1,6 +1,7 @@
 add_subdirectory(ui)
 
 target_sources(${PROJECT_NAME} PRIVATE
+  collision.cpp
   component.cpp
   entity.cpp
   freecam_controller.cpp
@@ -10,4 +11,5 @@ target_sources(${PROJECT_NAME} PRIVATE
   scene_manager.cpp
   scene_renderer.cpp
   scene.cpp
+  shape_renderer.cpp
 )

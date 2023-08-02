@@ -13,6 +13,8 @@ Entity::~Entity() {
 auto Entity::get_node() const -> Node const& { return m_scene->get_node_tree().get(m_node_id); }
 auto Entity::get_node() -> Node& { return m_scene->make_node_locator().get(m_node_id); }
 
+auto Entity::global_position() const -> glm::vec3 { return m_scene->get_node_tree().global_position(get_node()); }
+
 auto Entity::tick(Duration dt) -> void {
 	m_cache.clear();
 	m_cache.reserve(m_components.size());

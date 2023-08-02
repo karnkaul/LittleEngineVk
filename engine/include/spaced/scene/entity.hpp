@@ -29,6 +29,8 @@ class Entity final {
 
 	[[nodiscard]] auto get_scene() const -> Scene& { return *m_scene; }
 
+	[[nodiscard]] auto global_position() const -> glm::vec3;
+
 	template <std::derived_from<Component> ComponentT>
 	auto attach(std::unique_ptr<ComponentT> component) -> ComponentT& {
 		if (!component) { throw Error{"attempt to attach a null component"}; }
@@ -57,7 +59,7 @@ class Entity final {
 	}
 
 	template <std::derived_from<Component> ComponentT>
-	[[nodiscard]] auto get_component() const -> Component& {
+	[[nodiscard]] auto get_component() const -> ComponentT& {
 		auto* ret = find_component<ComponentT>();
 		if (!ret) { throw Error{"requested component not attached"}; }
 		return *ret;

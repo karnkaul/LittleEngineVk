@@ -48,7 +48,7 @@ auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_fa
 	return ret;
 }
 
-Renderer::Renderer(glm::uvec2 framebuffer_extent) {
+Renderer::Renderer(glm::uvec2 const framebuffer_extent) {
 	auto& device = Device::self();
 
 	m_swapchain.present_modes = device.physical_device().getSurfacePresentModesKHR(device.surface());
@@ -58,6 +58,9 @@ Renderer::Renderer(glm::uvec2 framebuffer_extent) {
 	recreate_swapchain(framebuffer_extent);
 
 	m_frame = Frame::make(device.device(), device.queue_family(), optimal_depth_format(device.physical_device()));
+
+	auto const line_width_range = device.physical_device().getProperties().limits.lineWidthRange;
+	m_line_width_limit = {line_width_range[0], line_width_range[1]};
 }
 
 Renderer::~Renderer() {
@@ -87,8 +90,8 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 	m_defer.next_frame();
 	if (!m_swapchain.retired.empty()) { m_swapchain.retired.pop_front(); }
 	m_imgui->new_frame();
-	m_descriptor_allocator.next_frame();
-	m_scratch_buffer_allocator.next_frame();
+	m_descriptor_cache.next_frame();
+	m_scratch_buffer_cache.next_frame();
 
 	m_frame.framebuffer_extent = framebuffer_extent;
 	m_frame.last_bound = vk::Pipeline{};
@@ -119,7 +122,7 @@ auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t c
 	auto execute_pass = [&](Subpass& pass) {
 		m_rendering = true;
 		m_current_pass = &pass;
-		pass.do_setup({.colour = swapchain_image, .depth = depth_image_view});
+		pass.do_setup({.colour = swapchain_image, .depth = depth_image_view}, m_line_width_limit);
 		pass.do_render(sync.command_buffer);
 		m_rendering = false;
 	};

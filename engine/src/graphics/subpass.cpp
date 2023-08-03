@@ -40,10 +40,12 @@ struct RenderingInfoBuilder {
 } // namespace
 
 auto RenderCamera::bind_set(glm::vec2 const projection, vk::CommandBuffer const cmd) const -> void {
+	bool const is_ortho = std::holds_alternative<Camera::Orthographic>(camera->type);
 	auto const view = Std140View{
 		.view = camera->view(),
 		.projection = camera->projection(projection),
 		.vpos_exposure = {camera->transform.position(), camera->exposure},
+		.vdir_ortho = {front_v * camera->transform.orientation(), is_ortho ? 1.0f : 0.0f},
 	};
 
 	auto dir_lights = std::vector<Std430DirLight>{};

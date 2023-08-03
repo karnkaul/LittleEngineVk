@@ -17,7 +17,7 @@ class Scene {
 	Scene() = default;
 	virtual ~Scene();
 
-	[[nodiscard]] auto spawn(std::string name = "unnamed", Ptr<Entity> parent = {}) -> Entity&;
+	auto spawn(std::string name = "unnamed", Ptr<Entity> parent = {}) -> Entity&;
 
 	[[nodiscard]] auto has_entity(Id<Entity> id) const -> bool { return find_entity(id) != nullptr; }
 

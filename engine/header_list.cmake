@@ -2,6 +2,7 @@ set(prefix include/spaced)
 
 set(core_headers
   ${prefix}/core/enumerate.hpp
+  ${prefix}/core/fixed_string.hpp
   ${prefix}/core/hash_combine.hpp
   ${prefix}/core/id.hpp
   ${prefix}/core/inclusive_range.hpp
@@ -48,7 +49,6 @@ set(resources_headers
   ${prefix}/resources/mesh_asset.hpp
   ${prefix}/resources/primitive_asset.hpp
   ${prefix}/resources/resources.hpp
-  ${prefix}/resources/shader_asset.hpp
   ${prefix}/resources/animation_asset.hpp
   ${prefix}/resources/skeleton_asset.hpp
   ${prefix}/resources/texture_asset.hpp
@@ -59,6 +59,7 @@ set(graphics_headers
   ${prefix}/graphics/cache/pipeline_cache.hpp
   ${prefix}/graphics/cache/sampler_cache.hpp
   ${prefix}/graphics/cache/scratch_buffer_cache.hpp
+  ${prefix}/graphics/cache/shader_cache.hpp
   ${prefix}/graphics/cache/vertex_buffer_cache.hpp
 
   ${prefix}/graphics/animation/interpolator.hpp
@@ -129,6 +130,14 @@ set(scene_headers
   ${prefix}/scene/shape_renderer.hpp
 )
 
+set(imcpp_headers
+  ${prefix}/imcpp/common.hpp
+  ${prefix}/imcpp/input_text.hpp
+  ${prefix}/imcpp/inspector.hpp
+  ${prefix}/imcpp/reflector.hpp
+  ${prefix}/imcpp/scene_graph.hpp
+)
+
 set(header_list
   ${core_headers}
   ${input_headers}
@@ -136,6 +145,7 @@ set(header_list
   ${resources_headers}
   ${graphics_headers}
   ${scene_headers}
+  ${imcpp_headers}
 
   ${prefix}/build_version.hpp
   ${prefix}/engine.hpp

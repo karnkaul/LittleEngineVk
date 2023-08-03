@@ -5,6 +5,7 @@ add_subdirectory(vfs)
 add_subdirectory(resources)
 add_subdirectory(graphics)
 add_subdirectory(scene)
+add_subdirectory(imcpp)
 
 target_sources(${PROJECT_NAME} PRIVATE
   build_version.cpp

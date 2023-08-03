@@ -2,8 +2,6 @@
 #include <spaced/core/logger.hpp>
 #include <spaced/graphics/cache/pipeline_cache.hpp>
 #include <spaced/graphics/device.hpp>
-#include <spaced/resources/resources.hpp>
-#include <spaced/resources/shader_asset.hpp>
 #include <vulkan/vulkan_hash.hpp>
 #include <algorithm>
 #include <map>
@@ -75,13 +73,10 @@ auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 
 auto PipelineCache::load(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state) -> vk::Pipeline {
 	auto const key = Key{format, shader, state};
-	auto lock = std::unique_lock{m_mutex};
 	auto itr = m_map.find(key);
 	if (itr == m_map.end()) {
-		lock.unlock();
 		auto ret = build(key);
 		if (!ret) { return {}; }
-		lock.lock();
 		auto const [inserted, _] = m_map.insert_or_assign(key, std::move(ret));
 		itr = inserted;
 
@@ -91,18 +86,29 @@ auto PipelineCache::load(PipelineFormat format, NotNull<Shader const*> shader, N
 	return *itr->second;
 }
 
+auto PipelineCache::clear_pipelines() -> void {
+	g_log.debug("[{}] Vulkan Pipelines destroyed", m_map.size());
+	m_map.clear();
+}
+
+auto PipelineCache::clear_pipelines_and_shaders() -> void {
+	Device::self().device().waitIdle();
+	clear_pipelines();
+	m_shader_cache.clear_shaders();
+}
+
 auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 	auto shader_stages = std::array<vk::PipelineShaderStageCreateInfo, 2>{};
 	shader_stages[0].stage = vk::ShaderStageFlagBits::eVertex;
 	shader_stages[1].stage = vk::ShaderStageFlagBits::eFragment;
 	shader_stages[0].pName = shader_stages[1].pName = "main";
 
-	auto* vertex_shader = Resources::self().load<ShaderAsset>(key.shader->vertex);
-	auto* fragment_shader = Resources::self().load<ShaderAsset>(key.shader->fragment);
+	auto vertex_shader = m_shader_cache.load(key.shader->vertex);
+	auto fragment_shader = m_shader_cache.load(key.shader->fragment);
 	if (vertex_shader == nullptr || fragment_shader == nullptr) { return {}; }
 
-	shader_stages[0].module = *vertex_shader->module;
-	shader_stages[1].module = *fragment_shader->module;
+	shader_stages[0].module = vertex_shader;
+	shader_stages[1].module = fragment_shader;
 	assert(shader_stages[0].module && shader_stages[1].module);
 
 	auto pvisci = vk::PipelineVertexInputStateCreateInfo{};

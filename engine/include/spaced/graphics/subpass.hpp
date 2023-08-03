@@ -17,6 +17,7 @@ struct RenderCamera {
 		glm::mat4 view;
 		glm::mat4 projection;
 		glm::vec4 vpos_exposure;
+		glm::vec4 vdir_ortho;
 	};
 
 	struct Std430DirLight {

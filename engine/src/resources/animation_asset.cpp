@@ -1,8 +1,8 @@
-#include <spaced/core/visitor.hpp>
-#include <spaced/resources/animation_asset.hpp>
-#include <spaced/resources/bin_data.hpp>
+#include <le/core/visitor.hpp>
+#include <le/resources/animation_asset.hpp>
+#include <le/resources/bin_data.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 constexpr auto bin_sign_v{BinSign{0xffff0001}};
 
@@ -109,4 +109,4 @@ auto AnimationAsset::bin_unpack_from(std::span<std::uint8_t const> bytes, graphi
 	}
 	return true;
 }
-} // namespace spaced
+} // namespace le

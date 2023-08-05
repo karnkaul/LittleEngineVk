@@ -1,7 +1,7 @@
-#include <spaced/graphics/descriptor_updater.hpp>
-#include <spaced/graphics/material.hpp>
+#include <le/graphics/descriptor_updater.hpp>
+#include <le/graphics/material.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 auto Material::or_default(Ptr<Material const> material) -> Material const& {
 	static auto const ret = UnlitMaterial{};
 	return material != nullptr ? *material : ret;
@@ -26,4 +26,4 @@ auto LitMaterial::bind_set(vk::CommandBuffer const cmd) const -> void {
 		.update_texture(layout.textures[2], Fallback::self().or_black(emissive))
 		.bind_set(cmd);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

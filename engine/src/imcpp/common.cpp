@@ -1,8 +1,10 @@
 #include <imgui.h>
-#include <spaced/imcpp/common.hpp>
+#include <le/core/fixed_string.hpp>
+#include <le/engine.hpp>
+#include <le/imcpp/common.hpp>
 #include <cassert>
 
-namespace spaced::imcpp {
+namespace le::imcpp {
 auto max_size(std::span<char const* const> strings) -> glm::vec2 {
 	auto ret = glm::vec2{};
 	for (auto const* str : strings) {
@@ -37,7 +39,7 @@ Openable::~Openable() noexcept {
 Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags), &ImGui::End, true) {}
 
 Window::Window(NotClosed<Canvas>, char const* label, glm::vec2 size, bool border, int flags)
-	: Canvas(ImGui::BeginChild(label, {size.x, size.y}, border, flags), &ImGui::EndChild, {true}) {}
+	: Canvas(ImGui::BeginChild(label, {size.x, size.y}, border, flags), &ImGui::EndChild, true) {}
 
 TreeNode::TreeNode(char const* label, int flags) : Openable(ImGui::TreeNodeEx(label, flags), &ImGui::TreePop) {}
 
@@ -87,4 +89,4 @@ TabBar::Item::Item(NotClosed<TabBar>, char const* label, bool* open, int flags) 
 Combo::Combo(char const* label, char const* preview) : Openable(ImGui::BeginCombo(label, preview), &ImGui::EndCombo) {}
 
 ListBox::ListBox(char const* label, glm::vec2 size) : Openable(ImGui::BeginListBox(label, {size.x, size.y}), &ImGui::EndListBox) {}
-} // namespace spaced::imcpp
+} // namespace le::imcpp

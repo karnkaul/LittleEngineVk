@@ -34,7 +34,7 @@ add_subdirectory(src/djson)
 set(GLTF2CPP_BUILD_TESTS OFF)
 add_subdirectory(src/gltf2cpp)
 
-if(SPACED_USE_FREETYPE)
+if(LE_USE_FREETYPE)
   add_subdirectory(src/freetype)
 endif()
 
@@ -47,10 +47,10 @@ set(CLAP_BUILD_EXAMPLE OFF)
 set(CLAP_BUILD_TEST OFF)
 add_subdirectory(src/clap)
 
-add_library(spaced-ext INTERFACE)
-add_library(spaced::spaced-ext ALIAS spaced-ext)
+add_library(le-ext INTERFACE)
+add_library(le::le-ext ALIAS le-ext)
 
-target_link_libraries(spaced-ext INTERFACE
+target_link_libraries(le-ext INTERFACE
   dyvk::dyvk
   vma::vma
   glfw::glfw
@@ -60,7 +60,7 @@ target_link_libraries(spaced-ext INTERFACE
   djson::djson
   capo::lite
 
-  $<$<BOOL:${SPACED_USE_FREETYPE}>:freetype::freetype>
+  $<$<BOOL:${LE_USE_FREETYPE}>:freetype::freetype>
   Threads::Threads
 )
 

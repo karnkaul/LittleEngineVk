@@ -1,12 +1,12 @@
-#include <spaced/core/hash_combine.hpp>
-#include <spaced/core/logger.hpp>
-#include <spaced/graphics/cache/pipeline_cache.hpp>
-#include <spaced/graphics/device.hpp>
+#include <le/core/hash_combine.hpp>
+#include <le/core/logger.hpp>
+#include <le/graphics/cache/pipeline_cache.hpp>
+#include <le/graphics/device.hpp>
 #include <vulkan/vulkan_hash.hpp>
 #include <algorithm>
 #include <map>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 struct PipelineShaderLayout {
 	std::vector<vk::UniqueDescriptorSetLayout> descriptor_set_layouts{};
@@ -59,7 +59,7 @@ PipelineCache::PipelineCache(ShaderLayout shader_layout) { set_shader_layout(std
 auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 	m_shader_layout = std::move(shader_layout);
 
-	m_device = Device::self().device();
+	m_device = Device::self().get_device();
 	auto pipeline_shader_layout = PipelineShaderLayout::make(m_shader_layout, m_device);
 
 	m_descriptor_set_layouts = std::move(pipeline_shader_layout).descriptor_set_layouts;
@@ -73,26 +73,26 @@ auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 
 auto PipelineCache::load(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state) -> vk::Pipeline {
 	auto const key = Key{format, shader, state};
-	auto itr = m_map.find(key);
-	if (itr == m_map.end()) {
+	auto itr = m_pipelines.find(key);
+	if (itr == m_pipelines.end()) {
 		auto ret = build(key);
 		if (!ret) { return {}; }
-		auto const [inserted, _] = m_map.insert_or_assign(key, std::move(ret));
+		auto const [inserted, _] = m_pipelines.insert_or_assign(key, std::move(ret));
 		itr = inserted;
 
-		g_log.debug("new Vulkan Pipeline created [{}] (total: {})", key.hash(), m_map.size());
+		g_log.debug("new Vulkan Pipeline created [{}] (total: {})", key.hash(), m_pipelines.size());
 	}
-	assert(itr != m_map.end());
+	assert(itr != m_pipelines.end());
 	return *itr->second;
 }
 
 auto PipelineCache::clear_pipelines() -> void {
-	g_log.debug("[{}] Vulkan Pipelines destroyed", m_map.size());
-	m_map.clear();
+	g_log.debug("[{}] Vulkan Pipelines destroyed", m_pipelines.size());
+	m_pipelines.clear();
 }
 
 auto PipelineCache::clear_pipelines_and_shaders() -> void {
-	Device::self().device().waitIdle();
+	Device::self().get_device().waitIdle();
 	clear_pipelines();
 	m_shader_cache.clear_shaders();
 }
@@ -181,4 +181,4 @@ auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 
 	return vk::UniquePipeline{ret, m_device};
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

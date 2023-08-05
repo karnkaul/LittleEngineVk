@@ -1,12 +1,12 @@
-#include <spaced/core/nvec3.hpp>
-#include <spaced/core/random.hpp>
-#include <spaced/core/visitor.hpp>
-#include <spaced/core/zip_ranges.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/particle.hpp>
+#include <le/core/nvec3.hpp>
+#include <le/core/random.hpp>
+#include <le/core/visitor.hpp>
+#include <le/core/zip_ranges.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/particle.hpp>
 #include <algorithm>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto random_vec3(InclusiveRange<glm::vec3> const& range) -> glm::vec3 {
 	auto ret = glm::vec3{};
@@ -96,4 +96,4 @@ auto Particle::Emitter::render_object() const -> RenderObject {
 	};
 	return ret;
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

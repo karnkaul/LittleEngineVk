@@ -1,8 +1,9 @@
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/image_barrier.hpp>
-#include <spaced/graphics/renderer.hpp>
+#include <le/core/logger.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/image_barrier.hpp>
+#include <le/graphics/renderer.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 constexpr auto image_count(vk::SurfaceCapabilitiesKHR const& caps) noexcept -> std::uint32_t {
 	if (caps.maxImageCount < caps.minImageCount) { return std::max(3u, caps.minImageCount); }
@@ -23,6 +24,8 @@ auto optimal_depth_format(vk::PhysicalDevice const gpu) -> vk::Format {
 	if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) { return target; }
 	return vk::Format::eD16Unorm;
 }
+
+auto const g_log{logger::Logger{"Renderer"}};
 } // namespace
 
 auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_family, vk::Format depth_format) -> Frame {
@@ -51,20 +54,20 @@ auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_fa
 Renderer::Renderer(glm::uvec2 const framebuffer_extent) {
 	auto& device = Device::self();
 
-	m_swapchain.present_modes = device.physical_device().getSurfacePresentModesKHR(device.surface());
-	m_swapchain.formats = Swapchain::Formats::make(device.physical_device().getSurfaceFormatsKHR(device.surface()));
-	m_swapchain.create_info = m_swapchain.make_create_info(device.surface(), device.queue_family());
+	m_swapchain.present_modes = device.get_physical_device().getSurfacePresentModesKHR(device.get_surface());
+	m_swapchain.formats = Swapchain::Formats::make(device.get_physical_device().getSurfaceFormatsKHR(device.get_surface()));
+	m_swapchain.create_info = m_swapchain.make_create_info(device.get_surface(), device.get_queue_family());
 
 	recreate_swapchain(framebuffer_extent);
 
-	m_frame = Frame::make(device.device(), device.queue_family(), optimal_depth_format(device.physical_device()));
+	m_frame = Frame::make(device.get_device(), device.get_queue_family(), optimal_depth_format(device.get_physical_device()));
 
-	auto const line_width_range = device.physical_device().getProperties().limits.lineWidthRange;
+	auto const line_width_range = device.get_physical_device().getProperties().limits.lineWidthRange;
 	m_line_width_limit = {line_width_range[0], line_width_range[1]};
 }
 
 Renderer::~Renderer() {
-	Device::self().device().waitIdle();
+	Device::self().get_device().waitIdle();
 	m_defer.clear();
 }
 
@@ -86,7 +89,7 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 
 	if (!device.reset(*sync.drawn)) { throw Error{"Failed to wait for frame fence"}; }
 
-	device.device().resetCommandPool(*sync.command_pool);
+	device.get_device().resetCommandPool(*sync.command_pool);
 	m_defer.next_frame();
 	if (!m_swapchain.retired.empty()) { m_swapchain.retired.pop_front(); }
 	m_imgui->new_frame();
@@ -99,9 +102,10 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 	return ret;
 }
 
-auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t const image_index) -> void {
+auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t const image_index) -> std::uint32_t {
 	auto& sync = m_frame.syncs[get_frame_index()];
 	sync.command_buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+	auto draw_calls = std::uint32_t{};
 
 	auto const swapchain_image = m_swapchain.active.images[image_index];
 	auto& depth_image = m_frame.depth_images[get_frame_index()];
@@ -124,6 +128,7 @@ auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t c
 		m_current_pass = &pass;
 		pass.do_setup({.colour = swapchain_image, .depth = depth_image_view}, m_line_width_limit);
 		pass.do_render(sync.command_buffer);
+		draw_calls += pass.m_data.draw_calls;
 		m_rendering = false;
 	};
 
@@ -134,6 +139,8 @@ auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t c
 	colour_image_barrier.transition(sync.command_buffer);
 
 	sync.command_buffer.end();
+
+	return draw_calls;
 }
 
 auto Renderer::submit_frame(std::uint32_t const image_index) -> bool {
@@ -173,7 +180,7 @@ auto Renderer::submit_frame(std::uint32_t const image_index) -> bool {
 auto Renderer::recreate_swapchain(std::optional<glm::uvec2> extent, std::optional<vk::PresentModeKHR> mode) -> bool {
 	auto& device = Device::self();
 
-	auto const caps = device.physical_device().getSurfaceCapabilitiesKHR(device.surface());
+	auto const caps = device.get_physical_device().getSurfaceCapabilitiesKHR(device.get_surface());
 	if (extent) {
 		if (extent->x == 0 || extent->y == 0) { return false; }
 		m_swapchain.create_info.imageExtent = image_extent(caps, vk::Extent2D{extent->x, extent->y});
@@ -187,18 +194,18 @@ auto Renderer::recreate_swapchain(std::optional<glm::uvec2> extent, std::optiona
 	auto info = m_swapchain.create_info;
 	info.minImageCount = image_count(caps);
 	info.oldSwapchain = m_swapchain.active.swapchain.get();
-	auto new_swapchain = device.device().createSwapchainKHRUnique(info);
+	auto new_swapchain = device.get_device().createSwapchainKHRUnique(info);
 
 	m_swapchain.create_info = info;
 	if (m_swapchain.active.swapchain) { m_swapchain.retired.push_back(std::move(m_swapchain.active)); }
 	m_swapchain.active.swapchain = std::move(new_swapchain);
 	auto count = std::uint32_t{};
-	if (device.device().getSwapchainImagesKHR(*m_swapchain.active.swapchain, &count, nullptr) != vk::Result::eSuccess) {
+	if (device.get_device().getSwapchainImagesKHR(*m_swapchain.active.swapchain, &count, nullptr) != vk::Result::eSuccess) {
 		throw Error{"Failed to get Swapchain Images"};
 	}
 
 	m_swapchain.active.images.resize(count);
-	auto const images = device.device().getSwapchainImagesKHR(*m_swapchain.active.swapchain);
+	auto const images = device.get_device().getSwapchainImagesKHR(*m_swapchain.active.swapchain);
 	m_swapchain.active.images.clear();
 	m_swapchain.active.views.clear();
 	for (auto const image : images) {
@@ -209,7 +216,7 @@ auto Renderer::recreate_swapchain(std::optional<glm::uvec2> extent, std::optiona
 		ivci.components.r = ivci.components.g = ivci.components.b = ivci.components.a = vk::ComponentSwizzle::eIdentity;
 		ivci.subresourceRange = isr;
 		ivci.image = image;
-		m_swapchain.active.views.push_back(device.device().createImageViewUnique(ivci));
+		m_swapchain.active.views.push_back(device.get_device().createImageViewUnique(ivci));
 		m_swapchain.active.images.push_back({
 			.image = image,
 			.view = *m_swapchain.active.views.back(),
@@ -218,9 +225,11 @@ auto Renderer::recreate_swapchain(std::optional<glm::uvec2> extent, std::optiona
 		});
 	}
 
+	g_log.info("Swapchain extent: [{}x{}] | images: [{}] | colour space: [{}] | vsync: [{}]", m_swapchain.create_info.imageExtent.width,
+			   m_swapchain.create_info.imageExtent.height, m_swapchain.active.images.size(), Swapchain::is_srgb_format(info.imageFormat) ? "sRGB" : "linear",
+			   to_vsync_string(info.presentMode));
+
 	return true;
-	// g_log.info("Swapchain extent: [{}x{}] | images: [{}] | colour space: [{}] | vsync: [{}]", create_info.imageExtent.width, create_info.imageExtent.height,
-	// 		   storage.images.size(), is_srgb(info.imageFormat) ? "sRGB" : "linear", vsync_status(info.presentMode));
 }
 
 auto Renderer::bind_pipeline(vk::Pipeline pipeline) -> bool {
@@ -265,4 +274,4 @@ auto Renderer::acquire_next_image(glm::uvec2 const framebuffer_extent) -> std::o
 	default: throw Error{"Failed to acquire Swapchain Image"};
 	}
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

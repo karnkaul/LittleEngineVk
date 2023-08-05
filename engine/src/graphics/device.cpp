@@ -1,11 +1,12 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <spaced/core/logger.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/resource.hpp>
+#include <le/core/logger.hpp>
+#include <le/core/version.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/resource.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto make_instance(std::vector<char const*> extensions, RenderDeviceCreateInfo const& gdci, Device::Info& out) -> vk::UniqueInstance {
 	static constexpr std::string_view validation_layer_v = "VK_LAYER_KHRONOS_validation";
@@ -22,10 +23,8 @@ auto make_instance(std::vector<char const*> extensions, RenderDeviceCreateInfo c
 		}
 	}
 
-	// TODO: build version
-	// auto const version = VK_MAKE_VERSION(version_v.major, version_v.minor, version_v.patch);
-	auto const version = VK_MAKE_VERSION(0, 1, 0);
-	auto const vai = vk::ApplicationInfo{"spaced", version, "spaced", version, VK_API_VERSION_1_3};
+	auto const version = build_version_v.to_vk_version();
+	auto const vai = vk::ApplicationInfo{"little-engine", version, "little-engine", version, VK_API_VERSION_1_3};
 	auto ici = vk::InstanceCreateInfo{};
 	ici.pApplicationInfo = &vai;
 	out.portability = false;
@@ -77,18 +76,6 @@ auto make_debug_messenger(vk::Instance instance) -> vk::UniqueDebugUtilsMessenge
 	try {
 		return instance.createDebugUtilsMessengerEXTUnique(dumci, nullptr);
 	} catch (std::exception const& e) { throw Error{e.what()}; }
-}
-
-auto get_queue_family(vk::PhysicalDevice const& device, vk::SurfaceKHR const surface) -> std::optional<std::uint32_t> {
-	static constexpr auto queue_flags_v = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer;
-	auto const properties = device.getQueueFamilyProperties();
-	for (std::size_t i = 0; i < properties.size(); ++i) {
-		auto const family = static_cast<std::uint32_t>(i);
-		if (device.getSurfaceSupportKHR(family, surface) == 0) { continue; }
-		if (!(properties[i].queueFlags & queue_flags_v)) { continue; }
-		return family;
-	}
-	return {};
 }
 
 struct Gpu {
@@ -188,45 +175,45 @@ Device::Device(Ptr<GLFWwindow> window, CreateInfo const& create_info) {
 
 	// NOLINTNEXTLINE
 	auto glfw_surface = VkSurfaceKHR{};
-	if (glfwCreateWindowSurface(instance(), window, {}, &glfw_surface) != VK_SUCCESS) { throw Error{"Failed to create Vulkan Surface"}; }
-	m_surface = vk::UniqueSurfaceKHR{glfw_surface, instance()};
+	if (glfwCreateWindowSurface(get_instance(), window, {}, &glfw_surface) != VK_SUCCESS) { throw Error{"Failed to create Vulkan Surface"}; }
+	m_surface = vk::UniqueSurfaceKHR{glfw_surface, get_instance()};
 
-	auto const gpu = select_gpu(instance(), surface());
+	auto const gpu = select_gpu(get_instance(), get_surface());
 	m_physical_device = gpu.device;
 	m_device_properties = gpu.properties;
 	m_queue_family = gpu.queue_family;
 
 	m_device = make_device(gpu);
-	m_queue = m_device->getQueue(queue_family(), 0);
+	m_queue = m_device->getQueue(get_queue_family(), 0);
 
-	m_allocator = std::make_unique<graphics::Allocator>(instance(), physical_device(), device());
+	m_allocator = std::make_unique<graphics::Allocator>(get_instance(), get_physical_device(), get_device());
 }
 
 Device::~Device() { m_device->waitIdle(); }
 
 auto Device::wait_for(vk::Fence const fence, std::uint64_t const timeout) const -> bool {
-	return device().waitForFences(fence, vk::Bool32{1}, timeout) == vk::Result::eSuccess;
+	return get_device().waitForFences(fence, vk::Bool32{1}, timeout) == vk::Result::eSuccess;
 }
 
 auto Device::reset(vk::Fence const fence, bool wait_first) const -> bool {
 	if (wait_first && !wait_for(fence)) { return false; }
-	device().resetFences(fence);
+	get_device().resetFences(fence);
 	return true;
 }
 
 auto Device::acquire_next_image(vk::SwapchainKHR swapchain, std::uint32_t& out_image_index, vk::Semaphore signal) const -> vk::Result {
 	auto lock = std::scoped_lock{m_mutex};
-	return device().acquireNextImageKHR(swapchain, Device::max_timeout_v, signal, {}, &out_image_index);
+	return get_device().acquireNextImageKHR(swapchain, Device::max_timeout_v, signal, {}, &out_image_index);
 }
 
 auto Device::submit(vk::SubmitInfo2 const& submit_info, vk::Fence const signal) const -> bool {
 	auto lock = std::scoped_lock{m_mutex};
-	return queue().submit2(1, &submit_info, signal) == vk::Result::eSuccess;
+	return get_queue().submit2(1, &submit_info, signal) == vk::Result::eSuccess;
 }
 
 auto Device::submit_and_present(vk::SubmitInfo2 const& submit_info, vk::Fence const submit_signal, vk::PresentInfoKHR const& present_info) const -> vk::Result {
 	auto lock = std::scoped_lock{m_mutex};
-	[[maybe_unused]] auto const result = queue().submit2(1, &submit_info, submit_signal);
-	return queue().presentKHR(&present_info);
+	[[maybe_unused]] auto const result = get_queue().submit2(1, &submit_info, submit_signal);
+	return get_queue().presentKHR(&present_info);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

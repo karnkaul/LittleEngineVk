@@ -1,15 +1,15 @@
 #pragma once
-#include <spaced/core/id.hpp>
-#include <spaced/graphics/font/font_library.hpp>
+#include <le/core/id.hpp>
+#include <le/graphics/font/font_library.hpp>
 
-#if !defined(SPACED_USE_FREETYPE)
+#if !defined(LE_USE_FREETYPE)
 #error "invalid project configuration"
 #endif
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-namespace spaced::graphics {
+namespace le::graphics {
 class FreetypeGlyphFactory : public GlyphSlot::Factory {
   public:
 	FreetypeGlyphFactory(FreetypeGlyphFactory const&) = delete;
@@ -45,4 +45,4 @@ class Freetype : public FontLibrary {
   private:
 	FT_Library m_lib{};
 };
-} // namespace spaced::graphics
+} // namespace le::graphics

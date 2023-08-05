@@ -1,6 +1,5 @@
 target_sources(${PROJECT_NAME} PRIVATE
   common.cpp
-  inspector.cpp
+  engine_stats.cpp
   reflector.cpp
-  scene_graph.cpp
 )

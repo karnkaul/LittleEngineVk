@@ -1,9 +1,9 @@
-#include <spaced/core/zip_ranges.hpp>
-#include <spaced/graphics/texture.hpp>
+#include <le/core/zip_ranges.hpp>
+#include <le/graphics/texture.hpp>
 #include <algorithm>
 #include <array>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 constexpr auto to_format(ColourSpace const colour_space) -> vk::Format {
 	if (colour_space == ColourSpace::eLinear) { return vk::Format::eR8G8B8A8Unorm; }
@@ -21,10 +21,9 @@ auto Texture::view() const -> ImageView {
 
 auto Texture::colour_space() const -> ColourSpace { return m_image.get()->format() == vk::Format::eR8G8B8A8Srgb ? ColourSpace::eSrgb : ColourSpace::eLinear; }
 
-auto Texture::write(Bitmap const& bitmap, glm::uvec2 const top_left) -> bool {
+auto Texture::write(Bitmap const& bitmap) -> bool {
 	auto const layer = std::array<Image::Layer, 1>{bitmap.bytes};
 	auto const extent = vk::Extent2D{bitmap.extent.x, bitmap.extent.y};
-	auto const offset = glm::ivec2{top_left};
 	return m_image.get()->copy_from(layer, extent);
 }
 
@@ -46,4 +45,4 @@ auto Cubemap::write(std::span<Bitmap const, Image::cubemap_layers_v> bitmaps) ->
 	}();
 	return m_image.get()->copy_from(layers, {target_extent.x, target_extent.y});
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

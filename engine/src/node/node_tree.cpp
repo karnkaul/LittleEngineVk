@@ -1,11 +1,11 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/error.hpp>
-#include <spaced/node/node_tree.hpp>
+#include <le/core/logger.hpp>
+#include <le/error.hpp>
+#include <le/node/node_tree.hpp>
 #include <algorithm>
 #include <format>
 #include <utility>
 
-namespace spaced {
+namespace le {
 namespace {
 auto const g_log{logger::Logger{"NodeTree"}};
 }
@@ -141,4 +141,4 @@ auto NodeTree::get(Id<Node> id) const -> Node const& {
 
 // NOLINTNEXTLINE
 auto NodeTree::get(Id<Node> id) -> Node& { return const_cast<Node&>(std::as_const(*this).get(id)); }
-} // namespace spaced
+} // namespace le

@@ -1,8 +1,8 @@
-#include <spaced/resources/bin_data.hpp>
-#include <spaced/resources/primitive_asset.hpp>
-#include <spaced/vfs/file_reader.hpp>
+#include <le/resources/bin_data.hpp>
+#include <le/resources/primitive_asset.hpp>
+#include <le/vfs/file_reader.hpp>
 
-namespace spaced {
+namespace le {
 static_assert(BinaryT<graphics::Vertex>);
 
 namespace {
@@ -45,4 +45,4 @@ auto PrimitiveAsset::bin_pack_to(std::vector<std::uint8_t>& out, graphics::Geome
 	count = geometry.bones.size();
 	writer.write(std::span{&count, 1}).write(std::span{geometry.bones});
 }
-} // namespace spaced
+} // namespace le

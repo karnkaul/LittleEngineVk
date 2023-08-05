@@ -1,16 +1,11 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/resources/material_asset.hpp>
-#include <spaced/resources/mesh_asset.hpp>
-#include <spaced/resources/primitive_asset.hpp>
-#include <spaced/resources/resources.hpp>
-#include <spaced/resources/skeleton_asset.hpp>
-#include <spaced/vfs/file_reader.hpp>
+#include <le/resources/material_asset.hpp>
+#include <le/resources/mesh_asset.hpp>
+#include <le/resources/primitive_asset.hpp>
+#include <le/resources/resources.hpp>
+#include <le/resources/skeleton_asset.hpp>
+#include <le/vfs/file_reader.hpp>
 
-namespace spaced {
-namespace {
-auto const g_log{logger::Logger{"MeshAsset"}};
-}
-
+namespace le {
 auto MeshAsset::try_load(Uri const& uri) -> bool {
 	auto const json = read_json(uri);
 	if (!json) { return false; }
@@ -36,4 +31,4 @@ auto MeshAsset::try_load(Uri const& uri) -> bool {
 	}
 	return true;
 }
-} // namespace spaced
+} // namespace le

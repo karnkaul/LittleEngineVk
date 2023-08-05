@@ -1,11 +1,10 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/resources/bin_data.hpp>
-#include <spaced/resources/material_asset.hpp>
-#include <spaced/resources/resources.hpp>
-#include <spaced/resources/texture_asset.hpp>
-#include <spaced/vfs/file_reader.hpp>
+#include <le/resources/bin_data.hpp>
+#include <le/resources/material_asset.hpp>
+#include <le/resources/resources.hpp>
+#include <le/resources/texture_asset.hpp>
+#include <le/vfs/file_reader.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 template <glm::length_t Len, typename T>
 auto to_glm_vec(glm::vec<Len, T>& out, dj::Json const& array) -> void {
@@ -22,8 +21,6 @@ constexpr auto to_alpha_mode(std::string_view const in, graphics::AlphaMode cons
 	if (in == "opaque") { return graphics::AlphaMode::eOpaque; }
 	return fallback;
 }
-
-auto const g_log{logger::Logger{MaterialAsset::type_name_v}};
 
 template <std::derived_from<graphics::UnlitMaterial> T = graphics::UnlitMaterial>
 [[nodiscard]] auto make_unlit(dj::Json const& json) -> std::unique_ptr<T> {
@@ -89,4 +86,4 @@ auto MaterialAsset::try_load(Uri const& uri) -> bool {
 	material = make_unlit(json);
 	return true;
 }
-} // namespace spaced
+} // namespace le

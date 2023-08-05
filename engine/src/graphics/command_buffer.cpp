@@ -1,10 +1,10 @@
-#include <spaced/error.hpp>
-#include <spaced/graphics/command_buffer.hpp>
-#include <spaced/graphics/device.hpp>
+#include <le/error.hpp>
+#include <le/graphics/command_buffer.hpp>
+#include <le/graphics/device.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 CommandBuffer::CommandBuffer() {
-	auto device = Device::self().device();
+	auto device = Device::self().get_device();
 	m_pool = device.createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eTransient});
 	auto const cbai = vk::CommandBufferAllocateInfo{*m_pool, vk::CommandBufferLevel::ePrimary, 1};
 	if (device.allocateCommandBuffers(&cbai, &m_cb) != vk::Result::eSuccess) { throw Error{"Failed to allocate Vulkan Command Buffer"}; }
@@ -19,9 +19,9 @@ auto CommandBuffer::submit() -> void {
 	vsi.commandBufferInfoCount = 1;
 	vsi.pCommandBufferInfos = &cbsi;
 	auto& device = Device::self();
-	auto fence = device.device().createFenceUnique({});
+	auto fence = device.get_device().createFenceUnique({});
 	device.submit(vsi, *fence);
 	device.wait_for(*fence);
 	m_cb = vk::CommandBuffer{};
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

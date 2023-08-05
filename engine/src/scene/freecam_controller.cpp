@@ -1,19 +1,13 @@
 #include <imgui.h>
-#include <spaced/engine.hpp>
-#include <spaced/scene/entity.hpp>
-#include <spaced/scene/freecam_controller.hpp>
-#include <spaced/scene/scene.hpp>
+#include <le/engine.hpp>
+#include <le/scene/entity.hpp>
+#include <le/scene/freecam_controller.hpp>
+#include <le/scene/scene.hpp>
 
-#include <spaced/core/logger.hpp>
-
-namespace spaced {
-namespace {
-auto const g_log{logger::Logger{"Freecam"}};
-}
-
+namespace le {
 void FreecamController::tick(Duration dt) {
 	auto data = get_scene().main_camera.transform.data();
-	auto* window = Engine::self().window();
+	auto* window = Engine::self().get_window();
 	auto const& input = Engine::self().input_state();
 
 	if (input.mouse_buttons[GLFW_MOUSE_BUTTON_RIGHT] == input::Action::eHold) {
@@ -59,4 +53,4 @@ void FreecamController::tick(Duration dt) {
 
 	get_scene().main_camera.transform.set_data(data);
 }
-} // namespace spaced
+} // namespace le

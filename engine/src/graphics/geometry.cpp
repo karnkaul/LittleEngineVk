@@ -1,10 +1,10 @@
-#include <spaced/core/nvec3.hpp>
-#include <spaced/graphics/geometry.hpp>
+#include <le/core/nvec3.hpp>
+#include <le/graphics/geometry.hpp>
 #include <algorithm>
 #include <array>
 #include <optional>
 
-namespace spaced {
+namespace le {
 namespace graphics {
 auto Geometry::append(std::span<Vertex const> vs, std::span<std::uint32_t const> is) -> Geometry& {
 	auto const i_offset = static_cast<std::uint32_t>(vertices.size());
@@ -282,4 +282,4 @@ auto graphics::make_manipulator(float stalk_diam, float stalk_height, std::uint3
 	x.append(z.vertices, z.indices);
 	return x;
 }
-} // namespace spaced
+} // namespace le

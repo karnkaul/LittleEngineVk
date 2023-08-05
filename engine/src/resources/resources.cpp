@@ -1,8 +1,8 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/core/time.hpp>
-#include <spaced/resources/resources.hpp>
+#include <le/core/logger.hpp>
+#include <le/core/time.hpp>
+#include <le/resources/resources.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 auto const g_log{logger::Logger{"Resources"}};
 }
@@ -48,4 +48,4 @@ auto Resources::set(Uri uri, std::unique_ptr<Asset> asset) -> Ptr<Asset> {
 	auto [it, _] = m_assets.insert_or_assign(std::move(uri), std::move(asset));
 	return it->second.get();
 }
-} // namespace spaced
+} // namespace le

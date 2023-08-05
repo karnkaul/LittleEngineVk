@@ -1,8 +1,8 @@
 #include <glm/mat4x4.hpp>
-#include <spaced/graphics/geometry.hpp>
-#include <spaced/graphics/shader_layout.hpp>
+#include <le/graphics/geometry.hpp>
+#include <le/graphics/shader_layout.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 auto VertexLayout::make(Buffers const& buffers) -> VertexLayout {
 	auto ret = VertexLayout{.buffers = buffers};
 
@@ -27,4 +27,4 @@ auto VertexLayout::make(Buffers const& buffers) -> VertexLayout {
 
 	return ret;
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,6 +1,6 @@
-#include <spaced/graphics/allocator.hpp>
+#include <le/graphics/allocator.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 Allocator::Allocator(vk::Instance instance, vk::PhysicalDevice physical_device, vk::Device device) : m_device(device) {
 	auto vaci = VmaAllocatorCreateInfo{};
 	vaci.instance = instance;
@@ -15,4 +15,4 @@ Allocator::Allocator(vk::Instance instance, vk::PhysicalDevice physical_device, 
 }
 
 Allocator::~Allocator() { vmaDestroyAllocator(m_allocator); }
-} // namespace spaced::graphics
+} // namespace le::graphics

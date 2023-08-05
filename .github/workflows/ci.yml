@@ -1,5 +1,5 @@
 name: ci
-on: [push, pull_request]
+on: [push]
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -8,9 +8,9 @@ jobs:
       - name: init
         run: sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev g++-13 clang-15
       - name: configure gcc
-        run: cmake -S . --preset=default -B build -DSPACED_PCH=OFF -DSPACED_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=g++-13
+        run: cmake -S . --preset=default -B build -DLE_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=g++-13
       - name: configure clang
-        run: cmake -S . --preset=ninja-clang -B clang -DSPACED_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=clang++-15
+        run: cmake -S . --preset=ninja-clang -B clang -DLE_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=clang++-15
       - name: build gcc
         run: cmake --build build --config=Release
       - name: build clang
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: configure
-        run: cmake -S . --preset=vs22 -B build -DSPACED_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF
+        run: cmake -S . --preset=vs22 -B build -DLE_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF
       - name: build
         run: cmake --build build --config=Release
       - name: test

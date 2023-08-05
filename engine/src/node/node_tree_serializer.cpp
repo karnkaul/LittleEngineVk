@@ -1,7 +1,7 @@
 #include <djson/json.hpp>
-#include <spaced/node/node_tree_serializer.hpp>
+#include <le/node/node_tree_serializer.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 template <glm::length_t Dim, typename T = float>
 auto glm_vec_from_json(dj::Json const& json, glm::vec<Dim, T> const& fallback = {}, std::size_t offset = 0) -> glm::vec<Dim, T> {
@@ -79,4 +79,4 @@ auto NodeTree::Serializer::deserialize(dj::Json const& json, NodeTree& out) -> v
 	for (auto const& in_root : json["roots"].array_view()) { out.m_roots.emplace_back(in_root.as<std::size_t>()); }
 	out.m_next_id = std::max(out.m_next_id, json["max_id"].as<Id<Node>::id_type>());
 }
-} // namespace spaced
+} // namespace le

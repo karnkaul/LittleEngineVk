@@ -1,6 +1,6 @@
-#include <spaced/resources/font_asset.hpp>
+#include <le/resources/font_asset.hpp>
 
-namespace spaced {
+namespace le {
 auto FontAsset::try_load(Uri const& uri) -> bool {
 	auto bytes = read_bytes(uri);
 	if (bytes.empty()) { return false; }
@@ -11,4 +11,4 @@ auto FontAsset::try_load(Uri const& uri) -> bool {
 	font = std::move(new_font);
 	return true;
 }
-} // namespace spaced
+} // namespace le

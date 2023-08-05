@@ -1,7 +1,7 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/graphics/defer.hpp>
+#include <le/core/logger.hpp>
+#include <le/graphics/defer.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto const g_log{logger::Logger{"Defer"}};
 }
@@ -22,4 +22,4 @@ void DeferQueue::clear() {
 	m_current.clear();
 	m_deferred.clear();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

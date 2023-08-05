@@ -1,9 +1,9 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/graphics/cache/vertex_buffer_cache.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/renderer.hpp>
+#include <le/core/logger.hpp>
+#include <le/graphics/cache/vertex_buffer_cache.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/renderer.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 constexpr auto usage_v = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer;
 
@@ -28,8 +28,8 @@ auto VertexBufferCache::allocate() -> Buffered<std::shared_ptr<HostBuffer>> {
 }
 
 auto VertexBufferCache::clear() -> void {
-	Device::self().device().waitIdle();
+	Device::self().get_device().waitIdle();
 	g_log.debug("{} Vertex Buffers destroyed", m_buffers.size());
 	m_buffers.clear();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

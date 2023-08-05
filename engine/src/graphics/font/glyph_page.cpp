@@ -1,6 +1,6 @@
-#include <spaced/graphics/font/glyph_page.hpp>
+#include <le/graphics/font/glyph_page.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 GlyphPage::GlyphPage(NotNull<GlyphSlot::Factory*> slot_factory, TextHeight height) : m_slot_factory(slot_factory), m_height(height) {}
 
 auto GlyphPage::make_bitmap(GlyphSlot::Pixmap const& pixmap) const -> GlyphBitmap {
@@ -20,4 +20,4 @@ auto GlyphPage::slot_for(Codepoint const codepoint) -> GlyphSlot {
 
 	return m_slots.insert_or_assign(codepoint, ret).first->second;
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

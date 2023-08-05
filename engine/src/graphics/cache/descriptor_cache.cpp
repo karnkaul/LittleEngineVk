@@ -1,9 +1,9 @@
-#include <spaced/error.hpp>
-#include <spaced/graphics/cache/descriptor_cache.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/renderer.hpp>
+#include <le/error.hpp>
+#include <le/graphics/cache/descriptor_cache.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/renderer.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto make_descriptor_pool(vk::Device device) -> vk::UniqueDescriptorPool {
 	static constexpr std::uint32_t descriptor_count_v{3};
@@ -31,12 +31,12 @@ auto DescriptorCache::try_allocate(vk::DescriptorSetLayout const& layout, vk::De
 	dsai.descriptorPool = *data.active;
 	dsai.pSetLayouts = &layout;
 	dsai.descriptorSetCount = 1;
-	return Device::self().device().allocateDescriptorSets(&dsai, &out) == vk::Result::eSuccess;
+	return Device::self().get_device().allocateDescriptorSets(&dsai, &out) == vk::Result::eSuccess;
 }
 
 auto DescriptorCache::allocate(vk::DescriptorSetLayout const& layout) -> vk::DescriptorSet {
 	static constexpr auto max_loops{5};
-	auto const device = Device::self().device();
+	auto const device = Device::self().get_device();
 	auto ret = vk::DescriptorSet{};
 	auto& data = m_data[Renderer::self().get_frame_index()];
 	for (int i = 0; i < max_loops; ++i) {
@@ -50,7 +50,7 @@ auto DescriptorCache::allocate(vk::DescriptorSetLayout const& layout) -> vk::Des
 }
 
 auto DescriptorCache::next_frame() -> void {
-	auto const device = Device::self().device();
+	auto const device = Device::self().get_device();
 	auto& data = m_data[Renderer::self().get_frame_index()];
 	if (data.active) { data.used.push_back(std::move(data.active)); }
 	for (auto& pool : data.used) { device.resetDescriptorPool(*pool); }
@@ -62,4 +62,4 @@ auto DescriptorCache::next_frame() -> void {
 }
 
 auto DescriptorCache::clear() -> void { m_data = {}; }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,7 +1,7 @@
-#include <spaced/vfs/file_reader.hpp>
-#include <spaced/vfs/vfs.hpp>
+#include <le/vfs/file_reader.hpp>
+#include <le/vfs/vfs.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 // NOLINTNEXTLINE
 std::unique_ptr<Reader> g_reader{std::make_unique<FileReader>()};
@@ -16,4 +16,4 @@ auto vfs::set_reader(std::unique_ptr<Reader> reader) -> void {
 	if (!reader) { return; }
 	g_reader = std::move(reader);
 }
-} // namespace spaced
+} // namespace le

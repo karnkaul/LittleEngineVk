@@ -1,9 +1,9 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/graphics/cache/shader_cache.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/vfs/vfs.hpp>
+#include <le/core/logger.hpp>
+#include <le/graphics/cache/shader_cache.hpp>
+#include <le/graphics/device.hpp>
+#include <le/vfs/vfs.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto to_spir_v(Uri const& uri) -> Uri {
 	if (uri.extension() == ".spv") { return uri; }
@@ -24,7 +24,7 @@ auto ShaderCache::load(Uri const& uri) -> vk::ShaderModule {
 		// NOLINTNEXTLINE
 		reinterpret_cast<std::uint32_t const*>(bytes.data()),
 	};
-	auto shader_module = Device::self().device().createShaderModuleUnique(smci);
+	auto shader_module = Device::self().get_device().createShaderModuleUnique(smci);
 	if (!shader_module) { return {}; }
 
 	auto [it, _] = m_modules.insert_or_assign(uri, std::move(shader_module));
@@ -37,4 +37,4 @@ auto ShaderCache::clear_shaders() -> void {
 	g_log.debug("[{}] Vulkan Shader Modules destroyed", m_modules.size());
 	m_modules.clear();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,7 +1,7 @@
-#include <spaced/graphics/cache/scratch_buffer_cache.hpp>
-#include <spaced/graphics/renderer.hpp>
+#include <le/graphics/cache/scratch_buffer_cache.hpp>
+#include <le/graphics/renderer.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 auto ScratchBufferCache::allocate_host(vk::BufferUsageFlags const usage) -> HostBuffer& {
 	auto& pool = m_maps[Renderer::self().get_frame_index()][usage];
 	if (pool.next >= pool.buffers.size()) { pool.buffers.push_back(std::make_unique<HostBuffer>(usage)); }
@@ -23,4 +23,4 @@ auto ScratchBufferCache::next_frame() -> void {
 }
 
 auto ScratchBufferCache::clear() -> void { m_maps = {}; }
-} // namespace spaced::graphics
+} // namespace le::graphics

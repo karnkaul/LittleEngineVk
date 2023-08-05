@@ -1,4 +1,4 @@
-#include <spaced/core/logger.hpp>
+#include <le/core/logger.hpp>
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -10,7 +10,7 @@
 #include <mutex>
 #include <thread>
 
-namespace spaced {
+namespace le {
 namespace {
 namespace fs = std::filesystem;
 
@@ -99,4 +99,4 @@ auto logger::log_to_file(std::string path) -> std::shared_ptr<File> {
 	file->set_path(std::move(path));
 	return file;
 }
-} // namespace spaced
+} // namespace le

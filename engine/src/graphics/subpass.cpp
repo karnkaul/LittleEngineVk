@@ -1,9 +1,9 @@
-#include <spaced/graphics/cache/pipeline_cache.hpp>
-#include <spaced/graphics/descriptor_updater.hpp>
-#include <spaced/graphics/renderer.hpp>
-#include <spaced/graphics/subpass.hpp>
+#include <le/graphics/cache/pipeline_cache.hpp>
+#include <le/graphics/descriptor_updater.hpp>
+#include <le/graphics/renderer.hpp>
+#include <le/graphics/subpass.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 struct RenderingInfoBuilder {
 	vk::RenderingAttachmentInfo colour{};
@@ -106,6 +106,7 @@ auto Subpass::render_objects(RenderCamera const& camera, std::span<RenderObject 
 		object_set.bind_set(cmd);
 
 		object.primitive->draw(static_cast<std::uint32_t>(render_instances.size()), cmd);
+		++m_data.draw_calls;
 	}
 }
 
@@ -122,4 +123,4 @@ void Subpass::do_render(vk::CommandBuffer cmd) {
 	render(cmd);
 	cmd.endRendering();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

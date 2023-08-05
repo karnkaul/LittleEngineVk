@@ -1,6 +1,6 @@
-#include <spaced/vfs/cached_file_reader.hpp>
+#include <le/vfs/cached_file_reader.hpp>
 
-namespace spaced {
+namespace le {
 auto CachedFileReader::read_bytes(Uri const& uri) -> std::vector<std::uint8_t> {
 	auto lock = std::unique_lock{m_mutex};
 	auto it = m_cache.find(uri);
@@ -31,4 +31,4 @@ auto CachedFileReader::clear_loaded() -> void {
 	auto lock = std::scoped_lock{m_mutex};
 	m_cache.clear();
 }
-} // namespace spaced
+} // namespace le

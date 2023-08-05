@@ -1,9 +1,9 @@
-#include <spaced/graphics/cache/vertex_buffer_cache.hpp>
-#include <spaced/graphics/primitive.hpp>
-#include <spaced/graphics/renderer.hpp>
+#include <le/graphics/cache/vertex_buffer_cache.hpp>
+#include <le/graphics/primitive.hpp>
+#include <le/graphics/renderer.hpp>
 #include <utility>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto write_vertices_indices(Buffer& out, Geometry const& geometry) -> vk::DeviceSize {
 	auto const vertices = std::span{geometry.vertices};
@@ -117,4 +117,4 @@ auto DynamicPrimitive::write_at(FrameIndex index) const -> void {
 
 	m_index_offset = write_vertices_indices(*m_vertices_indices[index], m_geometry);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

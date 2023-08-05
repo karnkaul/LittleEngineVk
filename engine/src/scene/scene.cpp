@@ -1,11 +1,11 @@
-#include <spaced/engine.hpp>
-#include <spaced/error.hpp>
-#include <spaced/scene/scene.hpp>
+#include <le/engine.hpp>
+#include <le/error.hpp>
+#include <le/scene/scene.hpp>
 #include <algorithm>
 #include <format>
 #include <utility>
 
-namespace spaced {
+namespace le {
 Scene::~Scene() {
 	// subcomponent destructors might call get_entity() / get_scene(), need to invoke them before this destructor exits
 	m_entity_map.clear();
@@ -81,10 +81,6 @@ auto Scene::tick(Duration dt) -> void {
 		m_node_tree.remove(entity.m_node_id, destroy_entity);
 	}
 
-	if constexpr (debug_v) {
-		for (auto const& [_, entity] : m_entity_map) { assert(m_node_tree.find(entity.m_node_id)); }
-	}
-
 	m_ui_root.transform.extent = Engine::self().framebuffer_extent();
 	m_ui_root.tick(dt);
 
@@ -108,4 +104,4 @@ auto Scene::render_entities(std::vector<graphics::RenderObject>& out) const -> v
 	// render collision AABBs
 	collision.render_to(out);
 }
-} // namespace spaced
+} // namespace le

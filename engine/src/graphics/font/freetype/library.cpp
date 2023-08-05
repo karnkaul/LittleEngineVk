@@ -1,8 +1,8 @@
 #include <graphics/font/freetype/library.hpp>
-#include <spaced/core/logger.hpp>
-#include <spaced/resources/bin_data.hpp>
+#include <le/core/logger.hpp>
+#include <le/resources/bin_data.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 FreetypeGlyphFactory::FreetypeGlyphFactory(FT_Face face, std::vector<std::uint8_t> bytes) : m_face(face), m_font_bytes(std::move(bytes)) {}
 
 FreetypeGlyphFactory::~FreetypeGlyphFactory() { FT_Done_Face(m_face); }
@@ -42,4 +42,4 @@ auto Freetype::load(std::vector<std::uint8_t> bytes) const -> std::unique_ptr<Gl
 	if (FT_New_Memory_Face(m_lib, reinterpret_cast<FT_Byte const*>(bytes.data()), static_cast<FT_Long>(bytes.size()), 0, &face) != FT_Err_Ok) { return {}; }
 	return std::make_unique<FreetypeGlyphFactory>(face, std::move(bytes));
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

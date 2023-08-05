@@ -1,11 +1,11 @@
-#include <spaced/error.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/font/font.hpp>
+#include <le/error.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/font/font.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 auto Font::try_make(std::vector<std::uint8_t> file_bytes) -> std::optional<Font> {
 	auto ret = std::optional<Font>{};
-	auto slot_factory = Device::self().font_library().load(std::move(file_bytes));
+	auto slot_factory = Device::self().get_font_library().load(std::move(file_bytes));
 	if (!slot_factory) { return ret; }
 	ret.emplace(std::move(slot_factory));
 	return ret;
@@ -72,4 +72,4 @@ auto Font::Pen::calc_line_extent(std::string_view line) const -> glm::vec2 {
 	});
 	return ret;
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

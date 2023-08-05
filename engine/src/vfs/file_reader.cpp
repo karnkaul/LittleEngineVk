@@ -1,8 +1,8 @@
-#include <spaced/vfs/file_reader.hpp>
+#include <le/vfs/file_reader.hpp>
 #include <filesystem>
 #include <fstream>
 
-namespace spaced {
+namespace le {
 namespace {
 namespace fs = std::filesystem;
 
@@ -54,4 +54,4 @@ auto FileReader::read_string(Uri const& uri) -> std::string {
 auto FileReader::write_to(Uri const& uri, std::span<std::uint8_t const> bytes, bool overwrite) const -> bool {
 	return write_file(uri.absolute(m_mount_point).c_str(), bytes, overwrite);
 }
-} // namespace spaced
+} // namespace le

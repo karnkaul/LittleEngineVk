@@ -1,4 +1,4 @@
-set(prefix include/spaced)
+set(prefix include/le)
 
 set(core_headers
   ${prefix}/core/enumerate.hpp
@@ -14,8 +14,10 @@ set(core_headers
   ${prefix}/core/offset_span.hpp
   ${prefix}/core/ptr.hpp
   ${prefix}/core/random.hpp
+  ${prefix}/core/reversed.hpp
   ${prefix}/core/signal.hpp
   ${prefix}/core/time.hpp
+  ${prefix}/core/version.hpp
   ${prefix}/core/visitor.hpp
   ${prefix}/core/zip_ranges.hpp
 )
@@ -27,8 +29,11 @@ set(node_headers
 )
 
 set(input_headers
+  ${prefix}/input/action.hpp
+  ${prefix}/input/gamepad.hpp
   ${prefix}/input/key_axis.hpp
   ${prefix}/input/range.hpp
+  ${prefix}/input/receiver.hpp
   ${prefix}/input/state.hpp
   ${prefix}/input/trigger.hpp
 )
@@ -109,6 +114,7 @@ set(graphics_headers
 )
 
 set(scene_headers
+  ${prefix}/scene/ui/input_text.hpp
   ${prefix}/scene/ui/primitive_renderer.hpp
   ${prefix}/scene/ui/rect_transform.hpp
   ${prefix}/scene/ui/renderable.hpp
@@ -132,10 +138,13 @@ set(scene_headers
 
 set(imcpp_headers
   ${prefix}/imcpp/common.hpp
+  ${prefix}/imcpp/engine_stats.hpp
   ${prefix}/imcpp/input_text.hpp
-  ${prefix}/imcpp/inspector.hpp
+
+  # ${prefix}/imcpp/inspector.hpp
   ${prefix}/imcpp/reflector.hpp
-  ${prefix}/imcpp/scene_graph.hpp
+
+  # ${prefix}/imcpp/scene_graph.hpp
 )
 
 set(header_list
@@ -144,11 +153,13 @@ set(header_list
   ${vfs_headers}
   ${resources_headers}
   ${graphics_headers}
-  ${scene_headers}
+
+  # ${scene_headers}
   ${imcpp_headers}
 
-  ${prefix}/build_version.hpp
   ${prefix}/engine.hpp
+  ${prefix}/environment.hpp
   ${prefix}/error.hpp
   ${prefix}/runtime.hpp
+  ${prefix}/stats.hpp
 )

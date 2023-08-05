@@ -1,10 +1,10 @@
-#include <spaced/core/zip_ranges.hpp>
-#include <spaced/graphics/image_file.hpp>
-#include <spaced/resources/texture_asset.hpp>
+#include <le/core/zip_ranges.hpp>
+#include <le/graphics/image_file.hpp>
+#include <le/resources/texture_asset.hpp>
 #include <algorithm>
 #include <future>
 
-namespace spaced {
+namespace le {
 namespace {
 constexpr auto to_colour_space(std::string_view const str) -> graphics::ColourSpace {
 	return str == "linear" ? graphics::ColourSpace::eLinear : graphics::ColourSpace::eSrgb;
@@ -98,4 +98,4 @@ auto CubemapAsset::try_load(Uri const& uri) -> bool {
 
 	return cubemap.write(bitmaps);
 }
-} // namespace spaced
+} // namespace le

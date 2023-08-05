@@ -1,0 +1,13 @@
+name: no-pch
+on: [pull_request]
+jobs:
+  build-linux-no-pch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: init
+        run: sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev g++-13
+      - name: configure gcc
+        run: cmake -S . --preset=default -B build -DLE_PCH=OFF -DLE_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=g++-13
+      - name: build gcc
+        run: cmake --build build --config=Release

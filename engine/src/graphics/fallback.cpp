@@ -1,6 +1,6 @@
-#include <spaced/graphics/fallback.hpp>
+#include <le/graphics/fallback.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 Fallback::Fallback() {
 	auto pixel = std::array<std::uint8_t, 4>{};
 	auto bitmap = Bitmap{pixel, {1, 1}};
@@ -18,4 +18,4 @@ Fallback::Fallback() {
 	m_textures.black.write(bitmap);
 	m_cubemaps.black.write(cubemap);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

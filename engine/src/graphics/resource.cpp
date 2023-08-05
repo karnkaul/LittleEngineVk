@@ -1,13 +1,13 @@
-#include <spaced/graphics/allocator.hpp>
-#include <spaced/graphics/command_buffer.hpp>
-#include <spaced/graphics/device.hpp>
-#include <spaced/graphics/image_barrier.hpp>
-#include <spaced/graphics/resource.hpp>
+#include <le/graphics/allocator.hpp>
+#include <le/graphics/command_buffer.hpp>
+#include <le/graphics/device.hpp>
+#include <le/graphics/image_barrier.hpp>
+#include <le/graphics/resource.hpp>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 struct VmaImage {
 	VmaAllocation allocation{};
@@ -45,7 +45,7 @@ struct VmaImage {
 		ivci.components.r = ivci.components.g = ivci.components.b = ivci.components.a = vk::ComponentSwizzle::eIdentity;
 		ivci.subresourceRange = isr;
 		ivci.image = image;
-		ret.image_view = Device::self().device().createImageViewUnique(ivci);
+		ret.image_view = Device::self().get_device().createImageViewUnique(ivci);
 
 		return ret;
 	}
@@ -156,8 +156,6 @@ struct CopyImageToImage {
 
 	auto operator()(vk::CommandBuffer cmd) const {
 		auto const isrl = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, array_layers);
-		auto const vk_extent = vk::Extent3D{source.extent, 1u};
-		auto const bic = vk::BufferImageCopy({}, {}, {}, isrl, vk::Offset3D{target.offset, 0}, vk_extent);
 		auto source_barrier = ImageBarrier{source.image, mip_levels, array_layers};
 		auto target_barrier = ImageBarrier{target.image, mip_levels, array_layers};
 		source_barrier.set_full_barrier(source.layout, vk::ImageLayout::eTransferSrcOptimal).transition(cmd);
@@ -366,4 +364,4 @@ auto Image::resize(vk::Extent2D extent) -> void {
 
 	cmd.submit();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,7 +1,7 @@
-#include <spaced/core/visitor.hpp>
-#include <spaced/graphics/camera.hpp>
+#include <le/core/visitor.hpp>
+#include <le/graphics/camera.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 auto ortho_extent(glm::vec2 const extent, glm::vec2 const fixed_view) -> glm::vec2 {
 	if (fixed_view.x > 0.0f && fixed_view.y > 0.0f) { return fixed_view; }
@@ -27,4 +27,4 @@ auto Camera::orthographic(glm::vec2 const extent, ViewPlane const view_plane) ->
 	auto const he = 0.5f * extent;
 	return glm::ortho(-he.x, he.x, -he.y, he.y, view_plane.near, view_plane.far);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

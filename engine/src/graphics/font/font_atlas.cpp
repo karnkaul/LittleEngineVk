@@ -1,6 +1,6 @@
-#include <spaced/graphics/font/font_atlas.hpp>
+#include <le/graphics/font/font_atlas.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 FontAtlas::FontAtlas(NotNull<GlyphSlot::Factory*> slot_factory, CreateInfo create_info) : m_page(slot_factory, create_info.height) {
 	struct Entry {
 		Codepoint codepoint{};
@@ -54,4 +54,4 @@ auto FontAtlas::glyph_for(Codepoint codepoint) const -> Glyph {
 	if (auto const it = m_glyphs.find(codepoint); it != m_glyphs.end()) { return it->second; }
 	return {};
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

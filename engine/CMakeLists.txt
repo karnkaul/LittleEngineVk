@@ -1,30 +1,33 @@
-add_library(spaced-engine)
-add_library(spaced::spaced-engine ALIAS spaced-engine)
+add_library(${PROJECT_NAME})
+add_library(le::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_compile_definitions(spaced-engine PUBLIC
-  $<$<CONFIG:Debug>:SPACED_DEBUG>
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+  $<$<CONFIG:Debug>:LE_DEBUG>
+  $<$<BOOL:${LE_PCH}>:LE_PCH>
+  $<$<BOOL:${LE_USE_FREETYPE}>:LE_USE_FREETYPE>
+  $<$<BOOL:${CAPO_USE_OPENAL}>:CAPO_USE_OPENAL>
+  LE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+  LE_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+  LE_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
 
-target_compile_definitions(spaced-engine PRIVATE
-  $<$<BOOL:${SPACED_PCH}>:SPACED_PCH>
-  $<$<BOOL:${SPACED_USE_FREETYPE}>:SPACED_USE_FREETYPE>
-  $<$<BOOL:${SPACED_USE_OPENAL}>:SPACED_USE_OPENAL>
-  SPACED_VERSION="${PROJECT_VERSION}"
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  le::le-ext
 )
 
-target_link_libraries(spaced-engine PUBLIC
-  spaced::spaced-ext
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  le::le-compile-options
 )
 
-target_include_directories(spaced-engine PUBLIC
+target_include_directories(${PROJECT_NAME} PUBLIC
   include
 )
 
-target_include_directories(spaced-engine PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
   .
 )
 
-target_compile_features(spaced-engine PUBLIC
+target_compile_features(${PROJECT_NAME} PUBLIC
   cxx_std_20
 )
 
@@ -32,12 +35,12 @@ add_subdirectory(src)
 
 include(header_list.cmake)
 
-target_sources(spaced-engine PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
+target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
   ${header_list}
 )
 
-if(SPACED_PCH)
-  target_precompile_headers(spaced-engine PRIVATE
+if(LE_PCH)
+  target_precompile_headers(${PROJECT_NAME} PRIVATE
     <vulkan/vulkan.hpp>
     <algorithm>
     <atomic>

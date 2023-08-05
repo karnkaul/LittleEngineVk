@@ -1,7 +1,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
-#include <spaced/core/transform.hpp>
+#include <le/core/transform.hpp>
 
-namespace spaced {
+namespace le {
 auto Transform::look_at(glm::vec3 const& point, glm::vec3 const& eye, glm::quat const& start, nvec3 const& up) -> glm::quat {
 	glm::vec3 const current_look = start * front_v;
 	auto const to_point = point - eye;
@@ -28,4 +28,4 @@ auto Transform::combined(glm::mat4 const& parent) const -> Transform {
 	ret.decompose(parent * matrix());
 	return ret;
 }
-} // namespace spaced
+} // namespace le

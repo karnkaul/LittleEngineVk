@@ -3,12 +3,12 @@
 #include <imgui.h>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
-#include <spaced/error.hpp>
-#include <spaced/graphics/command_buffer.hpp>
-#include <spaced/graphics/dear_imgui.hpp>
-#include <spaced/graphics/device.hpp>
+#include <le/error.hpp>
+#include <le/graphics/command_buffer.hpp>
+#include <le/graphics/dear_imgui.hpp>
+#include <le/graphics/device.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth) {
 	auto& device = Device::self();
 
@@ -32,7 +32,7 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth
 	dpci.maxSets = multiplier_v * static_cast<std::uint32_t>(pool_sizes.size());
 	dpci.poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size());
 	dpci.pPoolSizes = pool_sizes.data();
-	m_pool = device.device().createDescriptorPoolUnique(dpci);
+	m_pool = device.get_device().createDescriptorPoolUnique(dpci);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -59,11 +59,11 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth
 	ImGui_ImplVulkan_LoadFunctions(lambda, &get_fn);
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = device.instance();
-	init_info.PhysicalDevice = device.physical_device();
-	init_info.Device = device.device();
-	init_info.QueueFamily = device.queue_family();
-	init_info.Queue = device.queue();
+	init_info.Instance = device.get_instance();
+	init_info.PhysicalDevice = device.get_physical_device();
+	init_info.Device = device.get_device();
+	init_info.QueueFamily = device.get_queue_family();
+	init_info.Queue = device.get_queue();
 	init_info.DescriptorPool = *m_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = 2;
@@ -110,4 +110,4 @@ auto DearImGui::render(vk::CommandBuffer const cmd) -> void {
 	if (m_state == State::eEndFrame) { end_frame(); }
 	if (auto* data = ImGui::GetDrawData()) { ImGui_ImplVulkan_RenderDrawData(data, cmd); }
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

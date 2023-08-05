@@ -1,10 +1,10 @@
-#include <spaced/graphics/cache/descriptor_cache.hpp>
-#include <spaced/graphics/cache/sampler_cache.hpp>
-#include <spaced/graphics/cache/scratch_buffer_cache.hpp>
-#include <spaced/graphics/descriptor_updater.hpp>
-#include <spaced/graphics/device.hpp>
+#include <le/graphics/cache/descriptor_cache.hpp>
+#include <le/graphics/cache/sampler_cache.hpp>
+#include <le/graphics/cache/scratch_buffer_cache.hpp>
+#include <le/graphics/descriptor_updater.hpp>
+#include <le/graphics/device.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 template <typename T>
 auto update_set(T const& info, vk::Device device, vk::DescriptorSet set, vk::DescriptorType type, std::uint32_t binding, std::uint32_t count) -> void {
@@ -33,12 +33,12 @@ auto DescriptorUpdater::shader_layout() const -> ShaderLayout const& { return Pi
 
 auto DescriptorUpdater::update(std::uint32_t binding, vk::DescriptorType type, vk::DescriptorBufferInfo const& info, std::uint32_t count)
 	-> DescriptorUpdater& {
-	update_set(info, Device::self().device(), m_descriptor_set, type, binding, count);
+	update_set(info, Device::self().get_device(), m_descriptor_set, type, binding, count);
 	return *this;
 }
 
 auto DescriptorUpdater::update(std::uint32_t binding, vk::DescriptorImageInfo const& info, std::uint32_t count) -> DescriptorUpdater& {
-	update_set(info, Device::self().device(), m_descriptor_set, vk::DescriptorType::eCombinedImageSampler, binding, count);
+	update_set(info, Device::self().get_device(), m_descriptor_set, vk::DescriptorType::eCombinedImageSampler, binding, count);
 	return *this;
 }
 
@@ -64,16 +64,16 @@ auto DescriptorUpdater::write(std::uint32_t binding, vk::DescriptorType type, vo
 	auto const usage = type == vk::DescriptorType::eStorageBuffer ? vk::BufferUsageFlagBits::eStorageBuffer : vk::BufferUsageFlagBits::eUniformBuffer;
 	if (data == nullptr || size == 0) {
 		auto const& empty = ScratchBufferCache::self().get_empty_buffer(usage);
-		return update(binding, type, vk::DescriptorBufferInfo{empty.buffer(), {}, empty.size()}, count);
+		return update(binding, type, vk::DescriptorBufferInfo{empty.buffer(), {}, empty.size()}, static_cast<std::uint32_t>(count));
 	}
 
 	auto& buffer = ScratchBufferCache::self().allocate_host(usage);
 	buffer.write(data, size);
-	return update(binding, type, vk::DescriptorBufferInfo{buffer.buffer(), {}, buffer.size()}, count);
+	return update(binding, type, vk::DescriptorBufferInfo{buffer.buffer(), {}, buffer.size()}, static_cast<std::uint32_t>(count));
 }
 
 auto DescriptorUpdater::bind_set(vk::CommandBuffer cmd) const -> void {
 	auto const layout = PipelineCache::self().pipeline_layout();
 	cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, m_set, m_descriptor_set, {});
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

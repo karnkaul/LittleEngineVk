@@ -4,17 +4,24 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-project(spaced-engine VERSION 0.1.0)
+project(little-engine VERSION 0.1.0)
 
-option(SPACED_PCH "Use PCH for spaced" ON)
-option(SPACED_IMPORTER "Build spaced-importer" ON)
-option(SPACED_USE_FREETYPE "Use Freetype as the font backend" ON)
+set(is_root_project OFF)
 
-add_library(spaced-compile-options INTERFACE)
-add_library(spaced::spaced-compile-options ALIAS spaced-compile-options)
+if("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(is_root_project ON)
+endif()
+
+option(LE_PCH "Use PCH for little" ON)
+option(LE_BUILD_SCENE "Build little-engine scene library" ON)
+option(LE_BUILD_TOOLS "Build little-engine tools" ${is_root_project})
+option(LE_USE_FREETYPE "Use Freetype as the font backend" ON)
+
+add_library(le-compile-options INTERFACE)
+add_library(le::le-compile-options ALIAS le-compile-options)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-  target_compile_options(spaced-compile-options INTERFACE
+  target_compile_options(le-compile-options INTERFACE
     -Wall -Wextra -Wpedantic -Wconversion -Wunused -Werror=return-type
   )
 endif()
@@ -22,6 +29,10 @@ endif()
 add_subdirectory(ext)
 add_subdirectory(engine)
 
-if(SPACED_IMPORTER)
-  add_subdirectory(importer)
+if(LE_BUILD_SCENE)
+  add_subdirectory(scene)
+endif()
+
+if(LE_BUILD_TOOLS)
+  add_subdirectory(tools)
 endif()

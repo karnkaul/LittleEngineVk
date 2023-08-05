@@ -1,8 +1,8 @@
-#include <spaced/core/logger.hpp>
-#include <spaced/resources/asset.hpp>
-#include <spaced/vfs/vfs.hpp>
+#include <le/core/logger.hpp>
+#include <le/resources/asset.hpp>
+#include <le/vfs/vfs.hpp>
 
-namespace spaced {
+namespace le {
 namespace {
 auto const g_log{logger::Logger{"Asset"}};
 }
@@ -22,4 +22,4 @@ auto Asset::read_json(Uri const& uri) const -> dj::Json {
 	}
 	return ret;
 }
-} // namespace spaced
+} // namespace le

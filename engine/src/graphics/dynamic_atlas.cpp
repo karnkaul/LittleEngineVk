@@ -1,13 +1,11 @@
-#include <spaced/graphics/command_buffer.hpp>
-#include <spaced/graphics/dynamic_atlas.hpp>
-#include <spaced/graphics/rgba.hpp>
-#include <spaced/resources/bin_data.hpp>
+#include <le/graphics/command_buffer.hpp>
+#include <le/graphics/dynamic_atlas.hpp>
+#include <le/graphics/rgba.hpp>
+#include <le/resources/bin_data.hpp>
 #include <optional>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
-constexpr auto blank_v{Rgba{.channels = {}}};
-
 constexpr auto next_pot(std::uint32_t const in) -> std::uint32_t {
 	auto ret = std::uint32_t{1};
 	while (ret < in) { ret <<= 1; }
@@ -82,4 +80,4 @@ auto DynamicAtlas::Writer::write() -> void {
 	m_out.m_texture.m_image.get()->overwrite(writes);
 	m_writes.clear();
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,8 +1,8 @@
 #include <stb/stb_image.h>
 #include <glm/vec3.hpp>
-#include <spaced/graphics/image_file.hpp>
+#include <le/graphics/image_file.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 struct ImageFile::Impl {
 	stbi_uc* stb_data{};
 	std::size_t size{};
@@ -33,4 +33,4 @@ auto ImageFile::bitmap() const -> Bitmap {
 		.extent = m_impl->extent,
 	};
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

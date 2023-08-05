@@ -1,7 +1,7 @@
-#include <spaced/graphics/image_barrier.hpp>
-#include <spaced/graphics/resource.hpp>
+#include <le/graphics/image_barrier.hpp>
+#include <le/graphics/resource.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 ImageBarrier::ImageBarrier(vk::Image image, std::uint32_t mip_levels, std::uint32_t array_layers) {
 	barrier.image = image;
 	barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, mip_levels, 0, array_layers};
@@ -118,4 +118,4 @@ auto ImageBarrier::transition(vk::CommandBuffer cmd, std::span<vk::ImageMemoryBa
 	vdi.pImageMemoryBarriers = barriers.data();
 	cmd.pipelineBarrier2(vdi);
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

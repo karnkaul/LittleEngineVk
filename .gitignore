@@ -13,5 +13,5 @@ compile_commands.json
 wiki
 imgui.ini
 
-spaced.log*
-spaced.conf*
+little-engine.log*
+little-engine.conf*

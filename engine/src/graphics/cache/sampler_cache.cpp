@@ -1,8 +1,8 @@
-#include <spaced/core/hash_combine.hpp>
-#include <spaced/graphics/cache/sampler_cache.hpp>
-#include <spaced/graphics/device.hpp>
+#include <le/core/hash_combine.hpp>
+#include <le/graphics/cache/sampler_cache.hpp>
+#include <le/graphics/device.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 namespace {
 constexpr auto from(TextureSampler::Wrap const wrap) -> vk::SamplerAddressMode {
 	switch (wrap) {
@@ -46,7 +46,7 @@ auto SamplerCache::get(TextureSampler const& sampler) -> vk::Sampler {
 	sci.addressModeV = from(sampler.wrap_t);
 	sci.addressModeW = from(sampler.wrap_s);
 	sci.maxLod = VK_LOD_CLAMP_NONE;
-	auto [it, _] = map.insert_or_assign(sampler, Device::self().device().createSamplerUnique(sci));
+	auto [it, _] = map.insert_or_assign(sampler, Device::self().get_device().createSamplerUnique(sci));
 	return *it->second;
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

@@ -1,7 +1,7 @@
-#include <spaced/core/visitor.hpp>
-#include <spaced/graphics/animation/animation.hpp>
+#include <le/core/visitor.hpp>
+#include <le/graphics/animation/animation.hpp>
 
-namespace spaced::graphics {
+namespace le::graphics {
 auto Animation::Channel::duration() const -> Duration {
 	return std::visit([](auto const& s) { return s.duration(); }, storage);
 }
@@ -32,4 +32,4 @@ auto Animation::duration() const -> Duration {
 auto Animation::update(NodeLocator node_locator, Duration time) const -> void {
 	for (auto const& channel : channels) { channel.update(node_locator, time); }
 }
-} // namespace spaced::graphics
+} // namespace le::graphics

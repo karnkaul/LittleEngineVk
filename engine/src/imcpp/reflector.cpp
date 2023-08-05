@@ -1,9 +1,9 @@
 #include <imgui.h>
-#include <spaced/core/fixed_string.hpp>
-#include <spaced/imcpp/reflector.hpp>
+#include <le/core/fixed_string.hpp>
+#include <le/imcpp/reflector.hpp>
 #include <optional>
 
-namespace spaced::imcpp {
+namespace le::imcpp {
 namespace {
 constexpr auto to_degree(glm::vec3 const& angles) -> glm::vec3 { return {glm::degrees(angles.x), glm::degrees(angles.y), glm::degrees(angles.z)}; }
 
@@ -174,4 +174,4 @@ auto Reflector::operator()(graphics::Camera& out_camera) const -> bool {
 	std::visit([this, &ret](auto& payload) { ret((*this)(payload)); }, out_camera.type);
 	return ret.value;
 }
-} // namespace spaced::imcpp
+} // namespace le::imcpp

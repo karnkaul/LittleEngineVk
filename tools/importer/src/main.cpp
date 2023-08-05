@@ -15,7 +15,7 @@ auto main(int argc, char** argv) -> int {
 		.unmatched(input.meshes, "[mesh]")
 		.flag(input.list, "l,list", "list (exportable) assets")
 		.flag(input.force, "f,force", "force export (remove existing assets)")
-		.flag(input.verbose, "v, verbose", "verbose mode");
+		.flag(input.verbose, "v,verbose", "verbose mode");
 
 	auto const result = options.parse(argc, argv);
 

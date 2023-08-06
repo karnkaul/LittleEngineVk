@@ -2,9 +2,9 @@
 
 **A simple 3D game engine using C++20 and Vulkan.**
 
-[![Build Status](https://github.com/karnkaul/levk/actions/workflows/ci.yml/badge.svg)](https://github.com/karnkaul/levk/actions/workflows/ci.yml)
+[![Build Status](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml/badge.svg)](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml)
 
-https://github.com/karnkaul/spaced-engine/assets/16272243/bcce5eb8-17a5-4d07-b95d-f5fcd8ab4f33
+https://github.com/karnkaul/LittleEngineVk/assets/16272243/304af3cc-de21-4900-95e7-5370d2197679
 
 ## Features
 

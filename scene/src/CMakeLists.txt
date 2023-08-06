@@ -9,6 +9,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   mesh_animator.cpp
   mesh_renderer.cpp
   particle_system.cpp
+  runtime.cpp
   scene_manager.cpp
   scene_renderer.cpp
   scene.cpp

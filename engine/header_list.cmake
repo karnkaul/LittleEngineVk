@@ -140,11 +140,7 @@ set(imcpp_headers
   ${prefix}/imcpp/common.hpp
   ${prefix}/imcpp/engine_stats.hpp
   ${prefix}/imcpp/input_text.hpp
-
-  # ${prefix}/imcpp/inspector.hpp
   ${prefix}/imcpp/reflector.hpp
-
-  # ${prefix}/imcpp/scene_graph.hpp
 )
 
 set(header_list
@@ -153,13 +149,10 @@ set(header_list
   ${vfs_headers}
   ${resources_headers}
   ${graphics_headers}
-
-  # ${scene_headers}
   ${imcpp_headers}
 
   ${prefix}/engine.hpp
   ${prefix}/environment.hpp
   ${prefix}/error.hpp
-  ${prefix}/runtime.hpp
   ${prefix}/stats.hpp
 )

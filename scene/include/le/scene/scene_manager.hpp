@@ -7,7 +7,6 @@ class SceneManager {
   public:
 	auto tick(Duration dt) -> void;
 	auto render() const -> void;
-	auto render(std::span<Ptr<graphics::Subpass> const> subpasses) const -> void;
 
 	[[nodiscard]] auto get_active_scene() const -> Scene& { return m_switcher.get_active_scene(); }
 
@@ -15,6 +14,6 @@ class SceneManager {
 
   private:
 	SceneSwitcher m_switcher{};
-	std::unique_ptr<SceneRenderer> m_renderer{std::make_unique<SceneRenderer>(m_switcher.m_active.get())};
+	std::unique_ptr<SceneRenderer> m_renderer{std::make_unique<SceneRenderer>()};
 };
 } // namespace le

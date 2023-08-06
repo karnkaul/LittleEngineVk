@@ -1,16 +1,20 @@
 #pragma once
-#include <le/graphics/subpass.hpp>
+#include <le/graphics/render_frame.hpp>
 #include <le/scene/scene.hpp>
 
 namespace le {
-class SceneRenderer : public graphics::Subpass {
+class SceneRenderer {
   public:
-	explicit SceneRenderer(NotNull<Scene const*> scene);
+	SceneRenderer(SceneRenderer const&) = delete;
+	SceneRenderer(SceneRenderer&&) = delete;
+	auto operator=(SceneRenderer const&) -> SceneRenderer& = delete;
+	auto operator=(SceneRenderer&&) -> SceneRenderer& = delete;
 
-	[[nodiscard]] auto get_load() const -> Load final;
-	auto render(vk::CommandBuffer cmd) -> void override;
+	virtual ~SceneRenderer() = default;
 
-	NotNull<Scene const*> scene;
+	explicit SceneRenderer();
+
+	auto render(Scene const& scene) -> graphics::RenderFrame const&;
 
   protected:
 	auto render_skybox(graphics::Cubemap const& cubemap) -> void;
@@ -19,5 +23,6 @@ class SceneRenderer : public graphics::Subpass {
 	graphics::SkyboxMaterial m_skybox_mat{};
 	graphics::PipelineState m_skybox_pipeline{};
 	std::vector<graphics::RenderObject> m_objects{};
+	std::optional<graphics::RenderFrame> m_render_frame{};
 };
 } // namespace le

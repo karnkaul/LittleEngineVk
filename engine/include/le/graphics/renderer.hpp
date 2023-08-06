@@ -9,12 +9,17 @@
 #include <le/graphics/dear_imgui.hpp>
 #include <le/graphics/defer.hpp>
 #include <le/graphics/fallback.hpp>
-#include <le/graphics/subpass.hpp>
+#include <le/graphics/render_frame.hpp>
 #include <le/graphics/swapchain.hpp>
 #include <optional>
 #include <span>
 
 namespace le::graphics {
+struct RenderTarget {
+	ImageView colour{};
+	ImageView depth{};
+};
+
 class Renderer : public MonoInstance<Renderer> {
   public:
 	static constexpr auto to_vsync_string(vk::PresentModeKHR mode) -> std::string_view;
@@ -41,7 +46,7 @@ class Renderer : public MonoInstance<Renderer> {
 	[[nodiscard]] auto get_dear_imgui() const -> DearImGui& { return *m_imgui; }
 
 	[[nodiscard]] auto wait_for_frame(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
-	auto render(std::span<NotNull<Subpass*> const> passes, std::uint32_t image_index) -> std::uint32_t;
+	auto render(RenderFrame const& render_frame, std::uint32_t image_index) -> std::uint32_t;
 	auto submit_frame(std::uint32_t image_index) -> bool;
 
 	[[nodiscard]] auto get_supported_present_modes() const -> std::span<vk::PresentModeKHR const> { return m_swapchain.present_modes; }
@@ -56,6 +61,8 @@ class Renderer : public MonoInstance<Renderer> {
 	auto bind_pipeline(vk::Pipeline pipeline) -> bool;
 	auto set_viewport(vk::Viewport viewport = {}) -> bool;
 	auto set_scissor(vk::Rect2D scissor) -> bool;
+
+	glm::vec2 shadow_map_view{10.0f};
 
   private:
 	struct Frame {
@@ -77,7 +84,23 @@ class Renderer : public MonoInstance<Renderer> {
 		static auto make(vk::Device device, std::uint32_t queue_family, vk::Format depth_format) -> Frame;
 	};
 
+	struct Std430Instance {
+		glm::mat4 transform;
+		glm::vec4 tint;
+	};
+
+	struct BakedObject {
+		RenderObject object;
+		vk::DescriptorSet descriptor_set{};
+		std::uint32_t instance_count{};
+	};
+
+	using BakedList = std::span<BakedObject const>;
+
+	struct Pass;
+
 	[[nodiscard]] auto acquire_next_image(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
+	auto bake_objects(std::span<RenderObject const> objects, std::vector<BakedObject>& out) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
 	PipelineCache m_pipeline_cache;
@@ -91,8 +114,11 @@ class Renderer : public MonoInstance<Renderer> {
 
 	Fallback m_fallback{};
 
+	std::vector<Std430Instance> m_instances{};
+	std::vector<BakedObject> m_scene{};
+	std::vector<BakedObject> m_ui{};
 	InclusiveRange<float> m_line_width_limit{};
-	Ptr<Subpass> m_current_pass{};
+
 	bool m_rendering{};
 };
 

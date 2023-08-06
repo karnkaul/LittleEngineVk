@@ -206,9 +206,9 @@ auto Engine::next_frame() -> bool {
 	return true;
 }
 
-auto Engine::render(std::span<NotNull<graphics::Subpass*> const> passes) -> void {
+auto Engine::render(graphics::RenderFrame const& frame) -> void {
 	if (!m_image_index) { return; }
-	m_stats.frame.draw_calls = m_renderer->render(passes, *m_image_index);
+	m_stats.frame.draw_calls = m_renderer->render(frame, *m_image_index);
 	m_renderer->submit_frame(*m_image_index);
 	m_image_index.reset();
 
@@ -276,7 +276,7 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 	auto framebuffer_extent = glm::ivec2{};
 	glfwGetFramebufferSize(ret->m_window.get(), &framebuffer_extent.x, &framebuffer_extent.y);
 	ret->m_renderer = std::make_unique<graphics::Renderer>(framebuffer_extent);
-	auto imgui = std::make_unique<graphics::DearImGui>(ret->get_window(), ret->m_renderer->get_colour_format(), ret->m_renderer->get_depth_format());
+	auto imgui = std::make_unique<graphics::DearImGui>(ret->get_window(), ret->m_renderer->get_colour_format());
 	ret->m_renderer->set_imgui(std::move(imgui));
 
 	if (m_shader_layout) { graphics::PipelineCache::self().set_shader_layout(std::move(*m_shader_layout)); }

@@ -44,7 +44,7 @@ class Engine : public MonoInstance<Engine> {
 
 	[[nodiscard]] auto is_running() const -> bool { return glfwWindowShouldClose(m_window.get()) != GLFW_TRUE; }
 	[[nodiscard]] auto next_frame() -> bool;
-	auto render(std::span<NotNull<graphics::Subpass*> const> passes) -> void;
+	auto render(graphics::RenderFrame const& frame) -> void;
 	auto shutdown() -> void;
 
 	[[nodiscard]] auto get_stats() const -> Stats const& { return m_stats; }

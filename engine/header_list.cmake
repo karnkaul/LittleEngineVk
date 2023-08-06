@@ -102,13 +102,13 @@ set(graphics_headers
   ${prefix}/graphics/primitive.hpp
   ${prefix}/graphics/rect.hpp
   ${prefix}/graphics/rgba.hpp
+  ${prefix}/graphics/render_frame.hpp
   ${prefix}/graphics/render_object.hpp
   ${prefix}/graphics/renderer.hpp
   ${prefix}/graphics/resource.hpp
   ${prefix}/graphics/rgba.hpp
   ${prefix}/graphics/scale_extent.hpp
   ${prefix}/graphics/shader.hpp
-  ${prefix}/graphics/subpass.hpp
   ${prefix}/graphics/shader_layout.hpp
   ${prefix}/graphics/swapchain.hpp
   ${prefix}/graphics/texture_sampler.hpp

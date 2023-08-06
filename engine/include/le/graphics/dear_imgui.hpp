@@ -1,11 +1,11 @@
 #pragma once
 #include <le/core/ptr.hpp>
-#include <le/graphics/subpass.hpp>
+#include <vulkan/vulkan.hpp>
 
 struct GLFWwindow;
 
 namespace le::graphics {
-class DearImGui : public Subpass {
+class DearImGui {
   public:
 	DearImGui(DearImGui&&) = delete;
 	DearImGui(DearImGui const&) = delete;
@@ -13,17 +13,15 @@ class DearImGui : public Subpass {
 	auto operator=(DearImGui&&) -> DearImGui& = delete;
 	auto operator=(DearImGui const&) -> DearImGui& = delete;
 
-	DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth);
-	~DearImGui() override;
+	DearImGui(Ptr<GLFWwindow> window, vk::Format colour);
+	~DearImGui();
 
 	auto new_frame() -> void;
 	auto end_frame() -> void;
+	auto render(vk::CommandBuffer cmd) -> void;
 
   private:
 	enum class State { eNewFrame, eEndFrame };
-
-	[[nodiscard]] auto get_load() const -> Load override;
-	auto render(vk::CommandBuffer cmd) -> void final;
 
 	vk::UniqueDescriptorPool m_pool{};
 	State m_state{};

@@ -5,6 +5,12 @@
 #include <le/graphics/texture.hpp>
 
 namespace le::graphics {
+enum class AlphaMode : std::uint32_t {
+	eOpaque = 0,
+	eBlend = 1,
+	eMask = 2,
+};
+
 class Material {
   public:
 	Material() = default;
@@ -18,7 +24,11 @@ class Material {
 	static auto or_default(Ptr<Material const> material) -> Material const&;
 
 	[[nodiscard]] virtual auto get_shader() const -> Shader const& = 0;
+	[[nodiscard]] virtual auto get_alpha_mode() const -> AlphaMode = 0;
+
 	virtual auto bind_set(vk::CommandBuffer cmd) const -> void = 0;
+
+	[[nodiscard]] auto is_transparent() const -> bool { return get_alpha_mode() == AlphaMode::eBlend; }
 };
 
 class UnlitMaterial : public Material {
@@ -26,14 +36,14 @@ class UnlitMaterial : public Material {
 	static constexpr std::string_view material_type_v{"unlit"};
 
 	[[nodiscard]] auto get_shader() const -> Shader const& override { return shader; }
+	[[nodiscard]] auto get_alpha_mode() const -> AlphaMode override { return AlphaMode::eBlend; }
+
 	auto bind_set(vk::CommandBuffer cmd) const -> void override;
 
 	Shader shader{"shaders/unlit.vert", "shaders/unlit.frag"};
 
 	Ptr<Texture const> texture{};
 };
-
-enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
 
 class LitMaterial : public Material {
   public:
@@ -46,6 +56,8 @@ class LitMaterial : public Material {
 	};
 
 	[[nodiscard]] auto get_shader() const -> Shader const& override { return shader; }
+	[[nodiscard]] auto get_alpha_mode() const -> AlphaMode override { return alpha_mode; }
+
 	auto bind_set(vk::CommandBuffer cmd) const -> void override;
 
 	Shader shader{"shaders/lit.vert", "shaders/lit.frag"};

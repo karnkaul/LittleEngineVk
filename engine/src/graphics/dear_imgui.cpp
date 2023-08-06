@@ -9,7 +9,7 @@
 #include <le/graphics/device.hpp>
 
 namespace le::graphics {
-DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth) {
+DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour) {
 	auto& device = Device::self();
 
 	static constexpr std::size_t multiplier_v{1000};
@@ -70,7 +70,7 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour, vk::Format depth
 	init_info.ImageCount = 2;
 	init_info.MSAASamples = static_cast<VkSampleCountFlagBits>(vk::SampleCountFlagBits::e1);
 
-	ImGui_ImplVulkan_Init(&init_info, static_cast<VkFormat>(colour), static_cast<VkFormat>(depth));
+	ImGui_ImplVulkan_Init(&init_info, static_cast<VkFormat>(colour), VkFormat{});
 
 	auto command_buffer = CommandBuffer{};
 	ImGui_ImplVulkan_CreateFontsTexture(command_buffer.get());
@@ -99,11 +99,6 @@ auto DearImGui::end_frame() -> void {
 	if (m_state == State::eNewFrame) { new_frame(); }
 	ImGui::Render();
 	m_state = State::eNewFrame;
-}
-
-auto DearImGui::get_load() const -> Load {
-	// overlay UI on existing colour image
-	return Load{.load_op = vk::AttachmentLoadOp::eLoad};
 }
 
 auto DearImGui::render(vk::CommandBuffer const cmd) -> void {

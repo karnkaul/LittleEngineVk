@@ -18,6 +18,7 @@ struct PipelineShaderLayout {
 		auto& camera_set = ordered_set_layouts[shader_layout.camera.set];
 		camera_set.emplace_back(shader_layout.camera.view, vk::DescriptorType::eUniformBuffer, 1);
 		camera_set.emplace_back(shader_layout.camera.directional_lights, vk::DescriptorType::eStorageBuffer, 1);
+		camera_set.emplace_back(shader_layout.camera.shadow_map, vk::DescriptorType::eCombinedImageSampler, 1);
 
 		auto& material_set = ordered_set_layouts[shader_layout.material.set];
 		material_set.emplace_back(shader_layout.material.data, vk::DescriptorType::eUniformBuffer, 1);

@@ -62,7 +62,8 @@ class Renderer : public MonoInstance<Renderer> {
 	auto set_viewport(vk::Viewport viewport = {}) -> bool;
 	auto set_scissor(vk::Rect2D scissor) -> bool;
 
-	glm::vec2 shadow_map_view{10.0f};
+	glm::vec3 shadow_frustum{100.0f};
+	vk::Extent2D shadow_map_extent{2048, 2048};
 
   private:
 	struct Frame {
@@ -75,10 +76,13 @@ class Renderer : public MonoInstance<Renderer> {
 		};
 
 		Buffered<std::unique_ptr<Image>> depth_images{};
+		Buffered<std::unique_ptr<Image>> shadow_maps{};
 		Buffered<Sync> syncs{};
 		FrameIndex frame_index{};
 
 		glm::uvec2 framebuffer_extent{};
+		glm::uvec2 backbuffer_extent{};
+		glm::mat4 primary_light_mat{1.0f};
 		vk::Pipeline last_bound{};
 
 		static auto make(vk::Device device, std::uint32_t queue_family, vk::Format depth_format) -> Frame;

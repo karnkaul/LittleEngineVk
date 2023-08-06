@@ -69,7 +69,7 @@ struct RenderingInfoBuilder {
 
 		depth.clearValue = vk::ClearDepthStencilValue{1.0f, 0};
 		depth.loadOp = vk::AttachmentLoadOp::eClear;
-		depth.storeOp = vk::AttachmentStoreOp::eDontCare;
+		depth.storeOp = vk::AttachmentStoreOp::eStore;
 		depth.imageView = shadow_map.view;
 		depth.imageLayout = vk::ImageLayout::eAttachmentOptimal;
 
@@ -136,18 +136,12 @@ auto const g_log{logger::Logger{"Renderer"}};
 } // namespace
 
 struct Renderer::Pass {
-	Renderer const& renderer; // NOLINT
+	Renderer& renderer; // NOLINT
 	RenderTarget render_target{};
 	ImageView shadow_map{};
 	glm::vec2 projection{};
 
 	mutable Ptr<Material const> last_bound{};
-
-	auto begin_render(vk::ClearColorValue const& clear, vk::CommandBuffer cmd) const -> void {
-		auto builder = RenderingInfoBuilder{};
-		auto const vri = builder.build(render_target, clear);
-		cmd.beginRendering(vri);
-	}
 
 	auto render_list(RenderCamera const& camera, BakedList const list, vk::CommandBuffer cmd, bool transparent) const -> std::uint32_t {
 		if (list.empty()) { return 0; }
@@ -162,7 +156,7 @@ struct Renderer::Pass {
 			auto const& material = Material::or_default(baked.object.material);
 			if (!transparent && material.is_transparent()) { continue; }
 			auto const pipeline = PipelineCache::self().load(pipeline_format, &material.get_shader(), &baked.object.pipeline_state);
-			if (!Renderer::self().bind_pipeline(pipeline)) { continue; }
+			if (!renderer.bind_pipeline(pipeline)) { continue; }
 
 			cmd.setLineWidth(renderer.m_line_width_limit.clamp(baked.object.pipeline_state.line_width));
 
@@ -184,14 +178,17 @@ struct Renderer::Pass {
 auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_family, vk::Format depth_format) -> Frame {
 	auto ret = Frame{};
 
-	auto const ici = ImageCreateInfo{
+	auto ici = ImageCreateInfo{
 		.format = depth_format,
 		.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		.aspect = vk::ImageAspectFlagBits::eDepth,
 		.view_type = vk::ImageViewType::e2D,
 		.mip_map = false,
 	};
-	fill_buffered(ret.depth_images, [ici] { return std::make_unique<Image>(ici); });
+	auto const make_depth_image = [&ici] { return std::make_unique<Image>(ici); };
+	fill_buffered(ret.depth_images, make_depth_image);
+	ici.usage |= vk::ImageUsageFlagBits::eSampled;
+	fill_buffered(ret.shadow_maps, make_depth_image);
 
 	for (auto& sync : ret.syncs) {
 		sync.command_pool = device.createCommandPoolUnique(vk::CommandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eTransient, queue_family});
@@ -264,31 +261,46 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 	auto const swapchain_image = m_swapchain.active.images[image_index];
 	auto& depth_image = m_frame.depth_images[get_frame_index()];
+	auto& shadow_map = m_frame.shadow_maps[get_frame_index()];
 	if (depth_image->extent() != swapchain_image.extent) { depth_image->recreate(swapchain_image.extent); }
+	if (shadow_map->extent() != shadow_map_extent) { shadow_map->recreate(shadow_map_extent); }
 
 	bake_objects(render_frame.scene, m_scene);
 	bake_objects(render_frame.ui, m_ui);
 
 	glm::vec2 const full_projection = glm::uvec2{swapchain_image.extent.width, swapchain_image.extent.height};
+	auto const shadow_map_image_view = ImageView{
+		.image = shadow_map->image(),
+		.view = shadow_map->image_view(),
+		.extent = shadow_map->extent(),
+		.format = shadow_map->format(),
+	};
 
-	auto render_target = RenderTarget{.depth = {}};
+	auto render_target = RenderTarget{.depth = shadow_map_image_view};
 	auto shadow_image_barrier = ImageBarrier{render_target.depth.image};
 	shadow_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
 	auto pass = Pass{
 		.renderer = *this,
 		.render_target = render_target,
 		.shadow_map = {},
-		.projection = glm::uvec2{shadow_map_view},
+		.projection = glm::uvec2{shadow_frustum},
 	};
-
-	shadow_image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
-	auto vri = RenderingInfoBuilder{}.build_shadow({});
+	auto vri = RenderingInfoBuilder{}.build_shadow(render_target.depth);
 	sync.command_buffer.beginRendering(vri);
+	auto const shadow_view_plane = ViewPlane{.near = -0.5f * shadow_frustum.z, .far = 0.5f * shadow_frustum.z};
+	auto shadow_camera = Camera{.type = Camera::Orthographic{.view_plane = shadow_view_plane}, .face = Camera::Face::ePositiveZ};
+	shadow_camera.transform.set_orientation(Transform::look_at(render_frame.lights->primary.direction, {}));
+	shadow_camera.transform.set_position(render_frame.camera->transform.position());
+	auto render_camera = RenderCamera{.camera = &shadow_camera, .lights = render_frame.lights};
+	m_frame.primary_light_mat = shadow_camera.projection(shadow_frustum) * shadow_camera.view();
+	m_frame.backbuffer_extent = {render_target.depth.extent.width, render_target.depth.extent.height};
 	m_rendering = true;
-	// TODO: render shadow map using m_scene.shadow_casters
+	pass.render_list(render_camera, m_scene, sync.command_buffer, false);
 	m_rendering = false;
 	sync.command_buffer.endRendering();
+	shadow_image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
 
+	m_frame.backbuffer_extent = m_frame.framebuffer_extent;
 	auto colour_image_barrier = ImageBarrier{swapchain_image.image};
 	colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
 	auto depth_image_barrier = ImageBarrier{*depth_image};
@@ -303,7 +315,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 	render_target = RenderTarget{.colour = swapchain_image, .depth = depth_image_view};
 	pass.render_target = render_target;
-	pass.shadow_map = {};
+	pass.shadow_map = shadow_map_image_view;
 
 	auto const clear_colour = Rgba::to_linear(render_frame.clear_colour.to_tint());
 	vri = RenderingInfoBuilder{}.build(render_target, std::array{clear_colour.x, clear_colour.y, clear_colour.z, clear_colour.w});
@@ -312,7 +324,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 	pass.projection = full_projection;
 	if (render_frame.projection.x > 0.0f && render_frame.projection.y > 0.0f) { pass.projection = render_frame.projection; }
-	auto render_camera = RenderCamera{.camera = render_frame.camera, .lights = render_frame.lights};
+	render_camera = RenderCamera{.camera = render_frame.camera, .lights = render_frame.lights};
 	pass.render_list(render_camera, m_scene, sync.command_buffer, true);
 
 	pass.shadow_map = {};
@@ -438,7 +450,7 @@ auto Renderer::bind_pipeline(vk::Pipeline pipeline) -> bool {
 
 auto Renderer::set_viewport(vk::Viewport viewport) -> bool {
 	if (!m_rendering || !m_frame.last_bound) { return false; }
-	if (viewport == vk::Viewport{}) { viewport = to_viewport(m_frame.framebuffer_extent); }
+	if (viewport == vk::Viewport{}) { viewport = to_viewport(m_frame.backbuffer_extent); }
 	auto const flipped_viewport = vk::Viewport{viewport.x, viewport.height + viewport.y, viewport.width, -viewport.height, 0.0f, 1.0f};
 	auto command_buffer = m_frame.syncs[get_frame_index()].command_buffer;
 	command_buffer.setViewport(0, flipped_viewport);

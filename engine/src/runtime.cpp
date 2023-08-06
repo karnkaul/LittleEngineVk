@@ -9,7 +9,7 @@ auto Runtime::build_engine(Engine::Builder builder) -> void {
 }
 
 auto Runtime::run() -> void {
-	if (!m_engine) { m_engine = Engine::Builder{"Spaced"}.build(); }
+	if (!m_engine) { m_engine = Engine::Builder{"little-engine"}.build(); }
 
 	setup();
 

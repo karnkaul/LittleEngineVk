@@ -72,7 +72,8 @@ auto Collision::tick(Scene const& scene, Duration dt) -> void {
 		for (auto it_b = it_a + 1; it_b != colliders.end(); ++it_b) {
 			auto& b = **it_b;
 			if (!b.active) { continue; }
-			auto const ignore = a.collider->ignore_channels && b.collider->ignore_channels && (a.collider->ignore_channels & b.collider->ignore_channels);
+			auto const ignore = (a.collider->ignore_channels != 0u) && (b.collider->ignore_channels != 0u) &&
+								((a.collider->ignore_channels & b.collider->ignore_channels) != 0u);
 			if (ignore) { continue; }
 			if (integrate(a, b)) {
 				if (a.collider->on_collision) { a.collider->on_collision(*b.collider); }
@@ -99,11 +100,15 @@ auto Collision::render_to(std::vector<graphics::RenderObject>& out) const -> voi
 		m_render_instances.push_back(instance);
 	}
 
+	if (m_render_instances.empty()) { return; }
+
+	auto pipeline_state = m_pipeline;
+	pipeline_state.line_width = draw_line_width;
 	out.push_back(graphics::RenderObject{
 		.material = &m_material,
 		.primitive = &m_primitive,
 		.instances = m_render_instances,
-		.pipeline_state = m_pipeline,
+		.pipeline_state = pipeline_state,
 	});
 }
 

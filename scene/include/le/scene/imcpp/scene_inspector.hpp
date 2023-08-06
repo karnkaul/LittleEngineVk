@@ -2,12 +2,13 @@
 #include <le/imcpp/common.hpp>
 #include <le/imcpp/input_text.hpp>
 #include <le/scene/entity.hpp>
+#include <le/scene/imcpp/entity_inspector.hpp>
 #include <variant>
 
 namespace le::imcpp {
-class Inspector {
+class SceneInspector {
   public:
-	enum class Type { eSceneCamera, eLights };
+	enum class Type { eCamera, eLights };
 
 	struct Target {
 		std::variant<std::monostate, Type, Id<Entity>> payload{};
@@ -23,17 +24,14 @@ class Inspector {
 	Target target{};
 	float width_pct{0.35f};
 
-	void display(Scene& scene);
+	auto display(Scene& scene) -> void;
+
+	[[nodiscard]] auto get_entity_inspector() const -> EntityInspector& { return *m_entity_inspector; }
+	auto set_entity_inspector(std::unique_ptr<EntityInspector> entity_inspector) -> void;
 
   private:
-	struct EntityName {
-		std::optional<Id<Entity>> previous{};
-		imcpp::InputText<> input_text{};
-	};
-
 	void draw_to(NotClosed<Window> w, Scene& scene);
-	auto get_entity_name(Id<Entity> id, std::string_view name) -> imcpp::InputText<>&;
 
-	EntityName m_entity_name{};
+	std::unique_ptr<EntityInspector> m_entity_inspector{std::make_unique<EntityInspector>()};
 };
 } // namespace le::imcpp

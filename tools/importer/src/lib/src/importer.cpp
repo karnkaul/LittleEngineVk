@@ -513,9 +513,8 @@ struct Exporter {
 		return uri;
 	}
 };
-} // namespace
 
-auto Importer::MeshList::build(gltf2cpp::Root const& root) -> MeshList {
+[[nodiscard]] auto build_mesh_list(gltf2cpp::Root const& root) -> MeshList {
 	auto ret = MeshList{};
 	for (auto const [mesh, index] : enumerate(root.meshes)) {
 		if (mesh.primitives.empty()) { continue; }
@@ -527,21 +526,15 @@ auto Importer::MeshList::build(gltf2cpp::Root const& root) -> MeshList {
 	}
 	return ret;
 }
+} // namespace
 
-auto Importer::run(Input input) -> bool {
+auto Importer::setup(Input input) -> bool {
 	m_input = std::move(input);
 	m_input.data_root = fs::absolute(m_input.data_root);
 	m_gltf_dir = m_input.gltf_path.parent_path();
 	m_export_prefix = m_input.uri_prefix / m_input.gltf_path.stem();
 
 	auto mesh_id = std::size_t{};
-	if (!m_input.meshes.empty()) {
-		if (m_input.meshes.size() > 1) {
-			std::cerr << " importing more than one mesh is not supported\n";
-			return false;
-		}
-		mesh_id = m_input.meshes.front();
-	}
 
 	if (m_input.verbose) {
 		std::cout << std::format(" - data root: '{}'\n - gltf path: '{}'\n - export prefix: '{}'\n - force: '{}'\n - mesh: [{}]\n",
@@ -559,15 +552,15 @@ auto Importer::run(Input input) -> bool {
 		return true;
 	}
 
-	m_mesh_list = MeshList::build(m_root);
-	if (m_input.list) {
-		print_assets();
-		return true;
-	}
+	m_mesh_list = build_mesh_list(m_root);
 
+	return true;
+}
+
+auto Importer::import_mesh(std::size_t mesh_id) -> std::optional<Uri> {
 	if (mesh_id >= m_root.meshes.size()) {
 		std::cerr << std::format("invalid mesh - '{}'\n", mesh_id);
-		return false;
+		return {};
 	}
 
 	fs::create_directories(m_input.data_root / m_export_prefix);
@@ -583,9 +576,7 @@ auto Importer::run(Input input) -> bool {
 		if (node == nullptr) { throw Error{std::format("failed to find skin for skinned mesh [{}]", mesh_id)}; }
 	}
 	std::cout << std::format("\nexporting mesh: [{}] {}...\n", mesh_id, m_root.meshes[mesh_id].name);
-	auto const uri = exporter.export_mesh(mesh_id, node);
-
-	return true;
+	return exporter.export_mesh(mesh_id, node).generic_string();
 }
 
 auto Importer::print_assets() const -> void {

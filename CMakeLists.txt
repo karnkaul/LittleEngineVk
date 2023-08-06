@@ -16,6 +16,7 @@ option(LE_PCH "Use PCH for little" ON)
 option(LE_BUILD_SCENE "Build little-engine scene library" ON)
 option(LE_BUILD_TOOLS "Build little-engine tools" ${is_root_project})
 option(LE_USE_FREETYPE "Use Freetype as the font backend" ON)
+option(LE_BUILD_EXAMPLE "Build little-engine example" ${is_root_project})
 
 add_library(le-compile-options INTERFACE)
 add_library(le::le-compile-options ALIAS le-compile-options)
@@ -35,4 +36,8 @@ endif()
 
 if(LE_BUILD_TOOLS)
   add_subdirectory(tools)
+endif()
+
+if(LE_BUILD_EXAMPLE)
+  add_subdirectory(example)
 endif()

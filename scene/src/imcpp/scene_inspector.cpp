@@ -5,13 +5,13 @@
 #include <le/imcpp/reflector.hpp>
 #include <le/resources/resources.hpp>
 #include <le/scene/freecam_controller.hpp>
-#include <le/scene/imcpp/inspector.hpp>
+#include <le/scene/imcpp/scene_inspector.hpp>
 #include <le/scene/mesh_animator.hpp>
 #include <le/scene/mesh_renderer.hpp>
 #include <le/scene/scene.hpp>
 
 namespace le::imcpp {
-void Inspector::display(Scene& scene) {
+void SceneInspector::display(Scene& scene) {
 	if (bool show_inspector = static_cast<bool>(target)) {
 		auto const width = ImGui::GetMainViewport()->Size.x * width_pct;
 		ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x - width, 0.0f});
@@ -21,26 +21,23 @@ void Inspector::display(Scene& scene) {
 	}
 }
 
-void Inspector::draw_to(NotClosed<Window> w, Scene& scene) {
+auto SceneInspector::set_entity_inspector(std::unique_ptr<EntityInspector> entity_inspector) -> void {
+	if (!entity_inspector) { return; }
+	m_entity_inspector = std::move(entity_inspector);
+}
+
+void SceneInspector::draw_to(NotClosed<Window> w, Scene& scene) {
 	auto const visitor = Visitor{
 		[](std::monostate) {},
 		[&](Id<Entity> id) {
 			auto* entity = scene.find_entity(id);
 			if (entity == nullptr) { return; }
-			ImGui::Text("%s", FixedString{"{}", entity->id().value()}.c_str());
-			auto& entity_name = get_entity_name(id, entity->get_node().name);
-			if (entity_name("Name")) { entity->get_node().name = entity_name.view(); }
-			bool is_active{entity->is_active()};
-			if (ImGui::Checkbox("Active", &is_active)) { entity->set_active(is_active); }
-			if (auto tn = imcpp::TreeNode("Transform", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
-				auto unified_scaling = bool{true};
-				imcpp::Reflector{w}(entity->get_transform(), unified_scaling, true);
-			}
+			m_entity_inspector->inspect(w, *entity);
 		},
 		[&](Type type) {
 			switch (type) {
-			case Type::eSceneCamera: {
-				imcpp::TreeNode::leaf("Scene Camera", ImGuiTreeNodeFlags_SpanFullWidth);
+			case Type::eCamera: {
+				imcpp::TreeNode::leaf("Camera", ImGuiTreeNodeFlags_SpanFullWidth);
 				if (auto tn = imcpp::TreeNode{"Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen}) {
 					bool unified_scaling{true};
 					imcpp::Reflector{w}(scene.main_camera.transform, unified_scaling, {});
@@ -79,13 +76,5 @@ void Inspector::draw_to(NotClosed<Window> w, Scene& scene) {
 	};
 
 	std::visit(visitor, target.payload);
-}
-
-auto Inspector::get_entity_name(Id<Entity> id, std::string_view name) -> InputText<>& {
-	if (m_entity_name.previous != id) {
-		m_entity_name.previous = id;
-		m_entity_name.input_text.set(name);
-	}
-	return m_entity_name.input_text;
 }
 } // namespace le::imcpp

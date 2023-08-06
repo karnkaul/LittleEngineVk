@@ -1,7 +1,8 @@
 set(prefix include/le)
 
 set(header_list
-  ${prefix}/scene/imcpp/inspector.hpp
+  ${prefix}/scene/imcpp/entity_inspector.hpp
+  ${prefix}/scene/imcpp/scene_inspector.hpp
   ${prefix}/scene/imcpp/scene_graph.hpp
 
   ${prefix}/scene/ui/input_text.hpp

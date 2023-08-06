@@ -4,7 +4,7 @@
 
 [![Build Status](https://github.com/karnkaul/levk/actions/workflows/ci.yml/badge.svg)](https://github.com/karnkaul/levk/actions/workflows/ci.yml)
 
-![Sponza](https://user-images.githubusercontent.com/16272243/233755056-45e54fba-14e6-45c8-9136-88a80fb723c3.png)
+https://github.com/karnkaul/spaced-engine/assets/16272243/bcce5eb8-17a5-4d07-b95d-f5fcd8ab4f33
 
 ## Features
 
@@ -50,6 +50,8 @@ Link to it via CMake: `target_link_libraries(foo PRIVATE le::little-engine)`.
 LittleEngine Scene (`le::le-scene`) is an optional wrapper that provides `Entity`, `Component`, `Scene`, `Runtime`, and other convenience facilities.
 
 Default shaders are provided as GLSL sources in `shaders/`. (These can be compiled to SPIR-V into your data directory using LittleEngine's tools.)
+
+See [example](example/example.cpp) for a basic example that renders an animated skinned mesh and some text, and responds to input.
 
 ### Building
 
@@ -106,6 +108,6 @@ This tool imports GLTF meshes into LittleEngine meshes, geometries, materials, t
 
 ## Misc
 
-<!--[Original repository](https://github.com/karnkaul/levk)-->
+[Original repository](https://github.com/karnkaul/LittleEngineVk)
 
 [LICENCE](LICENSE)

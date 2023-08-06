@@ -12,6 +12,7 @@ class MeshAnimator : public Component {
 
 	[[nodiscard]] auto get_animations() const -> std::span<Ptr<graphics::Animation const> const>;
 	auto set_animation_id(Id<graphics::Animation> index) -> bool;
+	auto reset_animation_id() -> void { m_active.reset(); }
 
 	[[nodiscard]] auto get_animation_id() const -> std::optional<Id<graphics::Animation>> { return m_active; }
 	[[nodiscard]] auto get_animation() const -> Ptr<graphics::Animation const>;

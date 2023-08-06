@@ -10,22 +10,22 @@ auto SceneGraph::check_stale() -> bool {
 	bool ret = false;
 	if (m_scene != m_prev) {
 		m_prev = m_scene;
-		m_inspector.target = {};
+		m_scene_inspector.target = {};
 		ret = true;
 	}
-	if (auto const* id = std::get_if<EntityId>(&m_inspector.target.payload); id != nullptr && !m_scene->has_entity(*id)) {
-		m_inspector.target = {};
+	if (auto const* id = std::get_if<EntityId>(&m_scene_inspector.target.payload); id != nullptr && !m_scene->has_entity(*id)) {
+		m_scene_inspector.target = {};
 		ret = true;
 	}
 	return ret;
 }
 
-auto SceneGraph::draw_to(NotClosed<Window> w, Scene& scene) -> Inspector::Target {
+auto SceneGraph::draw_to(NotClosed<Window> w, Scene& scene) -> SceneInspector::Target {
 	m_scene = &scene;
 	check_stale();
 
-	if (ImGui::SliderFloat("Inspector Width", &m_inspector.width_pct, 0.1f, 0.5f, "%.3f")) {
-		m_inspector.width_pct = std::clamp(m_inspector.width_pct, 0.1f, 0.5f);
+	if (ImGui::SliderFloat("Inspector Width", &m_scene_inspector.width_pct, 0.1f, 0.5f, "%.3f")) {
+		m_scene_inspector.width_pct = std::clamp(m_scene_inspector.width_pct, 0.1f, 0.5f);
 	}
 
 	ImGui::DragFloat("Draw colliders", &scene.collision.draw_line_width);
@@ -34,23 +34,23 @@ auto SceneGraph::draw_to(NotClosed<Window> w, Scene& scene) -> Inspector::Target
 	if (ImGui::Button("Spawn")) { Popup::open("scene_graph.spawn_entity"); }
 
 	ImGui::Separator();
-	standalone_node("SceneCamera", Inspector::Type::eSceneCamera);
-	standalone_node("Lights", Inspector::Type::eLights);
+	standalone_node("camera", SceneInspector::Type::eCamera);
+	standalone_node("lights", SceneInspector::Type::eLights);
 	draw_scene_tree(w);
 	handle_popups();
 
-	m_inspector.display(scene);
+	m_scene_inspector.display(scene);
 
-	return m_inspector.target;
+	return m_scene_inspector.target;
 }
 
-void SceneGraph::standalone_node(char const* label, Inspector::Type type) {
+void SceneGraph::standalone_node(char const* label, SceneInspector::Type type) {
 	auto flags = int{};
 	flags |= ImGuiTreeNodeFlags_SpanFullWidth;
-	if (auto* held_type = std::get_if<Inspector::Type>(&m_inspector.target.payload); held_type != nullptr && *held_type == type) {
+	if (auto* held_type = std::get_if<SceneInspector::Type>(&m_scene_inspector.target.payload); held_type != nullptr && *held_type == type) {
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
-	if (imcpp::TreeNode::leaf(label, flags)) { m_inspector.target.payload = type; }
+	if (imcpp::TreeNode::leaf(label, flags)) { m_scene_inspector.target.payload = type; }
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 		m_right_clicked_target.payload = type;
 		Popup::open("scene_graph.right_click");
@@ -61,12 +61,12 @@ auto SceneGraph::walk_node(Node& node) -> bool {
 	auto node_locator = m_scene->make_node_locator();
 	auto flags = int{};
 	flags |= (ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow);
-	if (node.entity_id && m_inspector.target == node.entity_id) { flags |= ImGuiTreeNodeFlags_Selected; }
+	if (node.entity_id && m_scene_inspector.target == node.entity_id) { flags |= ImGuiTreeNodeFlags_Selected; }
 	if (node.children().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
 	auto tn = imcpp::TreeNode{node.name.c_str(), flags};
 	if (node.entity_id) {
-		auto target = Inspector::Target{.payload = *node.entity_id};
-		if (ImGui::IsItemClicked()) { m_inspector.target = target; }
+		auto target = SceneInspector::Target{.payload = *node.entity_id};
+		if (ImGui::IsItemClicked()) { m_scene_inspector.target = target; }
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 			m_right_clicked = true;
 			m_right_clicked_target = target;
@@ -110,7 +110,7 @@ void SceneGraph::handle_popups() {
 			return Popup::close_current();
 		}
 		if (ImGui::Selectable("Inspect")) {
-			m_inspector.target = m_right_clicked_target;
+			m_scene_inspector.target = m_right_clicked_target;
 			m_right_clicked_target = {};
 			Popup::close_current();
 		}

@@ -38,13 +38,11 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour) {
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+	// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
 	ImGui::StyleColorsDark();
-	// NOLINTNEXTLINE
-	for (int i = 0; i < ImGuiCol_COUNT; ++i) {
-		// NOLINTNEXTLINE
-		auto& colour = ImGui::GetStyle().Colors[i];
+	for (int i = 0; i < ImGuiCol_COUNT; ++i) {		// NOLINT
+		auto& colour = ImGui::GetStyle().Colors[i]; // NOLINT
 		auto const corrected = glm::convertSRGBToLinear(glm::vec4{colour.x, colour.y, colour.z, colour.w});
 		colour = {corrected.x, corrected.y, corrected.z, corrected.w};
 	}
@@ -52,8 +50,9 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour) {
 	auto loader = vk::DynamicLoader{};
 	auto get_fn = [&loader](char const* name) { return loader.getProcAddress<PFN_vkVoidFunction>(name); };
 	auto lambda = +[](char const* name, void* ud) {
-		// NOLINTNEXTLINE
-		auto const* gf = reinterpret_cast<decltype(get_fn)*>(ud);
+		if (std::string_view{name} == "vkCmdBeginRenderingKHR") { name = "vkCmdBeginRendering"; }
+		if (std::string_view{name} == "vkCmdEndRenderingKHR") { name = "vkCmdEndRendering"; }
+		auto const* gf = reinterpret_cast<decltype(get_fn)*>(ud); // NOLINT
 		return (*gf)(name);
 	};
 	ImGui_ImplVulkan_LoadFunctions(lambda, &get_fn);
@@ -69,8 +68,10 @@ DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour) {
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = 2;
 	init_info.MSAASamples = static_cast<VkSampleCountFlagBits>(vk::SampleCountFlagBits::e1);
+	init_info.UseDynamicRendering = true;
+	init_info.ColorAttachmentFormat = static_cast<VkFormat>(colour);
 
-	ImGui_ImplVulkan_Init(&init_info, static_cast<VkFormat>(colour), VkFormat{});
+	ImGui_ImplVulkan_Init(&init_info, {});
 
 	auto command_buffer = CommandBuffer{};
 	ImGui_ImplVulkan_CreateFontsTexture(command_buffer.get());

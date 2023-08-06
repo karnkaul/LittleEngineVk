@@ -36,6 +36,7 @@
     },
     {
       "name": "ninja-asan",
+      "description": "ASan build configuration using Ninja Multi-config",
       "inherits": "ninja-ubsan",
       "binaryDir": "${sourceDir}/out/asan",
       "cacheVariables": {
@@ -45,35 +46,20 @@
     {
       "name": "ninja-tsan",
       "inherits": "ninja-ubsan",
+      "description": "TSan build configuration using Ninja Multi-config",
       "binaryDir": "${sourceDir}/out/tsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=thread -O1"
       }
     },
     {
-      "name": "vs19",
-      "description": "Build configuration using Visual Studio 16 (2019)",
-      "generator": "Visual Studio 16 2019",
+      "name": "vs22",
+      "description": "Build configuration using Visual Studio 17 (2022)",
+      "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/out/vs",
       "architecture": {
         "value": "x64",
         "strategy": "external"
-      }
-    },
-    {
-      "name": "vs22",
-      "description": "Build configuration using Visual Studio 17 (2022)",
-      "inherits": "vs19",
-      "generator": "Visual Studio 17 2022"
-    },
-    {
-      "name": "pre-install",
-      "description": "Debug build using Ninja Multi-config and install prefix",
-      "inherits": "default",
-      "binaryDir": "${sourceDir}/out/pre",
-      "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "${sourceDir}/out/install",
-        "RR_PREINSTALLED": "ON"
       }
     }
   ],
@@ -92,6 +78,16 @@
       "name": "RelWithDebInfo",
       "configurePreset": "default",
       "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "UBSan-Debug",
+      "configurePreset": "ninja-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ASan-Debug",
+      "configurePreset": "ninja-asan",
+      "configuration": "Debug"
     }
   ],
   "testPresets": [
@@ -109,6 +105,16 @@
       "name": "RelWithDebInfo",
       "configurePreset": "default",
       "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "UBSan Debug",
+      "configurePreset": "ninja-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ASan Debug",
+      "configurePreset": "ninja-asan",
+      "configuration": "Debug"
     }
   ]
 }

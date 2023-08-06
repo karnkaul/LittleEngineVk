@@ -87,6 +87,8 @@ struct RenderCamera {
 		glm::mat4 projection;
 		glm::vec4 vpos_exposure;
 		glm::vec4 vdir_ortho;
+		glm::mat4 mat_shadow;
+		glm::vec4 shadow_dir;
 	};
 
 	struct Std430DirLight {
@@ -102,6 +104,8 @@ struct RenderCamera {
 			.projection = camera->projection(projection),
 			.vpos_exposure = {camera->transform.position(), camera->exposure},
 			.vdir_ortho = {front_v * camera->transform.orientation(), is_ortho ? 1.0f : 0.0f},
+			.mat_shadow = *mat_shadow,
+			.shadow_dir = shadow_dir,
 		};
 
 		auto dir_lights = std::vector<Std430DirLight>{};
@@ -121,8 +125,15 @@ struct RenderCamera {
 		set.write_storage(layout.directional_lights, dir_lights.data(), std::span{dir_lights}.size_bytes()).write_uniform(layout.view, &view, sizeof(view));
 
 		if (shadow_map.view) {
-			auto const& sampler = SamplerCache::self().get({});
-			auto dii = vk::DescriptorImageInfo{sampler, shadow_map.view, vk::ImageLayout::eAttachmentOptimal};
+			static constexpr auto shadow_sampler_v = TextureSampler{
+				.wrap_s = TextureSampler::Wrap::eClampEdge,
+				.wrap_t = TextureSampler::Wrap::eClampEdge,
+				.min = TextureSampler::Filter::eNearest,
+				.mag = TextureSampler::Filter::eNearest,
+				.border = TextureSampler::Border::eOpaqueWhite,
+			};
+			auto const sampler = SamplerCache::self().get(shadow_sampler_v);
+			auto const dii = vk::DescriptorImageInfo{sampler, shadow_map.view, vk::ImageLayout::eReadOnlyOptimal};
 			set.update(layout.shadow_map, dii, 1);
 		}
 		set.bind_set(cmd);
@@ -130,6 +141,8 @@ struct RenderCamera {
 
 	NotNull<Camera const*> camera;
 	NotNull<Lights const*> lights;
+	NotNull<glm::mat4 const*> mat_shadow;
+	glm::vec4 shadow_dir;
 };
 
 auto const g_log{logger::Logger{"Renderer"}};
@@ -139,23 +152,22 @@ struct Renderer::Pass {
 	Renderer& renderer; // NOLINT
 	RenderTarget render_target{};
 	ImageView shadow_map{};
-	glm::vec2 projection{};
+	glm::vec2 world_frustum{};
 
 	mutable Ptr<Material const> last_bound{};
 
-	auto render_list(RenderCamera const& camera, BakedList const list, vk::CommandBuffer cmd, bool transparent) const -> std::uint32_t {
+	auto render_list(RenderCamera const& camera, BakedList const list, vk::CommandBuffer cmd) const -> std::uint32_t {
 		if (list.empty()) { return 0; }
 
 		auto const pipeline_format = PipelineFormat{.colour = render_target.colour.format, .depth = render_target.depth.format};
 		auto const& object_layout = PipelineCache::self().shader_layout().object;
 
-		camera.bind_set(projection, shadow_map, cmd);
+		camera.bind_set(world_frustum, shadow_map, cmd);
 		auto ret = std::uint32_t{};
 
 		for (auto const& baked : list) {
 			auto const& material = Material::or_default(baked.object.material);
-			if (!transparent && material.is_transparent()) { continue; }
-			auto const pipeline = PipelineCache::self().load(pipeline_format, &material.get_shader(), &baked.object.pipeline_state);
+			auto const pipeline = PipelineCache::self().load(pipeline_format, material.get_shader(), baked.object.pipeline_state);
 			if (!renderer.bind_pipeline(pipeline)) { continue; }
 
 			cmd.setLineWidth(renderer.m_line_width_limit.clamp(baked.object.pipeline_state.line_width));
@@ -172,6 +184,36 @@ struct Renderer::Pass {
 		}
 
 		return ret;
+	}
+
+	auto render_shadow(RenderCamera const& camera, BakedList const& list, vk::CommandBuffer cmd) const -> void {
+		if (list.empty()) { return; }
+
+		auto const pipeline_format = PipelineFormat{.colour = render_target.colour.format, .depth = render_target.depth.format};
+		auto const& object_layout = PipelineCache::self().shader_layout().object;
+
+		camera.bind_set(world_frustum, {}, cmd);
+
+		for (auto const& baked : list) {
+			auto const& material = Material::or_default(baked.object.material);
+			if (material.is_transparent()) { continue; }
+
+			auto shader = material.get_shader();
+			shader.fragment = "shaders/noop.frag";
+			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state);
+			if (!renderer.bind_pipeline(pipeline)) { continue; }
+
+			cmd.setLineWidth(renderer.m_line_width_limit.clamp(baked.object.pipeline_state.line_width));
+
+			if (last_bound != &material) {
+				material.bind_set(cmd);
+				last_bound = &material;
+			}
+
+			DescriptorUpdater::bind_set(object_layout.set, baked.descriptor_set, cmd);
+
+			baked.object.primitive->draw(baked.instance_count, cmd);
+		}
 	}
 };
 
@@ -255,89 +297,112 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image_index) -> std::uint32_t {
 	static constexpr auto ui_camera_v{Camera{.type = Camera::Orthographic{}}};
 
+	auto const shadow_view_plane = ViewPlane{.near = -0.5f * shadow_frustum.z, .far = 0.5f * shadow_frustum.z};
+	auto shadow_camera = Camera{.type = Camera::Orthographic{.view_plane = shadow_view_plane}, .face = Camera::Face::ePositiveZ};
+	shadow_camera.transform.set_orientation(Transform::look_at(render_frame.lights->primary.direction, {}));
+	shadow_camera.transform.set_position(render_frame.camera->transform.position());
+	m_frame.primary_light_mat = shadow_camera.projection(shadow_frustum) * shadow_camera.view();
+
 	auto& sync = m_frame.syncs[get_frame_index()];
 	sync.command_buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-	auto draw_calls = std::uint32_t{};
 
 	auto const swapchain_image = m_swapchain.active.images[image_index];
 	auto& depth_image = m_frame.depth_images[get_frame_index()];
 	auto& shadow_map = m_frame.shadow_maps[get_frame_index()];
 	if (depth_image->extent() != swapchain_image.extent) { depth_image->recreate(swapchain_image.extent); }
 	if (shadow_map->extent() != shadow_map_extent) { shadow_map->recreate(shadow_map_extent); }
-
-	bake_objects(render_frame.scene, m_scene);
-	bake_objects(render_frame.ui, m_ui);
-
 	glm::vec2 const full_projection = glm::uvec2{swapchain_image.extent.width, swapchain_image.extent.height};
-	auto const shadow_map_image_view = ImageView{
-		.image = shadow_map->image(),
-		.view = shadow_map->image_view(),
-		.extent = shadow_map->extent(),
-		.format = shadow_map->format(),
-	};
-
-	auto render_target = RenderTarget{.depth = shadow_map_image_view};
-	auto shadow_image_barrier = ImageBarrier{render_target.depth.image};
-	shadow_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
-	auto pass = Pass{
-		.renderer = *this,
-		.render_target = render_target,
-		.shadow_map = {},
-		.projection = glm::uvec2{shadow_frustum},
-	};
-	auto vri = RenderingInfoBuilder{}.build_shadow(render_target.depth);
-	sync.command_buffer.beginRendering(vri);
-	auto const shadow_view_plane = ViewPlane{.near = -0.5f * shadow_frustum.z, .far = 0.5f * shadow_frustum.z};
-	auto shadow_camera = Camera{.type = Camera::Orthographic{.view_plane = shadow_view_plane}, .face = Camera::Face::ePositiveZ};
-	shadow_camera.transform.set_orientation(Transform::look_at(render_frame.lights->primary.direction, {}));
-	shadow_camera.transform.set_position(render_frame.camera->transform.position());
-	auto render_camera = RenderCamera{.camera = &shadow_camera, .lights = render_frame.lights};
-	m_frame.primary_light_mat = shadow_camera.projection(shadow_frustum) * shadow_camera.view();
-	m_frame.backbuffer_extent = {render_target.depth.extent.width, render_target.depth.extent.height};
-	m_rendering = true;
-	pass.render_list(render_camera, m_scene, sync.command_buffer, false);
-	m_rendering = false;
-	sync.command_buffer.endRendering();
-	shadow_image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
-
-	m_frame.backbuffer_extent = m_frame.framebuffer_extent;
 	auto colour_image_barrier = ImageBarrier{swapchain_image.image};
-	colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
-	auto depth_image_barrier = ImageBarrier{*depth_image};
-	depth_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
 
-	auto const depth_image_view = ImageView{
-		.image = depth_image->image(),
-		.view = depth_image->image_view(),
-		.extent = depth_image->extent(),
-		.format = depth_image->format(),
+	bake_objects(render_frame);
+
+	auto const shadow_pass = [&] {
+		auto const ret = ImageView{
+			.image = shadow_map->image(),
+			.view = shadow_map->image_view(),
+			.extent = shadow_map->extent(),
+			.format = shadow_map->format(),
+		};
+
+		auto const render_target = RenderTarget{.depth = ret};
+		m_frame.backbuffer_extent = {render_target.depth.extent.width, render_target.depth.extent.height};
+		auto const pass = Pass{
+			.renderer = *this,
+			.render_target = render_target,
+			.shadow_map = {},
+			.world_frustum = glm::uvec2{shadow_frustum},
+		};
+		auto const render_camera = RenderCamera{
+			.camera = &shadow_camera,
+			.lights = render_frame.lights,
+			.mat_shadow = &m_frame.primary_light_mat,
+			.shadow_dir = glm::vec4{render_frame.lights->primary.direction.value(), 1.0f},
+		};
+
+		auto image_barrier = ImageBarrier{render_target.depth.image};
+		image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
+		auto const vri = RenderingInfoBuilder{}.build_shadow(render_target.depth);
+		sync.command_buffer.beginRendering(vri);
+		m_rendering = true;
+		pass.render_shadow(render_camera, m_scene_objects, sync.command_buffer);
+		m_rendering = false;
+		sync.command_buffer.endRendering();
+		image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
+
+		return ret;
 	};
+	auto const shadow_map_image_view = shadow_pass();
 
-	render_target = RenderTarget{.colour = swapchain_image, .depth = depth_image_view};
-	pass.render_target = render_target;
-	pass.shadow_map = shadow_map_image_view;
+	// scene + ui pass
+	auto const scene_ui_pass = [&] {
+		auto ret = std::uint32_t{};
+		auto const depth_image_view = ImageView{
+			.image = depth_image->image(),
+			.view = depth_image->image_view(),
+			.extent = depth_image->extent(),
+			.format = depth_image->format(),
+		};
+		auto const render_target = RenderTarget{.colour = swapchain_image, .depth = depth_image_view};
+		m_frame.backbuffer_extent = {render_target.colour.extent.width, render_target.colour.extent.height};
+		auto pass = Pass{
+			.renderer = *this,
+			.render_target = render_target,
+			.shadow_map = shadow_map_image_view,
+			.world_frustum = render_frame.world_frustum.value_or(full_projection),
+		};
+		auto render_camera = RenderCamera{
+			.camera = render_frame.camera,
+			.lights = render_frame.lights,
+			.mat_shadow = &m_frame.primary_light_mat,
+			.shadow_dir = glm::vec4{render_frame.lights->primary.direction.value(), 1.0f},
+		};
+		auto const clear_colour = Rgba::to_linear(render_frame.clear_colour.to_tint());
+		auto depth_image_barrier = ImageBarrier{*depth_image};
 
-	auto const clear_colour = Rgba::to_linear(render_frame.clear_colour.to_tint());
-	vri = RenderingInfoBuilder{}.build(render_target, std::array{clear_colour.x, clear_colour.y, clear_colour.z, clear_colour.w});
-	sync.command_buffer.beginRendering(vri);
-	m_rendering = true;
+		colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
+		depth_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
+		auto const vri = RenderingInfoBuilder{}.build(render_target, std::array{clear_colour.x, clear_colour.y, clear_colour.z, clear_colour.w});
+		sync.command_buffer.beginRendering(vri);
+		m_rendering = true;
+		ret += pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
+		pass.shadow_map = {};
+		render_camera.camera = &ui_camera_v;
+		ret += pass.render_list(render_camera, m_ui_objects, sync.command_buffer);
+		m_rendering = false;
+		sync.command_buffer.endRendering();
+		return ret;
+	};
+	auto const draw_calls = scene_ui_pass();
 
-	pass.projection = full_projection;
-	if (render_frame.projection.x > 0.0f && render_frame.projection.y > 0.0f) { pass.projection = render_frame.projection; }
-	render_camera = RenderCamera{.camera = render_frame.camera, .lights = render_frame.lights};
-	pass.render_list(render_camera, m_scene, sync.command_buffer, true);
-
-	pass.shadow_map = {};
-	render_camera.camera = &ui_camera_v;
-	pass.render_list(render_camera, m_ui, sync.command_buffer, true);
-	m_rendering = false;
-	sync.command_buffer.endRendering();
-
-	render_target.depth = {};
-	vri = RenderingInfoBuilder{}.build(render_target, {});
-	sync.command_buffer.beginRendering(vri);
-	m_imgui->render(sync.command_buffer);
-	sync.command_buffer.endRendering();
+	// dear imgui
+	auto const dear_imgui_pass = [&] {
+		auto const render_target = RenderTarget{.colour = swapchain_image};
+		auto const vri = RenderingInfoBuilder{}.build(render_target, {});
+		sync.command_buffer.beginRendering(vri);
+		m_imgui->render(sync.command_buffer);
+		sync.command_buffer.endRendering();
+	};
+	dear_imgui_pass();
 
 	colour_image_barrier.set_optimal_to_present();
 	colour_image_barrier.transition(sync.command_buffer);
@@ -509,5 +574,10 @@ auto Renderer::bake_objects(std::span<RenderObject const> objects, std::vector<B
 			.instance_count = static_cast<std::uint32_t>(instances.size()),
 		});
 	}
+}
+
+auto Renderer::bake_objects(RenderFrame const& render_frame) -> void {
+	bake_objects(render_frame.scene, m_scene_objects);
+	bake_objects(render_frame.ui, m_ui_objects);
 }
 } // namespace le::graphics

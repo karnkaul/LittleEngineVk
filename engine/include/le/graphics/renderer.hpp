@@ -105,6 +105,7 @@ class Renderer : public MonoInstance<Renderer> {
 
 	[[nodiscard]] auto acquire_next_image(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
 	auto bake_objects(std::span<RenderObject const> objects, std::vector<BakedObject>& out) -> void;
+	auto bake_objects(RenderFrame const& render_frame) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
 	PipelineCache m_pipeline_cache;
@@ -119,8 +120,8 @@ class Renderer : public MonoInstance<Renderer> {
 	Fallback m_fallback{};
 
 	std::vector<Std430Instance> m_instances{};
-	std::vector<BakedObject> m_scene{};
-	std::vector<BakedObject> m_ui{};
+	std::vector<BakedObject> m_scene_objects{};
+	std::vector<BakedObject> m_ui_objects{};
 	InclusiveRange<float> m_line_width_limit{};
 
 	bool m_rendering{};

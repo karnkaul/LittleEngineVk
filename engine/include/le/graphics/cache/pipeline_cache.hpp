@@ -16,7 +16,7 @@ class PipelineCache : public MonoInstance<PipelineCache> {
 	[[nodiscard]] auto shader_layout() const -> ShaderLayout const& { return m_shader_layout; }
 	auto set_shader_layout(ShaderLayout shader_layout) -> void;
 
-	[[nodiscard]] auto load(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state) -> vk::Pipeline;
+	[[nodiscard]] auto load(PipelineFormat format, Shader shader, PipelineState state = {}) -> vk::Pipeline;
 
 	[[nodiscard]] auto pipeline_layout() const -> vk::PipelineLayout { return *m_pipeline_layout; }
 	[[nodiscard]] auto descriptor_set_layouts() const -> std::span<vk::DescriptorSetLayout const> { return m_descriptor_set_layouts_view; }
@@ -30,15 +30,15 @@ class PipelineCache : public MonoInstance<PipelineCache> {
   private:
 	struct Key {
 	  public:
-		Key(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state);
+		Key(PipelineFormat format, Shader shader, PipelineState state);
 
 		[[nodiscard]] auto hash() const -> std::size_t { return cached_hash; }
 
 		auto operator==(Key const& rhs) const -> bool { return hash() == rhs.hash(); }
 
 		PipelineFormat format{};
-		NotNull<Shader const*> shader;
-		NotNull<PipelineState const*> state;
+		Shader shader{};
+		PipelineState state{};
 		std::size_t cached_hash{};
 	};
 

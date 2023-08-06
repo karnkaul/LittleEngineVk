@@ -24,6 +24,8 @@ layout (set = 0, binding = 0) uniform View {
 	mat4 projection;
 	vec4 vpos_exposure;
 	vec4 vdir_ortho;
+	mat4 mat_shadow;
+	vec4 shadow_dir;
 };
 
 layout (set = 0, binding = 1) readonly buffer DirLights {
@@ -44,6 +46,8 @@ layout (location = 2) out vec4 out_frag_pos;
 layout (location = 3) out vec3 out_normal;
 layout (location = 4) out vec4 out_vpos_exposure;
 layout (location = 5) out vec4 out_vdir_ortho;
+layout (location = 6) out vec4 out_fpos_shadow;
+layout (location = 7) out vec3 out_shadow_dir;
 
 out gl_PerVertex {
 	vec4 gl_Position;
@@ -65,4 +69,6 @@ void main() {
 	out_normal = normalize(vec3(skin_mat * vec4(vnormal, 0.0)));
 	out_vpos_exposure = vpos_exposure;
 	out_vdir_ortho = vdir_ortho;
+	out_fpos_shadow = mat_shadow * out_frag_pos;
+	out_shadow_dir = vec3(shadow_dir);
 }

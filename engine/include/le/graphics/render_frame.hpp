@@ -2,6 +2,7 @@
 #include <le/graphics/camera.hpp>
 #include <le/graphics/lights.hpp>
 #include <le/graphics/render_object.hpp>
+#include <optional>
 
 namespace le::graphics {
 struct RenderFrame {
@@ -9,7 +10,7 @@ struct RenderFrame {
 	NotNull<Camera const*> camera;
 	std::vector<RenderObject> scene{};
 	std::vector<RenderObject> ui{};
-	glm::vec2 projection{};
+	std::optional<glm::vec2> world_frustum{};
 	Rgba clear_colour{black_v};
 };
 } // namespace le::graphics

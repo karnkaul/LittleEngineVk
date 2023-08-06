@@ -1,18 +1,20 @@
 set(prefix include/le)
 
 set(core_headers
+  ${prefix}/core/enum_array.hpp
   ${prefix}/core/enumerate.hpp
   ${prefix}/core/fixed_string.hpp
   ${prefix}/core/hash_combine.hpp
   ${prefix}/core/id.hpp
   ${prefix}/core/inclusive_range.hpp
-  ${prefix}/core/mono_instance.hpp
   ${prefix}/core/logger.hpp
+  ${prefix}/core/mono_instance.hpp
   ${prefix}/core/named_type.hpp
   ${prefix}/core/not_null.hpp
   ${prefix}/core/nvec3.hpp
   ${prefix}/core/offset_span.hpp
   ${prefix}/core/ptr.hpp
+  ${prefix}/core/radians.hpp
   ${prefix}/core/random.hpp
   ${prefix}/core/reversed.hpp
   ${prefix}/core/signal.hpp
@@ -153,6 +155,7 @@ set(header_list
 
   ${prefix}/engine.hpp
   ${prefix}/environment.hpp
+  ${prefix}/frame_profile.hpp
   ${prefix}/error.hpp
   ${prefix}/stats.hpp
 )

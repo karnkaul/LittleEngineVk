@@ -54,4 +54,9 @@ auto FileReader::read_string(Uri const& uri) -> std::string {
 auto FileReader::write_to(Uri const& uri, std::span<std::uint8_t const> bytes, bool overwrite) const -> bool {
 	return write_file(uri.absolute(m_mount_point).c_str(), bytes, overwrite);
 }
+
+auto FileReader::to_uri(std::string_view const path) const -> Uri {
+	if (!fs::exists(path)) { return {}; }
+	return fs::absolute(path).lexically_relative(fs::absolute(m_mount_point)).generic_string();
+}
 } // namespace le

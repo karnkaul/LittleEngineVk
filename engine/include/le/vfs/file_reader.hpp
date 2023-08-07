@@ -15,6 +15,7 @@ class FileReader : public Reader {
 	[[nodiscard]] auto write_to(Uri const& uri, std::span<std::uint8_t const> bytes, bool overwrite = true) const -> bool;
 
 	[[nodiscard]] auto mount_point() const -> std::string_view { return m_mount_point; }
+	[[nodiscard]] auto to_uri(std::string_view path) const -> Uri;
 
   private:
 	std::string m_mount_point{};

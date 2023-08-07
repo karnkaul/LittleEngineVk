@@ -44,6 +44,17 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 		ImGui::Text("%s", FixedString{"vertex buffers: {}", stats.cache.vertex_buffers}.c_str());
 	}
 
+	ImGui::Separator();
+	if (auto tn = TreeNode{"Frame Profile"}) {
+		auto const frame_profile = engine.frame_profile();
+		for (auto type = FrameProfile::Type{}; type < FrameProfile::Type::eCOUNT_; type = FrameProfile::Type(int(type) + 1)) {
+			auto const ratio = frame_profile.profile[type] / frame_profile.frame_time;
+			auto const label = FrameProfile::to_string_v[type];
+			auto const overlay = FixedString{"{} ({:.0f}%)", label, ratio * 100.0f};
+			ImGui::ProgressBar(ratio, {-1.0f, 0.0f}, overlay.c_str());
+		}
+	}
+
 	m_frame_time_offset = (m_frame_time_offset + 1) % m_frame_times.size();
 }
 

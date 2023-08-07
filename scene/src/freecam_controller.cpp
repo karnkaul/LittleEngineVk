@@ -7,10 +7,6 @@
 #include <le/core/logger.hpp>
 
 namespace le {
-namespace {
-auto const g_log{logger::Logger{"Freecam"}};
-}
-
 void FreecamController::tick(Duration dt) {
 	auto data = get_scene().main_camera.transform.data();
 	auto* window = Engine::self().get_window();

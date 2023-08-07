@@ -1,7 +1,9 @@
 #include <le/core/logger.hpp>
+#include <le/graphics/descriptor_updater.hpp>
 #include <le/graphics/device.hpp>
 #include <le/graphics/image_barrier.hpp>
 #include <le/graphics/renderer.hpp>
+#include <bit>
 
 namespace le::graphics {
 namespace {
@@ -25,20 +27,194 @@ auto optimal_depth_format(vk::PhysicalDevice const gpu) -> vk::Format {
 	return vk::Format::eD16Unorm;
 }
 
+struct RenderingInfo {
+	vk::RenderingAttachmentInfo colour{};
+	vk::RenderingAttachmentInfo depth{};
+
+	[[nodiscard]] auto build(RenderTarget const& target, std::optional<Rgba> clear, vk::AttachmentStoreOp depth_store) -> vk::RenderingInfo {
+		auto vri = vk::RenderingInfo{};
+
+		auto const extent = target.colour.view ? target.colour.extent : target.depth.extent;
+		vri.renderArea = vk::Rect2D{{}, extent};
+
+		if (target.colour.view) {
+			if (clear) {
+				auto const cc = Rgba::to_linear(clear->to_tint());
+				colour.clearValue = vk::ClearColorValue{std::array{cc.x, cc.y, cc.z, cc.w}};
+				colour.loadOp = vk::AttachmentLoadOp::eClear;
+			} else {
+				colour.loadOp = vk::AttachmentLoadOp::eLoad;
+			}
+			colour.storeOp = vk::AttachmentStoreOp::eStore;
+			colour.imageView = target.colour.view;
+			colour.imageLayout = vk::ImageLayout::eAttachmentOptimal;
+
+			vri.colorAttachmentCount = 1;
+			vri.pColorAttachments = &colour;
+		}
+
+		if (target.depth.view) {
+			depth.clearValue = vk::ClearDepthStencilValue{1.0f, 0};
+			depth.loadOp = vk::AttachmentLoadOp::eClear;
+			depth.storeOp = depth_store;
+			depth.imageView = target.depth.view;
+			depth.imageLayout = vk::ImageLayout::eAttachmentOptimal;
+
+			vri.pDepthAttachment = &depth;
+		}
+
+		vri.layerCount = 1;
+
+		return vri;
+	}
+
+	[[nodiscard]] auto build(RenderTarget const& target, std::optional<Rgba> clear) -> vk::RenderingInfo {
+		return build(target, clear, vk::AttachmentStoreOp::eDontCare);
+	}
+
+	[[nodiscard]] auto build_shadow(ImageView const& shadow_map) -> vk::RenderingInfo {
+		return build(RenderTarget{.depth = shadow_map}, {}, vk::AttachmentStoreOp::eStore);
+	}
+};
+
+struct RenderCamera {
+	struct Std140View {
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::vec4 vpos_exposure;
+		glm::vec4 vdir_ortho;
+		glm::mat4 mat_shadow;
+		glm::vec4 shadow_dir;
+	};
+
+	struct Std430DirLight {
+		glm::vec4 direction;
+		glm::vec4 diffuse;
+		glm::vec4 ambient;
+	};
+
+	auto bind_set(glm::vec2 projection, ImageView const& shadow_map, vk::CommandBuffer cmd) const -> void {
+		std::uint32_t const is_ortho = std::holds_alternative<Camera::Orthographic>(camera->type) ? 1 : 0;
+		auto const view = Std140View{
+			.view = camera->view(),
+			.projection = camera->projection(projection),
+			.vpos_exposure = {camera->transform.position(), camera->exposure},
+			.vdir_ortho = {front_v * camera->transform.orientation(), std::bit_cast<float>(is_ortho)},
+			.mat_shadow = *mat_shadow,
+			.shadow_dir = shadow_dir,
+		};
+
+		auto dir_lights = std::vector<Std430DirLight>{};
+		dir_lights.reserve(lights->directional.size() + 1);
+		static constexpr auto to_std430_light = [](Lights::Directional const& in) {
+			return Std430DirLight{
+				.direction = glm::vec4{in.direction.value(), 0.0f},
+				.diffuse = in.diffuse.to_vec4(),
+				.ambient = in.diffuse.Rgba::to_vec4(in.ambient),
+			};
+		};
+		dir_lights.push_back(to_std430_light(lights->primary));
+		for (auto const& in : lights->directional) { dir_lights.push_back(to_std430_light(in)); }
+
+		auto const& layout = PipelineCache::self().shader_layout().camera;
+		auto set = DescriptorUpdater{layout.set};
+		set.write_storage(layout.directional_lights, dir_lights.data(), std::span{dir_lights}.size_bytes()).write_uniform(layout.view, &view, sizeof(view));
+
+		if (shadow_map.view) {
+			static constexpr auto shadow_sampler_v = TextureSampler{
+				.wrap_s = TextureSampler::Wrap::eClampEdge,
+				.wrap_t = TextureSampler::Wrap::eClampEdge,
+				.min = TextureSampler::Filter::eNearest,
+				.mag = TextureSampler::Filter::eNearest,
+				.border = TextureSampler::Border::eOpaqueWhite,
+			};
+			auto const sampler = SamplerCache::self().get(shadow_sampler_v);
+			auto const dii = vk::DescriptorImageInfo{sampler, shadow_map.view, vk::ImageLayout::eReadOnlyOptimal};
+			set.update(layout.shadow_map, dii, 1);
+		}
+		set.bind_set(cmd);
+	}
+
+	NotNull<Camera const*> camera;
+	NotNull<Lights const*> lights;
+	NotNull<glm::mat4 const*> mat_shadow;
+	glm::vec4 shadow_dir;
+};
+
+struct RenderPass { // NOLINT
+	RenderTarget render_target{};
+	ImageView shadow_map{};
+	glm::vec2 world_frustum{};
+
+	mutable Ptr<Material const> last_bound{};
+
+	RenderPass(RenderTarget const& render_target, ImageView const& shadow_map, glm::vec2 world_frustum)
+		: render_target(render_target), shadow_map(shadow_map), world_frustum(world_frustum) {}
+
+	virtual auto get_shader(Material const& material) const -> Shader { return material.get_shader(); }
+
+	auto render_list(RenderCamera const& camera, std::span<RenderObject::Baked const> list, vk::CommandBuffer cmd) const -> std::uint32_t {
+		if (list.empty()) { return 0; }
+
+		auto const pipeline_format = PipelineFormat{.colour = render_target.colour.format, .depth = render_target.depth.format};
+		auto const& object_layout = PipelineCache::self().shader_layout().object;
+
+		camera.bind_set(world_frustum, shadow_map, cmd);
+		auto ret = std::uint32_t{};
+
+		auto& renderer = Renderer::self();
+
+		for (auto const& baked : list) {
+			auto const& material = Material::or_default(baked.object.material);
+			auto shader = get_shader(material);
+			if (!shader) { continue; }
+
+			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state);
+			if (!renderer.bind_pipeline(pipeline)) { continue; }
+
+			cmd.setLineWidth(renderer.get_line_width_limit().clamp(baked.object.pipeline_state.line_width));
+
+			if (last_bound != &material) {
+				material.bind_set(cmd);
+				last_bound = &material;
+			}
+
+			DescriptorUpdater::bind_set(object_layout.set, baked.descriptor_set, cmd);
+
+			baked.object.primitive->draw(baked.instance_count, cmd);
+			++ret;
+		}
+
+		return ret;
+	}
+};
+
+struct ShadowPass : RenderPass { // NOLINT
+	ShadowPass(RenderTarget const& render_target, glm::vec2 world_frustum) : RenderPass(render_target, {}, world_frustum) {}
+
+	auto get_shader(Material const& material) const -> Shader final {
+		if (!material.cast_shadow()) { return {}; }
+		return Shader{.vertex = material.get_shader().vertex, .fragment = "shaders/noop.frag"};
+	}
+};
+
 auto const g_log{logger::Logger{"Renderer"}};
 } // namespace
 
 auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_family, vk::Format depth_format) -> Frame {
 	auto ret = Frame{};
 
-	auto const ici = ImageCreateInfo{
+	auto ici = ImageCreateInfo{
 		.format = depth_format,
 		.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		.aspect = vk::ImageAspectFlagBits::eDepth,
 		.view_type = vk::ImageViewType::e2D,
 		.mip_map = false,
 	};
-	fill_buffered(ret.depth_images, [ici] { return std::make_unique<Image>(ici); });
+	auto const make_depth_image = [&ici] { return std::make_unique<Image>(ici); };
+	fill_buffered(ret.depth_images, make_depth_image);
+	ici.usage |= vk::ImageUsageFlagBits::eSampled;
+	fill_buffered(ret.shadow_maps, make_depth_image);
 
 	for (auto& sync : ret.syncs) {
 		sync.command_pool = device.createCommandPoolUnique(vk::CommandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eTransient, queue_family});
@@ -102,38 +278,111 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 	return ret;
 }
 
-auto Renderer::render(std::span<NotNull<Subpass*> const> passes, std::uint32_t const image_index) -> std::uint32_t {
+auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image_index) -> std::uint32_t {
+	static constexpr auto ui_camera_v{Camera{.type = Camera::Orthographic{}}};
+
+	auto const shadow_view_plane = ViewPlane{.near = -0.5f * shadow_frustum.z, .far = 0.5f * shadow_frustum.z};
+	auto shadow_camera = Camera{.type = Camera::Orthographic{.view_plane = shadow_view_plane}, .face = Camera::Face::ePositiveZ};
+	shadow_camera.transform.set_orientation(Transform::look_at(render_frame.lights->primary.direction, {}));
+	shadow_camera.transform.set_position(render_frame.camera->transform.position());
+	m_frame.primary_light_mat = shadow_camera.projection(shadow_frustum) * shadow_camera.view();
+
 	auto& sync = m_frame.syncs[get_frame_index()];
 	sync.command_buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-	auto draw_calls = std::uint32_t{};
 
 	auto const swapchain_image = m_swapchain.active.images[image_index];
 	auto& depth_image = m_frame.depth_images[get_frame_index()];
+	auto& shadow_map = m_frame.shadow_maps[get_frame_index()];
 	if (depth_image->extent() != swapchain_image.extent) { depth_image->recreate(swapchain_image.extent); }
-
+	if (shadow_map->extent() != shadow_map_extent) { shadow_map->recreate(shadow_map_extent); }
+	glm::vec2 const full_projection = glm::uvec2{swapchain_image.extent.width, swapchain_image.extent.height};
 	auto colour_image_barrier = ImageBarrier{swapchain_image.image};
-	colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
-	auto depth_image_barrier = ImageBarrier{*depth_image};
-	depth_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
 
-	auto const depth_image_view = ImageView{
-		.image = depth_image->image(),
-		.view = depth_image->image_view(),
-		.extent = depth_image->extent(),
-		.format = depth_image->format(),
-	};
+	bake_objects(render_frame);
 
-	auto execute_pass = [&](Subpass& pass) {
+	auto rendering_info = RenderingInfo{};
+
+	auto const shadow_pass = [&] {
+		auto const ret = ImageView{
+			.image = shadow_map->image(),
+			.view = shadow_map->image_view(),
+			.extent = shadow_map->extent(),
+			.format = shadow_map->format(),
+		};
+
+		auto const render_target = RenderTarget{.depth = ret};
+		m_frame.backbuffer_extent = {render_target.depth.extent.width, render_target.depth.extent.height};
+		auto const pass = ShadowPass{
+			render_target,
+			glm::uvec2{shadow_frustum},
+		};
+		auto const render_camera = RenderCamera{
+			.camera = &shadow_camera,
+			.lights = render_frame.lights,
+			.mat_shadow = &m_frame.primary_light_mat,
+			.shadow_dir = glm::vec4{render_frame.lights->primary.direction.value(), 1.0f},
+		};
+
+		auto image_barrier = ImageBarrier{render_target.depth.image};
+		image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
+		auto const vri = rendering_info.build_shadow(render_target.depth);
+		sync.command_buffer.beginRendering(vri);
 		m_rendering = true;
-		m_current_pass = &pass;
-		pass.do_setup({.colour = swapchain_image, .depth = depth_image_view}, m_line_width_limit);
-		pass.do_render(sync.command_buffer);
-		draw_calls += pass.m_data.draw_calls;
+		pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
 		m_rendering = false;
-	};
+		sync.command_buffer.endRendering();
+		image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
 
-	for (auto const& pass : passes) { execute_pass(*pass); }
-	execute_pass(*m_imgui);
+		return ret;
+	};
+	auto const shadow_map_image_view = shadow_pass();
+
+	auto const scene_ui_pass = [&] {
+		auto ret = std::uint32_t{};
+		auto const depth_image_view = ImageView{
+			.image = depth_image->image(),
+			.view = depth_image->image_view(),
+			.extent = depth_image->extent(),
+			.format = depth_image->format(),
+		};
+		auto const render_target = RenderTarget{.colour = swapchain_image, .depth = depth_image_view};
+		m_frame.backbuffer_extent = {render_target.colour.extent.width, render_target.colour.extent.height};
+		auto pass = RenderPass{
+			render_target,
+			shadow_map_image_view,
+			custom_world_frustum.value_or(full_projection),
+		};
+		auto render_camera = RenderCamera{
+			.camera = render_frame.camera,
+			.lights = render_frame.lights,
+			.mat_shadow = &m_frame.primary_light_mat,
+			.shadow_dir = glm::vec4{render_frame.lights->primary.direction.value(), 1.0f},
+		};
+		auto depth_image_barrier = ImageBarrier{*depth_image};
+
+		colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
+		depth_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
+		auto const vri = rendering_info.build(render_target, render_frame.camera->clear_colour);
+		sync.command_buffer.beginRendering(vri);
+		m_rendering = true;
+		ret += pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
+		pass.shadow_map = {};
+		render_camera.camera = &ui_camera_v;
+		ret += pass.render_list(render_camera, m_ui_objects, sync.command_buffer);
+		m_rendering = false;
+		sync.command_buffer.endRendering();
+		return ret;
+	};
+	auto const draw_calls = scene_ui_pass();
+
+	auto const dear_imgui_pass = [&] {
+		auto const render_target = RenderTarget{.colour = swapchain_image};
+		auto const vri = rendering_info.build(render_target, {});
+		sync.command_buffer.beginRendering(vri);
+		m_imgui->render(sync.command_buffer);
+		sync.command_buffer.endRendering();
+	};
+	dear_imgui_pass();
 
 	colour_image_barrier.set_optimal_to_present();
 	colour_image_barrier.transition(sync.command_buffer);
@@ -239,14 +488,14 @@ auto Renderer::bind_pipeline(vk::Pipeline pipeline) -> bool {
 		cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 		m_frame.last_bound = pipeline;
 	}
-	assert(m_current_pass);
+	// assert(m_current_pass);
 	set_viewport();
 	return true;
 }
 
 auto Renderer::set_viewport(vk::Viewport viewport) -> bool {
 	if (!m_rendering || !m_frame.last_bound) { return false; }
-	if (viewport == vk::Viewport{}) { viewport = to_viewport(m_frame.framebuffer_extent); }
+	if (viewport == vk::Viewport{}) { viewport = to_viewport(m_frame.backbuffer_extent); }
 	auto const flipped_viewport = vk::Viewport{viewport.x, viewport.height + viewport.y, viewport.width, -viewport.height, 0.0f, 1.0f};
 	auto command_buffer = m_frame.syncs[get_frame_index()].command_buffer;
 	command_buffer.setViewport(0, flipped_viewport);
@@ -273,5 +522,42 @@ auto Renderer::acquire_next_image(glm::uvec2 const framebuffer_extent) -> std::o
 	case vk::Result::eErrorOutOfDateKHR: recreate_swapchain(framebuffer_extent); return {};
 	default: throw Error{"Failed to acquire Swapchain Image"};
 	}
+}
+
+auto Renderer::bake_objects(std::span<RenderObject const> objects, std::vector<RenderObject::Baked>& out) -> void {
+	out.clear();
+
+	static auto const default_instance{graphics::RenderInstance{}};
+	auto const& object_layout = PipelineCache::self().shader_layout().object;
+
+	auto build_instances = [this](glm::mat4 const& parent, std::span<RenderInstance const> in) -> std::span<Std430Instance const> {
+		m_instances.clear();
+		m_instances.reserve(in.size());
+		for (auto const& instance : in) {
+			m_instances.push_back({
+				.transform = parent * instance.transform.matrix(),
+				.tint = Rgba::to_linear(instance.tint.to_tint()),
+			});
+		}
+		return m_instances;
+	};
+
+	for (auto const& object : objects) {
+		auto const instances = object.instances.empty() ? std::span{&default_instance, 1} : object.instances;
+		auto const render_instances = build_instances(object.parent, instances);
+		auto object_set = DescriptorUpdater{object_layout.set};
+		object_set.write_storage(object_layout.instances, render_instances.data(), render_instances.size_bytes());
+		if (!object.joints.empty()) { object_set.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes()); }
+		out.push_back(RenderObject::Baked{
+			.object = object,
+			.descriptor_set = object_set.get_descriptor_set(),
+			.instance_count = static_cast<std::uint32_t>(instances.size()),
+		});
+	}
+}
+
+auto Renderer::bake_objects(RenderFrame const& render_frame) -> void {
+	bake_objects(render_frame.scene, m_scene_objects);
+	bake_objects(render_frame.ui, m_ui_objects);
 }
 } // namespace le::graphics

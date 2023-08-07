@@ -22,6 +22,10 @@ class DescriptorUpdater {
 
 	auto bind_set(vk::CommandBuffer cmd) const -> void;
 
+	[[nodiscard]] auto get_descriptor_set() const -> vk::DescriptorSet { return m_descriptor_set; }
+
+	static auto bind_set(std::uint32_t set, vk::DescriptorSet descriptor_set, vk::CommandBuffer cmd) -> void;
+
   private:
 	auto write(std::uint32_t binding, vk::DescriptorType type, void const* data, std::size_t size, vk::DeviceSize count) -> DescriptorUpdater&;
 

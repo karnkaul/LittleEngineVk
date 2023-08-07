@@ -4,6 +4,7 @@
 #include <glm/vec4.hpp>
 #include <le/core/time.hpp>
 #include <le/environment.hpp>
+#include <le/frame_profile.hpp>
 #include <le/graphics/device.hpp>
 #include <le/graphics/renderer.hpp>
 #include <le/input/state.hpp>
@@ -39,9 +40,11 @@ class Engine : public MonoInstance<Engine> {
 	[[nodiscard]] auto delta_time() const -> Duration;
 	[[nodiscard]] auto input_state() const -> input::State const&;
 
+	[[nodiscard]] auto frame_profile() const -> FrameProfile const&;
+
 	[[nodiscard]] auto is_running() const -> bool { return glfwWindowShouldClose(m_window.get()) != GLFW_TRUE; }
 	[[nodiscard]] auto next_frame() -> bool;
-	auto render(std::span<NotNull<graphics::Subpass*> const> passes) -> void;
+	auto render(graphics::RenderFrame const& frame) -> void;
 	auto shutdown() -> void;
 
 	[[nodiscard]] auto get_stats() const -> Stats const& { return m_stats; }

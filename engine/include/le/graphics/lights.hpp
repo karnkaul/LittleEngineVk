@@ -14,6 +14,7 @@ struct Lights {
 		float ambient{ambient_intensity_v};
 	};
 
-	std::vector<Directional> directional{Directional{}};
+	Directional primary{};
+	std::vector<Directional> directional{};
 };
 } // namespace le::graphics

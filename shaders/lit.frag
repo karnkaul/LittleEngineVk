@@ -24,6 +24,8 @@ layout (set = 1, binding = 0) uniform M {
 	Material material;
 };
 
+layout (set = 0, binding = 2) uniform sampler2D shadow_map;
+
 layout (set = 1, binding = 1) uniform sampler2D base_colour;
 layout (set = 1, binding = 2) uniform sampler2D roughness_metallic;
 layout (set = 1, binding = 3) uniform sampler2D emissive;
@@ -33,7 +35,10 @@ layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec4 in_frag_pos;
 layout (location = 3) in vec3 in_normal;
 layout (location = 4) in vec4 in_vpos_exposure;
-layout (location = 5) in vec4 in_vdir_ortho;
+layout (location = 5) in vec3 in_vdir;
+layout (location = 6) flat in uint in_is_ortho;
+layout (location = 7) in vec4 in_fpos_shadow;
+layout (location = 8) in vec3 in_shadow_dir;
 
 layout (location = 0) out vec4 out_rgba;
 
@@ -85,7 +90,7 @@ vec3 cook_torrance() {
 	const vec3 f0 = mix(vec3(0.04), vec3(material.albedo), metallic);
 
 	vec3 L0 = vec3(0.0);
-	const vec3 V = normalize(in_vdir_ortho.w > 0.0 ? in_vdir_ortho.xyz : in_vpos_exposure.xyz - in_frag_pos.xyz);
+	const vec3 V = normalize(in_is_ortho == 1 ? in_vdir : in_vpos_exposure.xyz - in_frag_pos.xyz);
 	const vec3 N = in_normal;
 	for (int i = 0; i < dir_lights.length(); ++i) {
 		DirLight light = dir_lights[i];
@@ -116,6 +121,29 @@ vec3 cook_torrance() {
 	return colour;
 }
 
+float compute_visibility() {
+	vec3 projected = in_fpos_shadow.xyz / in_fpos_shadow.w;
+	if (projected.z > 1.0) {
+		return 1.0;
+	}
+	// float bias = max(0.05 * (1.0 - dot(in_normal, -in_shadow_dir)), 0.005);
+	float slope = tan(acos(max(dot(in_normal, -in_shadow_dir), 0.0)));
+	float bias = clamp(0.005 * slope, 0.001, 0.05);
+	float current_depth = projected.z - bias;
+	projected = projected * 0.5 + 0.5;
+	projected.y = 1.0 - projected.y;
+	float ret = 1.0;
+	vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
+	for (int x = -1; x <= 1; ++x) {
+		for (int y = -1; y <= 1; ++y) {
+			float pcf_depth = texture(shadow_map, projected.xy + vec2(x, y) * texel_size).x;
+			float shadow = current_depth > pcf_depth ? 0.1 : 0.0;
+			ret -= shadow;
+		}
+	}
+	return max(ret, 0.1);
+}
+
 void main() {
 	vec4 diffuse = texture(base_colour, in_uv);
 	const float alpha_cutoff = material.m_r_aco_am.z;
@@ -127,6 +155,10 @@ void main() {
 		diffuse.w = 1.0;
 	}
 
-	const float visibility = 1.0;
+	const float visibility = compute_visibility();
 	out_rgba = (visibility * vec4(cook_torrance(), 1.0)) * vec4(vec3(in_rgba), 1.0) * diffuse + material.emissive * texture(emissive, in_uv);
+
+	if (alpha_mode == ALPHA_BLEND && out_rgba.w <= 0.0) {
+		discard;
+	}
 }

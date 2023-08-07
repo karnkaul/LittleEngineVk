@@ -13,6 +13,8 @@ struct RenderInstance {
 };
 
 struct RenderObject {
+	struct Baked;
+
 	NotNull<Material const*> material;
 	NotNull<Primitive const*> primitive;
 
@@ -21,5 +23,11 @@ struct RenderObject {
 	std::span<glm::mat4 const> joints{};
 
 	PipelineState pipeline_state{};
+};
+
+struct RenderObject::Baked {
+	RenderObject object;
+	vk::DescriptorSet descriptor_set{};
+	std::uint32_t instance_count{};
 };
 } // namespace le::graphics

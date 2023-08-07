@@ -33,6 +33,7 @@ struct ShaderLayout {
 		std::uint32_t set{0};
 		Binding<Type::eUniformBuffer> view{0};
 		Binding<Type::eStorageBuffer> directional_lights{1};
+		Binding<Type::eCombinedImageSampler> shadow_map{2};
 	};
 
 	struct Material {

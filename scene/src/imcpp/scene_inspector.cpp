@@ -57,6 +57,7 @@ void SceneInspector::draw_to(NotClosed<Window> w, Scene& scene) {
 					imcpp::Reflector{w}(dir_light.diffuse, false);
 					imcpp::Reflector{w}("Direction", dir_light.direction);
 				};
+				inspect_dir_light(scene.lights.primary);
 				if (auto tn = imcpp::TreeNode{"Directional", ImGuiTreeNodeFlags_Framed}) {
 					auto to_remove = std::optional<std::size_t>{};
 					for (auto [dir_light, index] : enumerate(scene.lights.directional)) {

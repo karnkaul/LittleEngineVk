@@ -22,7 +22,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   renderer.cpp
   resource.cpp
   shader_layout.cpp
-  subpass.cpp
   swapchain.cpp
   texture.cpp
 )

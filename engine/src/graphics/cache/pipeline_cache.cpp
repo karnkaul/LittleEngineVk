@@ -18,6 +18,7 @@ struct PipelineShaderLayout {
 		auto& camera_set = ordered_set_layouts[shader_layout.camera.set];
 		camera_set.emplace_back(shader_layout.camera.view, vk::DescriptorType::eUniformBuffer, 1);
 		camera_set.emplace_back(shader_layout.camera.directional_lights, vk::DescriptorType::eStorageBuffer, 1);
+		camera_set.emplace_back(shader_layout.camera.shadow_map, vk::DescriptorType::eCombinedImageSampler, 1);
 
 		auto& material_set = ordered_set_layouts[shader_layout.material.set];
 		material_set.emplace_back(shader_layout.material.data, vk::DescriptorType::eUniformBuffer, 1);
@@ -48,10 +49,9 @@ struct PipelineShaderLayout {
 auto const g_log{logger::Logger{"Cache"}};
 } // namespace
 
-PipelineCache::Key::Key(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state)
-	: format(format), shader(shader), state(state) {
-	cached_hash = make_combined_hash(shader->vertex.hash(), shader->fragment.hash(), state->topology, state->polygon_mode, state->depth_compare,
-									 state->depth_test_write, format.colour, format.depth);
+PipelineCache::Key::Key(PipelineFormat format, Shader shader, PipelineState state) : format(format), shader(std::move(shader)), state(state) {
+	cached_hash = make_combined_hash(shader.vertex.hash(), shader.fragment.hash(), state.topology, state.polygon_mode, state.depth_compare,
+									 state.depth_test_write, format.colour, format.depth);
 }
 
 PipelineCache::PipelineCache(ShaderLayout shader_layout) { set_shader_layout(std::move(shader_layout)); }
@@ -71,8 +71,8 @@ auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 	m_pipeline_layout = m_device.createPipelineLayoutUnique(plci);
 }
 
-auto PipelineCache::load(PipelineFormat format, NotNull<Shader const*> shader, NotNull<PipelineState const*> state) -> vk::Pipeline {
-	auto const key = Key{format, shader, state};
+auto PipelineCache::load(PipelineFormat format, Shader shader, PipelineState state) -> vk::Pipeline {
+	auto const key = Key{format, std::move(shader), state};
 	auto itr = m_pipelines.find(key);
 	if (itr == m_pipelines.end()) {
 		auto ret = build(key);
@@ -103,8 +103,8 @@ auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 	shader_stages[1].stage = vk::ShaderStageFlagBits::eFragment;
 	shader_stages[0].pName = shader_stages[1].pName = "main";
 
-	auto vertex_shader = m_shader_cache.load(key.shader->vertex);
-	auto fragment_shader = m_shader_cache.load(key.shader->fragment);
+	auto vertex_shader = m_shader_cache.load(key.shader.vertex);
+	auto fragment_shader = m_shader_cache.load(key.shader.fragment);
 	if (vertex_shader == nullptr || fragment_shader == nullptr) { return {}; }
 
 	shader_stages[0].module = vertex_shader;
@@ -123,16 +123,16 @@ auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 	gpci.pStages = shader_stages.data();
 
 	auto prsci = vk::PipelineRasterizationStateCreateInfo{};
-	prsci.polygonMode = key.state->polygon_mode;
+	prsci.polygonMode = key.state.polygon_mode;
 	prsci.cullMode = vk::CullModeFlagBits::eNone;
 	gpci.pRasterizationState = &prsci;
 
-	auto const piasci = vk::PipelineInputAssemblyStateCreateInfo{{}, key.state->topology};
+	auto const piasci = vk::PipelineInputAssemblyStateCreateInfo{{}, key.state.topology};
 	gpci.pInputAssemblyState = &piasci;
 
 	auto pdssci = vk::PipelineDepthStencilStateCreateInfo{};
-	pdssci.depthTestEnable = pdssci.depthWriteEnable = key.state->depth_test_write;
-	pdssci.depthCompareOp = key.state->depth_compare;
+	pdssci.depthTestEnable = pdssci.depthWriteEnable = key.state.depth_test_write;
+	pdssci.depthCompareOp = key.state.depth_compare;
 	gpci.pDepthStencilState = &pdssci;
 
 	auto pcbas = vk::PipelineColorBlendAttachmentState{};

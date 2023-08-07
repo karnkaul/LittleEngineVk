@@ -1,6 +1,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <impl/frame_profiler.hpp>
 #include <le/core/enumerate.hpp>
 #include <le/core/reversed.hpp>
 #include <le/core/zip_ranges.hpp>
@@ -160,7 +161,11 @@ auto Engine::delta_time() const -> Duration { return m_stats.frame.time; }
 
 auto Engine::input_state() const -> input::State const& { return g_input_state; } // NOLINT
 
+auto Engine::frame_profile() const -> FrameProfile const& { return FrameProfiler::self().previous_profile(); } // NOLINT
+
 auto Engine::next_frame() -> bool {
+	FrameProfiler::self().start();
+
 	update_stats();
 
 	g_input_state.characters.clear();
@@ -186,6 +191,8 @@ auto Engine::next_frame() -> bool {
 	glfwPollEvents();
 	if (!is_running()) { return false; }
 	if (m_image_index) { return true; }
+
+	FrameProfiler::self().profile(FrameProfiler::Type::eAcquireFrame);
 	m_image_index = m_renderer->wait_for_frame(framebuffer_extent());
 
 	// There are very few points where we can recreate the swapchain without stalling the device.
@@ -194,12 +201,14 @@ auto Engine::next_frame() -> bool {
 	// Much more straightforward to finish the swapchain loop and THEN recreate it.
 	// (This is why present mode requests are not handled here.)
 
+	FrameProfiler::self().profile(FrameProfiler::Type::eTick);
+
 	return true;
 }
 
-auto Engine::render(std::span<NotNull<graphics::Subpass*> const> passes) -> void {
+auto Engine::render(graphics::RenderFrame const& frame) -> void {
 	if (!m_image_index) { return; }
-	m_stats.frame.draw_calls = m_renderer->render(passes, *m_image_index);
+	m_stats.frame.draw_calls = m_renderer->render(frame, *m_image_index);
 	m_renderer->submit_frame(*m_image_index);
 	m_image_index.reset();
 
@@ -209,6 +218,8 @@ auto Engine::render(std::span<NotNull<graphics::Subpass*> const> passes) -> void
 		m_renderer->recreate_swapchain(*m_queued_ops.present_mode);
 		m_queued_ops.present_mode.reset();
 	}
+
+	FrameProfiler::self().finish();
 }
 
 auto Engine::shutdown() -> void {
@@ -265,7 +276,7 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 	auto framebuffer_extent = glm::ivec2{};
 	glfwGetFramebufferSize(ret->m_window.get(), &framebuffer_extent.x, &framebuffer_extent.y);
 	ret->m_renderer = std::make_unique<graphics::Renderer>(framebuffer_extent);
-	auto imgui = std::make_unique<graphics::DearImGui>(ret->get_window(), ret->m_renderer->get_colour_format(), ret->m_renderer->get_depth_format());
+	auto imgui = std::make_unique<graphics::DearImGui>(ret->get_window(), ret->m_renderer->get_colour_format());
 	ret->m_renderer->set_imgui(std::move(imgui));
 
 	if (m_shader_layout) { graphics::PipelineCache::self().set_shader_layout(std::move(*m_shader_layout)); }

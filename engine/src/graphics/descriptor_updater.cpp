@@ -72,8 +72,10 @@ auto DescriptorUpdater::write(std::uint32_t binding, vk::DescriptorType type, vo
 	return update(binding, type, vk::DescriptorBufferInfo{buffer.buffer(), {}, buffer.size()}, static_cast<std::uint32_t>(count));
 }
 
-auto DescriptorUpdater::bind_set(vk::CommandBuffer cmd) const -> void {
+auto DescriptorUpdater::bind_set(vk::CommandBuffer cmd) const -> void { bind_set(m_set, m_descriptor_set, cmd); }
+
+auto DescriptorUpdater::bind_set(std::uint32_t set, vk::DescriptorSet descriptor_set, vk::CommandBuffer cmd) -> void {
 	auto const layout = PipelineCache::self().pipeline_layout();
-	cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, m_set, m_descriptor_set, {});
+	cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, set, descriptor_set, {});
 }
 } // namespace le::graphics

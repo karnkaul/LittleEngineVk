@@ -9,12 +9,17 @@
 #include <le/graphics/dear_imgui.hpp>
 #include <le/graphics/defer.hpp>
 #include <le/graphics/fallback.hpp>
-#include <le/graphics/subpass.hpp>
+#include <le/graphics/render_frame.hpp>
 #include <le/graphics/swapchain.hpp>
 #include <optional>
 #include <span>
 
 namespace le::graphics {
+struct RenderTarget {
+	ImageView colour{};
+	ImageView depth{};
+};
+
 class Renderer : public MonoInstance<Renderer> {
   public:
 	static constexpr auto to_vsync_string(vk::PresentModeKHR mode) -> std::string_view;
@@ -39,9 +44,10 @@ class Renderer : public MonoInstance<Renderer> {
 	[[nodiscard]] auto get_pipeline_format() const -> PipelineFormat { return {get_colour_format(), get_depth_format()}; }
 	[[nodiscard]] auto get_shader_layout() const -> ShaderLayout const& { return m_pipeline_cache.shader_layout(); }
 	[[nodiscard]] auto get_dear_imgui() const -> DearImGui& { return *m_imgui; }
+	[[nodiscard]] auto get_line_width_limit() const -> InclusiveRange<float> { return m_line_width_limit; }
 
 	[[nodiscard]] auto wait_for_frame(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
-	auto render(std::span<NotNull<Subpass*> const> passes, std::uint32_t image_index) -> std::uint32_t;
+	auto render(RenderFrame const& render_frame, std::uint32_t image_index) -> std::uint32_t;
 	auto submit_frame(std::uint32_t image_index) -> bool;
 
 	[[nodiscard]] auto get_supported_present_modes() const -> std::span<vk::PresentModeKHR const> { return m_swapchain.present_modes; }
@@ -57,6 +63,10 @@ class Renderer : public MonoInstance<Renderer> {
 	auto set_viewport(vk::Viewport viewport = {}) -> bool;
 	auto set_scissor(vk::Rect2D scissor) -> bool;
 
+	std::optional<glm::vec2> custom_world_frustum{};
+	glm::vec3 shadow_frustum{100.0f};
+	vk::Extent2D shadow_map_extent{2048, 2048};
+
   private:
 	struct Frame {
 		struct Sync {
@@ -68,16 +78,26 @@ class Renderer : public MonoInstance<Renderer> {
 		};
 
 		Buffered<std::unique_ptr<Image>> depth_images{};
+		Buffered<std::unique_ptr<Image>> shadow_maps{};
 		Buffered<Sync> syncs{};
 		FrameIndex frame_index{};
 
 		glm::uvec2 framebuffer_extent{};
+		glm::uvec2 backbuffer_extent{};
+		glm::mat4 primary_light_mat{1.0f};
 		vk::Pipeline last_bound{};
 
 		static auto make(vk::Device device, std::uint32_t queue_family, vk::Format depth_format) -> Frame;
 	};
 
+	struct Std430Instance {
+		glm::mat4 transform;
+		glm::vec4 tint;
+	};
+
 	[[nodiscard]] auto acquire_next_image(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
+	auto bake_objects(std::span<RenderObject const> objects, std::vector<RenderObject::Baked>& out) -> void;
+	auto bake_objects(RenderFrame const& render_frame) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
 	PipelineCache m_pipeline_cache;
@@ -91,8 +111,11 @@ class Renderer : public MonoInstance<Renderer> {
 
 	Fallback m_fallback{};
 
+	std::vector<Std430Instance> m_instances{};
+	std::vector<RenderObject::Baked> m_scene_objects{};
+	std::vector<RenderObject::Baked> m_ui_objects{};
 	InclusiveRange<float> m_line_width_limit{};
-	Ptr<Subpass> m_current_pass{};
+
 	bool m_rendering{};
 };
 

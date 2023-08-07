@@ -2,6 +2,7 @@
 #include <glm/vec2.hpp>
 #include <le/input/gamepad.hpp>
 #include <array>
+#include <string>
 #include <vector>
 
 namespace le::input {
@@ -20,7 +21,7 @@ struct State {
 	std::array<Action, max_keys_v> keyboard{};				 // key: GLFW_KEY_*
 	std::array<Action, max_mouse_buttons_v> mouse_buttons{}; // key: GLFW_MOUSE_BUTTON_*
 	std::array<Gamepad, max_gamepads_v> gamepads{};			 // key: GLFW_JOYSTICK_*
-	std::vector<std::uint32_t> characters{};
+	std::vector<std::string> drops{};
 
 	glm::uvec2 window_extent{};
 	glm::uvec2 framebuffer_extent{};

@@ -66,7 +66,6 @@ auto setup_signals(GLFWwindow* window) -> void {
 		}
 	});
 	glfwSetCharCallback(window, [](GLFWwindow*, std::uint32_t codepoint) {
-		g_input_state.characters.push_back(codepoint);
 		for (auto* receiver : reversed(g_receivers)) {
 			if (receiver->on_char(graphics::Codepoint{codepoint})) { break; }
 		}
@@ -76,6 +75,10 @@ auto setup_signals(GLFWwindow* window) -> void {
 		for (auto* receiver : reversed(g_receivers)) {
 			if (receiver->on_mouse(button, action, mods)) { break; }
 		}
+	});
+	glfwSetDropCallback(window, [](GLFWwindow* /*window*/, int path_count, char const* paths[]) { // NOLINT
+		auto const span = std::span{paths, static_cast<std::size_t>(path_count)};
+		for (auto const* path : span) { g_input_state.drops.emplace_back(path); }
 	});
 }
 
@@ -168,7 +171,7 @@ auto Engine::next_frame() -> bool {
 
 	update_stats();
 
-	g_input_state.characters.clear();
+	g_input_state.drops.clear();
 	g_input_state.changed = {};
 	auto advance = [](auto& action_array) {
 		for (auto& action : action_array) {

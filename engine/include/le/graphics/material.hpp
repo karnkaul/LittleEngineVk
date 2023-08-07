@@ -25,6 +25,7 @@ class Material {
 
 	[[nodiscard]] virtual auto get_shader() const -> Shader const& = 0;
 	[[nodiscard]] virtual auto get_alpha_mode() const -> AlphaMode = 0;
+	[[nodiscard]] virtual auto cast_shadow() const -> bool = 0;
 
 	virtual auto bind_set(vk::CommandBuffer cmd) const -> void = 0;
 
@@ -36,7 +37,8 @@ class UnlitMaterial : public Material {
 	static constexpr std::string_view material_type_v{"unlit"};
 
 	[[nodiscard]] auto get_shader() const -> Shader const& override { return shader; }
-	[[nodiscard]] auto get_alpha_mode() const -> AlphaMode override { return AlphaMode::eBlend; }
+	[[nodiscard]] auto get_alpha_mode() const -> AlphaMode final { return AlphaMode::eBlend; }
+	[[nodiscard]] auto cast_shadow() const -> bool final { return false; }
 
 	auto bind_set(vk::CommandBuffer cmd) const -> void override;
 
@@ -57,6 +59,7 @@ class LitMaterial : public Material {
 
 	[[nodiscard]] auto get_shader() const -> Shader const& override { return shader; }
 	[[nodiscard]] auto get_alpha_mode() const -> AlphaMode override { return alpha_mode; }
+	[[nodiscard]] auto cast_shadow() const -> bool override { return !is_transparent(); }
 
 	auto bind_set(vk::CommandBuffer cmd) const -> void override;
 

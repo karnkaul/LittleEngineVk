@@ -165,7 +165,10 @@ struct RenderPass { // NOLINT
 
 		for (auto const& baked : list) {
 			auto const& material = Material::or_default(baked.object.material);
-			auto const pipeline = PipelineCache::self().load(pipeline_format, get_shader(material), baked.object.pipeline_state);
+			auto shader = get_shader(material);
+			if (!shader) { continue; }
+
+			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state);
 			if (!renderer.bind_pipeline(pipeline)) { continue; }
 
 			cmd.setLineWidth(renderer.get_line_width_limit().clamp(baked.object.pipeline_state.line_width));
@@ -188,7 +191,10 @@ struct RenderPass { // NOLINT
 struct ShadowPass : RenderPass { // NOLINT
 	ShadowPass(RenderTarget const& render_target, glm::vec2 world_frustum) : RenderPass(render_target, {}, world_frustum) {}
 
-	auto get_shader(Material const& material) const -> Shader final { return Shader{.vertex = material.get_shader().vertex, .fragment = "shaders/noop.frag"}; }
+	auto get_shader(Material const& material) const -> Shader final {
+		if (!material.cast_shadow()) { return {}; }
+		return Shader{.vertex = material.get_shader().vertex, .fragment = "shaders/noop.frag"};
+	}
 };
 
 auto const g_log{logger::Logger{"Renderer"}};
@@ -517,7 +523,7 @@ auto Renderer::acquire_next_image(glm::uvec2 const framebuffer_extent) -> std::o
 	}
 }
 
-auto Renderer::bake_objects(std::span<RenderObject const> objects, std::vector<BakedObject>& out) -> void {
+auto Renderer::bake_objects(std::span<RenderObject const> objects, std::vector<RenderObject::Baked>& out) -> void {
 	out.clear();
 
 	static auto const default_instance{graphics::RenderInstance{}};
@@ -541,7 +547,7 @@ auto Renderer::bake_objects(std::span<RenderObject const> objects, std::vector<B
 		auto object_set = DescriptorUpdater{object_layout.set};
 		object_set.write_storage(object_layout.instances, render_instances.data(), render_instances.size_bytes());
 		if (!object.joints.empty()) { object_set.write_storage(object_layout.joints, object.joints.data(), std::span{object.joints}.size_bytes()); }
-		out.push_back(BakedObject{
+		out.push_back(RenderObject::Baked{
 			.object = object,
 			.descriptor_set = object_set.get_descriptor_set(),
 			.instance_count = static_cast<std::uint32_t>(instances.size()),

@@ -95,11 +95,8 @@ class Renderer : public MonoInstance<Renderer> {
 		glm::vec4 tint;
 	};
 
-	using BakedObject = RenderObject::Baked;
-	using BakedList = std::span<BakedObject const>;
-
 	[[nodiscard]] auto acquire_next_image(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
-	auto bake_objects(std::span<RenderObject const> objects, std::vector<BakedObject>& out) -> void;
+	auto bake_objects(std::span<RenderObject const> objects, std::vector<RenderObject::Baked>& out) -> void;
 	auto bake_objects(RenderFrame const& render_frame) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
@@ -115,8 +112,8 @@ class Renderer : public MonoInstance<Renderer> {
 	Fallback m_fallback{};
 
 	std::vector<Std430Instance> m_instances{};
-	std::vector<BakedObject> m_scene_objects{};
-	std::vector<BakedObject> m_ui_objects{};
+	std::vector<RenderObject::Baked> m_scene_objects{};
+	std::vector<RenderObject::Baked> m_ui_objects{};
 	InclusiveRange<float> m_line_width_limit{};
 
 	bool m_rendering{};

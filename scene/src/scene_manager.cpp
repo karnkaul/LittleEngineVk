@@ -1,3 +1,4 @@
+#include <le/audio/device.hpp>
 #include <le/core/logger.hpp>
 #include <le/engine.hpp>
 #include <le/graphics/cache/vertex_buffer_cache.hpp>
@@ -11,6 +12,8 @@ auto const g_log{logger::Logger{"SceneManager"}};
 auto SceneManager::tick(Duration dt) -> void {
 	if (m_switcher.m_standby) {
 		g_log.debug("Switching Scene...");
+		g_log.debug("Stopping Music");
+		audio::Device::self().get_music().stop(0s);
 		m_switcher.m_active = std::move(m_switcher.m_standby);
 		g_log.debug("Clearing resources...");
 		Resources::self().clear();

@@ -13,7 +13,7 @@ auto Asset::get_asset_type(Uri const& uri) -> std::string_view {
 }
 
 // NOLINTNEXTLINE
-auto Asset::read_bytes(Uri const& uri) const -> std::vector<std::uint8_t> { return vfs::read_bytes(uri); }
+auto Asset::read_bytes(Uri const& uri) const -> std::vector<std::byte> { return vfs::read_bytes(uri); }
 // NOLINTNEXTLINE
 auto Asset::read_string(Uri const& uri) const -> std::string { return vfs::read_string(uri); }
 

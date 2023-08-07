@@ -18,7 +18,7 @@ class GlyphPage {
 	[[nodiscard]] auto get_slot_count() const -> std::size_t { return m_slots.size(); }
 
   private:
-	std::vector<std::uint8_t> m_pixmap_buffer{};
+	std::vector<std::byte> m_pixmap_buffer{};
 	std::unordered_map<Codepoint, GlyphSlot> m_slots{};
 	NotNull<GlyphSlot::Factory*> m_slot_factory;
 	TextHeight m_height{};

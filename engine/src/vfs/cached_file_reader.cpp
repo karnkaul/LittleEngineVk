@@ -1,7 +1,7 @@
 #include <le/vfs/cached_file_reader.hpp>
 
 namespace le {
-auto CachedFileReader::read_bytes(Uri const& uri) -> std::vector<std::uint8_t> {
+auto CachedFileReader::read_bytes(Uri const& uri) -> std::vector<std::byte> {
 	auto lock = std::unique_lock{m_mutex};
 	auto it = m_cache.find(uri);
 	if (it == m_cache.end()) {

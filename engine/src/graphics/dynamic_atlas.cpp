@@ -19,7 +19,7 @@ constexpr auto make_new_extent(glm::uvec2 existing, std::optional<std::uint32_t>
 }
 
 auto make_texture(DynamicAtlas::CreateInfo const& create_info) -> Texture {
-	auto bytes = std::vector<std::uint8_t>(create_info.initial_extent.x * create_info.initial_extent.y * 4);
+	auto bytes = std::vector<std::byte>(create_info.initial_extent.x * create_info.initial_extent.y * 4);
 	auto sampler = TextureSampler{};
 	sampler.wrap_s = sampler.wrap_t = TextureSampler::Wrap::eClampBorder;
 	sampler.min = sampler.mag = TextureSampler::Filter::eNearest;

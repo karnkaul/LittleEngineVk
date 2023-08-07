@@ -3,7 +3,7 @@
 #include <le/graphics/font/font.hpp>
 
 namespace le::graphics {
-auto Font::try_make(std::vector<std::uint8_t> file_bytes) -> std::optional<Font> {
+auto Font::try_make(std::vector<std::byte> file_bytes) -> std::optional<Font> {
 	auto ret = std::optional<Font>{};
 	auto slot_factory = Device::self().get_font_library().load(std::move(file_bytes));
 	if (!slot_factory) { return ret; }

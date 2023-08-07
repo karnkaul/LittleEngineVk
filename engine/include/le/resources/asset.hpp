@@ -15,7 +15,7 @@ class Asset : public NamedType {
 	[[nodiscard]] static auto get_asset_type(Uri const& uri) -> std::string_view;
 
   protected:
-	[[nodiscard]] auto read_bytes(Uri const& uri) const -> std::vector<std::uint8_t>;
+	[[nodiscard]] auto read_bytes(Uri const& uri) const -> std::vector<std::byte>;
 	[[nodiscard]] auto read_string(Uri const& uri) const -> std::string;
 	[[nodiscard]] auto read_json(Uri const& uri) const -> dj::Json;
 };

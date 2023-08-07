@@ -15,13 +15,13 @@ class FontLibrary {
 	FontLibrary() = default;
 	virtual ~FontLibrary() = default;
 
-	[[nodiscard]] virtual auto load(std::vector<std::uint8_t> bytes) const -> std::unique_ptr<GlyphSlot::Factory> = 0;
+	[[nodiscard]] virtual auto load(std::vector<std::byte> bytes) const -> std::unique_ptr<GlyphSlot::Factory> = 0;
 
 	[[nodiscard]] static auto make() -> std::unique_ptr<FontLibrary>;
 };
 
 struct FontLibrary::Null : FontLibrary {
-	[[nodiscard]] auto load(std::vector<std::uint8_t> /*bytes*/) const -> std::unique_ptr<GlyphSlot::Factory> final {
+	[[nodiscard]] auto load(std::vector<std::byte> /*bytes*/) const -> std::unique_ptr<GlyphSlot::Factory> final {
 		return std::make_unique<GlyphSlot::Factory::Null>();
 	}
 };

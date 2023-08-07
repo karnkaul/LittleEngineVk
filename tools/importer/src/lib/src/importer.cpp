@@ -182,17 +182,12 @@ struct Exporter {
 		return ret;
 	}
 
-	[[nodiscard]] static auto write_file(std::span<std::uint8_t const> bytes, fs::path const& path) -> bool {
+	[[nodiscard]] static auto write_file(std::span<std::byte const> bytes, fs::path const& path) -> bool {
 		fs::create_directories(path.parent_path());
 		auto file = std::ofstream{path, std::ios::binary};
 		if (!file) { return false; }
 		// NOLINTNEXTLINE
 		return static_cast<bool>(file.write(reinterpret_cast<char const*>(bytes.data()), static_cast<std::streamsize>(bytes.size_bytes())));
-	}
-
-	[[nodiscard]] static auto write_file(std::span<std::byte const> bytes, fs::path const& path) -> bool {
-		// NOLINTNEXTLINE
-		return write_file(std::span{reinterpret_cast<std::uint8_t const*>(bytes.data()), bytes.size_bytes()}, path);
 	}
 
 	[[nodiscard]] static auto export_failed(std::string_view asset_type, fs::path const& uri, std::size_t index) -> Error {
@@ -331,7 +326,7 @@ struct Exporter {
 		if (should_skip(uri, dst)) { return uri; }
 
 		auto const geometry = to_geometry(in);
-		auto bytes = std::vector<std::uint8_t>{};
+		auto bytes = std::vector<std::byte>{};
 		PrimitiveAsset::bin_pack_to(bytes, geometry);
 		if (!write_file(bytes, dst.string())) { throw export_failed("geometry", uri, igeometry); }
 		std::cout << exported(uri);
@@ -398,7 +393,7 @@ struct Exporter {
 		auto uri = prefix / "animations" / make_filename(asset.name, "animation", {index}, ".bin");
 		auto dst = fs::path{};
 		if (should_skip(uri, dst)) { return uri; }
-		auto bytes = std::vector<std::uint8_t>{};
+		auto bytes = std::vector<std::byte>{};
 		AnimationAsset::bin_pack_to(bytes, out_animation);
 		if (!write_file(bytes, dst)) { throw Error{std::format("failed to export animation [{}]", index)}; }
 

@@ -70,12 +70,12 @@ auto AnimationAsset::try_load(Uri const& uri) -> bool {
 	return bin_unpack_from(bytes, animation);
 }
 
-auto AnimationAsset::bin_pack_to(std::vector<std::uint8_t>& out, graphics::Animation::Channel const& channel) -> void {
+auto AnimationAsset::bin_pack_to(std::vector<std::byte>& out, graphics::Animation::Channel const& channel) -> void {
 	auto writer = BinWriter{out};
 	pack_channel(writer, channel);
 }
 
-auto AnimationAsset::bin_unpack_from(std::span<std::uint8_t const> bytes, graphics::Animation::Channel& out) -> bool {
+auto AnimationAsset::bin_unpack_from(std::span<std::byte const> bytes, graphics::Animation::Channel& out) -> bool {
 	auto reader = BinReader{bytes};
 	auto bin_channel = BinChannel{};
 	if (!unpack_channel(reader, bin_channel)) { return false; }
@@ -84,7 +84,7 @@ auto AnimationAsset::bin_unpack_from(std::span<std::uint8_t const> bytes, graphi
 	return true;
 }
 
-auto AnimationAsset::bin_pack_to(std::vector<std::uint8_t>& out, graphics::Animation const& animation) -> void {
+auto AnimationAsset::bin_pack_to(std::vector<std::byte>& out, graphics::Animation const& animation) -> void {
 	auto writer = BinWriter{out};
 	writer.write(std::span{&bin_sign_v, 1});
 	auto count = static_cast<std::uint64_t>(animation.channels.size());
@@ -92,7 +92,7 @@ auto AnimationAsset::bin_pack_to(std::vector<std::uint8_t>& out, graphics::Anima
 	for (auto const& channel : animation.channels) { pack_channel(writer, channel); }
 }
 
-auto AnimationAsset::bin_unpack_from(std::span<std::uint8_t const> bytes, graphics::Animation& out) -> bool {
+auto AnimationAsset::bin_unpack_from(std::span<std::byte const> bytes, graphics::Animation& out) -> bool {
 	auto reader = BinReader{bytes};
 	auto sign = BinSign{};
 	if (!reader.read(std::span{&sign, 1}) || sign != bin_sign_v) { return false; }

@@ -92,7 +92,7 @@ struct ImageWrite {
 
 class Image : Resource {
   public:
-	using Layer = std::span<std::uint8_t const>;
+	using Layer = std::span<std::byte const>;
 
 	static constexpr vk::Extent2D min_extent_v{1, 1};
 	static constexpr std::uint32_t cubemap_layers_v{6};

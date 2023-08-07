@@ -34,7 +34,7 @@ auto PrimitiveAsset::try_load(Uri const& uri) -> bool {
 	return true;
 }
 
-auto PrimitiveAsset::bin_pack_to(std::vector<std::uint8_t>& out, graphics::Geometry const& geometry) -> void {
+auto PrimitiveAsset::bin_pack_to(std::vector<std::byte>& out, graphics::Geometry const& geometry) -> void {
 	auto writer = BinWriter{out};
 	writer.write(std::span{&bin_sign_v, 1});
 

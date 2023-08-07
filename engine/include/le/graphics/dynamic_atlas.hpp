@@ -54,7 +54,7 @@ class DynamicAtlas::Writer {
 	// NOLINTNEXTLINE
 	DynamicAtlas& m_out;
 	std::vector<Write> m_writes{};
-	std::vector<std::uint8_t> m_buffer{};
+	std::vector<std::byte> m_buffer{};
 	glm::uvec2 m_new_extent{};
 };
 } // namespace le::graphics

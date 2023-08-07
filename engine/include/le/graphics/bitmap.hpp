@@ -16,7 +16,7 @@ template <std::size_t Channels>
 using BitmapByteSpan = BasicBitmap<OffsetSpan, Channels>;
 
 template <std::size_t Channels>
-using BitmapView = BasicBitmap<std::span<std::uint8_t const>, Channels>;
+using BitmapView = BasicBitmap<std::span<std::byte const>, Channels>;
 
 using Bitmap = BitmapView<4>;
 } // namespace le::graphics

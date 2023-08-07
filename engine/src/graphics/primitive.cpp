@@ -10,7 +10,7 @@ auto write_vertices_indices(Buffer& out, Geometry const& geometry) -> vk::Device
 	auto const indices = std::span{geometry.indices};
 	auto const vibo_size = vertices.size_bytes() + indices.size_bytes();
 
-	auto bytes = std::vector<std::uint8_t>(vibo_size);
+	auto bytes = std::vector<std::byte>(vibo_size);
 	std::memcpy(bytes.data(), vertices.data(), vertices.size_bytes());
 	if (!indices.empty()) {
 		auto subspan = std::span{bytes}.subspan(vertices.size_bytes());

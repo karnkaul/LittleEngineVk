@@ -17,7 +17,7 @@ struct BinSign {
 };
 
 struct BinReader {
-	std::span<std::uint8_t const> bytes{};
+	std::span<std::byte const> bytes{};
 
 	template <BinaryT Type>
 	auto read(std::span<Type> out) -> bool {
@@ -29,17 +29,17 @@ struct BinReader {
 	}
 };
 
-auto resize_and_overwrite(std::vector<std::uint8_t>& out_bytes, std::span<std::uint8_t const> bytes) -> OffsetSpan;
+auto resize_and_overwrite(std::vector<std::byte>& out_bytes, std::span<std::byte const> bytes) -> OffsetSpan;
 
 struct BinWriter {
 	// NOLINTNEXTLINE
-	std::vector<std::uint8_t>& out_bytes;
+	std::vector<std::byte>& out_bytes;
 
 	template <BinaryT Type>
 	auto write(std::span<Type> data) -> BinWriter& {
 		if (data.empty()) { return *this; }
 		// NOLINTNEXTLINE
-		auto const span = std::span<std::uint8_t const>{reinterpret_cast<std::uint8_t const*>(data.data()), data.size_bytes()};
+		auto const span = std::span<std::byte const>{reinterpret_cast<std::byte const*>(data.data()), data.size_bytes()};
 		resize_and_overwrite(out_bytes, span);
 		return *this;
 	}

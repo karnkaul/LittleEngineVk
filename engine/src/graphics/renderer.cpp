@@ -3,6 +3,7 @@
 #include <le/graphics/device.hpp>
 #include <le/graphics/image_barrier.hpp>
 #include <le/graphics/renderer.hpp>
+#include <bit>
 
 namespace le::graphics {
 namespace {
@@ -93,12 +94,12 @@ struct RenderCamera {
 	};
 
 	auto bind_set(glm::vec2 projection, ImageView const& shadow_map, vk::CommandBuffer cmd) const -> void {
-		bool const is_ortho = std::holds_alternative<Camera::Orthographic>(camera->type);
+		std::uint32_t const is_ortho = std::holds_alternative<Camera::Orthographic>(camera->type) ? 1 : 0;
 		auto const view = Std140View{
 			.view = camera->view(),
 			.projection = camera->projection(projection),
 			.vpos_exposure = {camera->transform.position(), camera->exposure},
-			.vdir_ortho = {front_v * camera->transform.orientation(), is_ortho ? 1.0f : 0.0f},
+			.vdir_ortho = {front_v * camera->transform.orientation(), std::bit_cast<float>(is_ortho)},
 			.mat_shadow = *mat_shadow,
 			.shadow_dir = shadow_dir,
 		};

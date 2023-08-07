@@ -35,9 +35,10 @@ layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec4 in_frag_pos;
 layout (location = 3) in vec3 in_normal;
 layout (location = 4) in vec4 in_vpos_exposure;
-layout (location = 5) in vec4 in_vdir_ortho;
-layout (location = 6) in vec4 in_fpos_shadow;
-layout (location = 7) in vec3 in_shadow_dir;
+layout (location = 5) in vec3 in_vdir;
+layout (location = 6) flat in uint in_is_ortho;
+layout (location = 7) in vec4 in_fpos_shadow;
+layout (location = 8) in vec3 in_shadow_dir;
 
 layout (location = 0) out vec4 out_rgba;
 
@@ -89,7 +90,7 @@ vec3 cook_torrance() {
 	const vec3 f0 = mix(vec3(0.04), vec3(material.albedo), metallic);
 
 	vec3 L0 = vec3(0.0);
-	const vec3 V = normalize(in_vdir_ortho.w > 0.0 ? in_vdir_ortho.xyz : in_vpos_exposure.xyz - in_frag_pos.xyz);
+	const vec3 V = normalize(in_is_ortho == 1 ? in_vdir : in_vpos_exposure.xyz - in_frag_pos.xyz);
 	const vec3 N = in_normal;
 	for (int i = 0; i < dir_lights.length(); ++i) {
 		DirLight light = dir_lights[i];
@@ -156,4 +157,8 @@ void main() {
 
 	const float visibility = compute_visibility();
 	out_rgba = (visibility * vec4(cook_torrance(), 1.0)) * vec4(vec3(in_rgba), 1.0) * diffuse + material.emissive * texture(emissive, in_uv);
+
+	if (alpha_mode == ALPHA_BLEND && out_rgba.w <= 0.0) {
+		discard;
+	}
 }

@@ -19,11 +19,11 @@ auto Sound::make_sound_source() -> std::shared_ptr<capo::SoundSource> {
 	return m_sources.back();
 }
 
-auto Sound::play_once(Clip clip, float gain, glm::vec3 const& at) -> void {
+auto Sound::play_once(Clip const clip, Volume const volume, glm::vec3 const& at) -> void {
 	auto source = make_sound_source();
 	source->set_position({at.x, at.y, at.z});
 	source->set_looping(false);
-	source->set_gain(gain);
+	source->set_gain(volume.normalized());
 	source->set_clip(clip);
 	source->play();
 }

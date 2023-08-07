@@ -1,6 +1,7 @@
 #pragma once
 #include <capo/device.hpp>
 #include <glm/vec3.hpp>
+#include <le/audio/volume.hpp>
 #include <le/core/not_null.hpp>
 #include <memory>
 #include <vector>
@@ -15,7 +16,7 @@ class Sound {
 
 	auto make_sound_source() -> std::shared_ptr<SoundSource>;
 
-	auto play_once(Clip clip, float gain = 1.0f, glm::vec3 const& at = {}) -> void;
+	auto play_once(Clip clip, Volume volume = Volume{100.0f}, glm::vec3 const& at = {}) -> void;
 
   private:
 	NotNull<capo::Device const*> m_device;

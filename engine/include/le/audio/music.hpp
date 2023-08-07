@@ -1,6 +1,7 @@
 #pragma once
 #include <capo/device.hpp>
 #include <capo/pcm.hpp>
+#include <le/audio/volume.hpp>
 #include <le/core/not_null.hpp>
 #include <le/core/time.hpp>
 #include <array>
@@ -11,6 +12,8 @@ using capo::StreamSource;
 
 class Music {
   public:
+	static constexpr Volume default_volume_v{80.0f};
+
 	explicit Music(NotNull<capo::Device*> device);
 
 	[[nodiscard]] auto get_music_state() const -> capo::State { return m_sources.at(m_current_stream).state(); }
@@ -21,7 +24,7 @@ class Music {
 
 	auto tick(Duration dt) -> void;
 
-	float volume{80.0f};
+	Volume volume{default_volume_v};
 
   private:
 	struct CrossFade {

@@ -10,7 +10,7 @@ auto Music::play(NotNull<Pcm const*> pcm, Duration cross_fade) -> void {
 	if (cross_fade <= 0s) {
 		auto& source = m_sources.at(m_current_stream);
 		source.set_stream(pcm->clip());
-		source.set_gain(volume * 0.01f);
+		source.set_gain(volume.normalized());
 		source.play();
 		return;
 	}
@@ -37,9 +37,9 @@ auto Music::tick(Duration dt) -> void {
 	m_cross_fade->elapsed += dt;
 	auto const ratio = std::clamp(m_cross_fade->elapsed / m_cross_fade->total, 0.0f, 1.0f);
 	auto& active = m_sources.at(m_current_stream);
-	active.set_gain(ratio * volume * 0.01f);
+	active.set_gain(ratio * volume.normalized());
 	auto& standby = m_sources.at((m_current_stream + 1) % m_sources.size());
-	standby.set_gain((1.0f - ratio) * volume * 0.01f);
+	standby.set_gain((1.0f - ratio) * volume.normalized());
 
 	if (m_cross_fade->elapsed >= m_cross_fade->total) { m_cross_fade.reset(); }
 }

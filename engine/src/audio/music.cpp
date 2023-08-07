@@ -36,8 +36,10 @@ auto Music::tick(Duration dt) -> void {
 
 	m_cross_fade->elapsed += dt;
 	auto const ratio = std::clamp(m_cross_fade->elapsed / m_cross_fade->total, 0.0f, 1.0f);
-	m_sources.at(m_current_stream).set_gain(ratio * volume * 0.01f);
-	m_sources.at((m_current_stream + 1) % m_sources.size()).set_gain((1.0f - ratio) * volume * 0.01f);
+	auto& active = m_sources.at(m_current_stream);
+	active.set_gain(ratio * volume * 0.01f);
+	auto& standby = m_sources.at((m_current_stream + 1) % m_sources.size());
+	standby.set_gain((1.0f - ratio) * volume * 0.01f);
 
 	if (m_cross_fade->elapsed >= m_cross_fade->total) { m_cross_fade.reset(); }
 }

@@ -206,6 +206,8 @@ auto Engine::next_frame() -> bool {
 
 	FrameProfiler::self().profile(FrameProfiler::Type::eTick);
 
+	m_audio_device->get_music().tick(delta_time());
+
 	return true;
 }
 

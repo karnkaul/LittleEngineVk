@@ -26,31 +26,36 @@ auto optimal_depth_format(vk::PhysicalDevice const gpu) -> vk::Format {
 	return vk::Format::eD16Unorm;
 }
 
-struct RenderingInfoBuilder {
+struct RenderingInfo {
 	vk::RenderingAttachmentInfo colour{};
 	vk::RenderingAttachmentInfo depth{};
 
-	[[nodiscard]] auto build(RenderTarget const& target, std::optional<vk::ClearColorValue> const& clear) -> vk::RenderingInfo {
+	[[nodiscard]] auto build(RenderTarget const& target, std::optional<Rgba> clear, vk::AttachmentStoreOp depth_store) -> vk::RenderingInfo {
 		auto vri = vk::RenderingInfo{};
 
-		if (clear) {
-			colour.clearValue = *clear;
-			colour.loadOp = vk::AttachmentLoadOp::eClear;
-		} else {
-			colour.loadOp = vk::AttachmentLoadOp::eLoad;
+		auto const extent = target.colour.view ? target.colour.extent : target.depth.extent;
+		vri.renderArea = vk::Rect2D{{}, extent};
+
+		if (target.colour.view) {
+			if (clear) {
+				auto const cc = Rgba::to_linear(clear->to_tint());
+				colour.clearValue = vk::ClearColorValue{std::array{cc.x, cc.y, cc.z, cc.w}};
+				colour.loadOp = vk::AttachmentLoadOp::eClear;
+			} else {
+				colour.loadOp = vk::AttachmentLoadOp::eLoad;
+			}
+			colour.storeOp = vk::AttachmentStoreOp::eStore;
+			colour.imageView = target.colour.view;
+			colour.imageLayout = vk::ImageLayout::eAttachmentOptimal;
+
+			vri.colorAttachmentCount = 1;
+			vri.pColorAttachments = &colour;
 		}
-		colour.storeOp = vk::AttachmentStoreOp::eStore;
-		colour.imageView = target.colour.view;
-		colour.imageLayout = vk::ImageLayout::eAttachmentOptimal;
 
-		vri.renderArea = vk::Rect2D{{}, target.colour.extent};
-		vri.colorAttachmentCount = 1;
-		vri.pColorAttachments = &colour;
-
-		if (target.depth.view != vk::ImageView{}) {
+		if (target.depth.view) {
 			depth.clearValue = vk::ClearDepthStencilValue{1.0f, 0};
 			depth.loadOp = vk::AttachmentLoadOp::eClear;
-			depth.storeOp = vk::AttachmentStoreOp::eDontCare;
+			depth.storeOp = depth_store;
 			depth.imageView = target.depth.view;
 			depth.imageLayout = vk::ImageLayout::eAttachmentOptimal;
 
@@ -62,22 +67,12 @@ struct RenderingInfoBuilder {
 		return vri;
 	}
 
+	[[nodiscard]] auto build(RenderTarget const& target, std::optional<Rgba> clear) -> vk::RenderingInfo {
+		return build(target, clear, vk::AttachmentStoreOp::eDontCare);
+	}
+
 	[[nodiscard]] auto build_shadow(ImageView const& shadow_map) -> vk::RenderingInfo {
-		auto vri = vk::RenderingInfo{};
-
-		vri.renderArea = vk::Rect2D{{}, shadow_map.extent};
-
-		depth.clearValue = vk::ClearDepthStencilValue{1.0f, 0};
-		depth.loadOp = vk::AttachmentLoadOp::eClear;
-		depth.storeOp = vk::AttachmentStoreOp::eStore;
-		depth.imageView = shadow_map.view;
-		depth.imageLayout = vk::ImageLayout::eAttachmentOptimal;
-
-		vri.pDepthAttachment = &depth;
-
-		vri.layerCount = 1;
-
-		return vri;
+		return build(RenderTarget{.depth = shadow_map}, {}, vk::AttachmentStoreOp::eStore);
 	}
 };
 
@@ -145,18 +140,19 @@ struct RenderCamera {
 	glm::vec4 shadow_dir;
 };
 
-auto const g_log{logger::Logger{"Renderer"}};
-} // namespace
-
-struct Renderer::Pass {
-	Renderer& renderer; // NOLINT
+struct RenderPass { // NOLINT
 	RenderTarget render_target{};
 	ImageView shadow_map{};
 	glm::vec2 world_frustum{};
 
 	mutable Ptr<Material const> last_bound{};
 
-	auto render_list(RenderCamera const& camera, BakedList const list, vk::CommandBuffer cmd) const -> std::uint32_t {
+	RenderPass(RenderTarget const& render_target, ImageView const& shadow_map, glm::vec2 world_frustum)
+		: render_target(render_target), shadow_map(shadow_map), world_frustum(world_frustum) {}
+
+	virtual auto get_shader(Material const& material) const -> Shader { return material.get_shader(); }
+
+	auto render_list(RenderCamera const& camera, std::span<RenderObject::Baked const> list, vk::CommandBuffer cmd) const -> std::uint32_t {
 		if (list.empty()) { return 0; }
 
 		auto const pipeline_format = PipelineFormat{.colour = render_target.colour.format, .depth = render_target.depth.format};
@@ -165,12 +161,14 @@ struct Renderer::Pass {
 		camera.bind_set(world_frustum, shadow_map, cmd);
 		auto ret = std::uint32_t{};
 
+		auto& renderer = Renderer::self();
+
 		for (auto const& baked : list) {
 			auto const& material = Material::or_default(baked.object.material);
-			auto const pipeline = PipelineCache::self().load(pipeline_format, material.get_shader(), baked.object.pipeline_state);
+			auto const pipeline = PipelineCache::self().load(pipeline_format, get_shader(material), baked.object.pipeline_state);
 			if (!renderer.bind_pipeline(pipeline)) { continue; }
 
-			cmd.setLineWidth(renderer.m_line_width_limit.clamp(baked.object.pipeline_state.line_width));
+			cmd.setLineWidth(renderer.get_line_width_limit().clamp(baked.object.pipeline_state.line_width));
 
 			if (last_bound != &material) {
 				material.bind_set(cmd);
@@ -185,37 +183,16 @@ struct Renderer::Pass {
 
 		return ret;
 	}
-
-	auto render_shadow(RenderCamera const& camera, BakedList const& list, vk::CommandBuffer cmd) const -> void {
-		if (list.empty()) { return; }
-
-		auto const pipeline_format = PipelineFormat{.colour = render_target.colour.format, .depth = render_target.depth.format};
-		auto const& object_layout = PipelineCache::self().shader_layout().object;
-
-		camera.bind_set(world_frustum, {}, cmd);
-
-		for (auto const& baked : list) {
-			auto const& material = Material::or_default(baked.object.material);
-			if (material.is_transparent()) { continue; }
-
-			auto shader = material.get_shader();
-			shader.fragment = "shaders/noop.frag";
-			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state);
-			if (!renderer.bind_pipeline(pipeline)) { continue; }
-
-			cmd.setLineWidth(renderer.m_line_width_limit.clamp(baked.object.pipeline_state.line_width));
-
-			if (last_bound != &material) {
-				material.bind_set(cmd);
-				last_bound = &material;
-			}
-
-			DescriptorUpdater::bind_set(object_layout.set, baked.descriptor_set, cmd);
-
-			baked.object.primitive->draw(baked.instance_count, cmd);
-		}
-	}
 };
+
+struct ShadowPass : RenderPass { // NOLINT
+	ShadowPass(RenderTarget const& render_target, glm::vec2 world_frustum) : RenderPass(render_target, {}, world_frustum) {}
+
+	auto get_shader(Material const& material) const -> Shader final { return Shader{.vertex = material.get_shader().vertex, .fragment = "shaders/noop.frag"}; }
+};
+
+auto const g_log{logger::Logger{"Renderer"}};
+} // namespace
 
 auto Renderer::Frame::make(vk::Device const device, std::uint32_t const queue_family, vk::Format depth_format) -> Frame {
 	auto ret = Frame{};
@@ -316,6 +293,8 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 	bake_objects(render_frame);
 
+	auto rendering_info = RenderingInfo{};
+
 	auto const shadow_pass = [&] {
 		auto const ret = ImageView{
 			.image = shadow_map->image(),
@@ -326,11 +305,9 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 		auto const render_target = RenderTarget{.depth = ret};
 		m_frame.backbuffer_extent = {render_target.depth.extent.width, render_target.depth.extent.height};
-		auto const pass = Pass{
-			.renderer = *this,
-			.render_target = render_target,
-			.shadow_map = {},
-			.world_frustum = glm::uvec2{shadow_frustum},
+		auto const pass = ShadowPass{
+			render_target,
+			glm::uvec2{shadow_frustum},
 		};
 		auto const render_camera = RenderCamera{
 			.camera = &shadow_camera,
@@ -341,10 +318,10 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 
 		auto image_barrier = ImageBarrier{render_target.depth.image};
 		image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
-		auto const vri = RenderingInfoBuilder{}.build_shadow(render_target.depth);
+		auto const vri = rendering_info.build_shadow(render_target.depth);
 		sync.command_buffer.beginRendering(vri);
 		m_rendering = true;
-		pass.render_shadow(render_camera, m_scene_objects, sync.command_buffer);
+		pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
 		m_rendering = false;
 		sync.command_buffer.endRendering();
 		image_barrier.set_optimal_to_read_only(true).transition(sync.command_buffer);
@@ -353,7 +330,6 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 	};
 	auto const shadow_map_image_view = shadow_pass();
 
-	// scene + ui pass
 	auto const scene_ui_pass = [&] {
 		auto ret = std::uint32_t{};
 		auto const depth_image_view = ImageView{
@@ -364,11 +340,10 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 		};
 		auto const render_target = RenderTarget{.colour = swapchain_image, .depth = depth_image_view};
 		m_frame.backbuffer_extent = {render_target.colour.extent.width, render_target.colour.extent.height};
-		auto pass = Pass{
-			.renderer = *this,
-			.render_target = render_target,
-			.shadow_map = shadow_map_image_view,
-			.world_frustum = render_frame.world_frustum.value_or(full_projection),
+		auto pass = RenderPass{
+			render_target,
+			shadow_map_image_view,
+			custom_world_frustum.value_or(full_projection),
 		};
 		auto render_camera = RenderCamera{
 			.camera = render_frame.camera,
@@ -376,12 +351,11 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 			.mat_shadow = &m_frame.primary_light_mat,
 			.shadow_dir = glm::vec4{render_frame.lights->primary.direction.value(), 1.0f},
 		};
-		auto const clear_colour = Rgba::to_linear(render_frame.clear_colour.to_tint());
 		auto depth_image_barrier = ImageBarrier{*depth_image};
 
 		colour_image_barrier.set_undef_to_optimal(false).transition(sync.command_buffer);
 		depth_image_barrier.set_undef_to_optimal(true).transition(sync.command_buffer);
-		auto const vri = RenderingInfoBuilder{}.build(render_target, std::array{clear_colour.x, clear_colour.y, clear_colour.z, clear_colour.w});
+		auto const vri = rendering_info.build(render_target, render_frame.camera->clear_colour);
 		sync.command_buffer.beginRendering(vri);
 		m_rendering = true;
 		ret += pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
@@ -394,10 +368,9 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 	};
 	auto const draw_calls = scene_ui_pass();
 
-	// dear imgui
 	auto const dear_imgui_pass = [&] {
 		auto const render_target = RenderTarget{.colour = swapchain_image};
-		auto const vri = RenderingInfoBuilder{}.build(render_target, {});
+		auto const vri = rendering_info.build(render_target, {});
 		sync.command_buffer.beginRendering(vri);
 		m_imgui->render(sync.command_buffer);
 		sync.command_buffer.endRendering();

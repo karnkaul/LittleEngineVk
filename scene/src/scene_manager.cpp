@@ -27,7 +27,7 @@ auto SceneManager::tick(Duration dt) -> void {
 }
 
 auto SceneManager::render() const -> void {
-	auto const& frame = m_renderer->render(m_switcher.get_active_scene());
+	auto const frame = m_renderer->render(m_switcher.get_active_scene());
 	Engine::self().render(frame);
 }
 

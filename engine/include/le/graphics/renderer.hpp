@@ -44,6 +44,7 @@ class Renderer : public MonoInstance<Renderer> {
 	[[nodiscard]] auto get_pipeline_format() const -> PipelineFormat { return {get_colour_format(), get_depth_format()}; }
 	[[nodiscard]] auto get_shader_layout() const -> ShaderLayout const& { return m_pipeline_cache.shader_layout(); }
 	[[nodiscard]] auto get_dear_imgui() const -> DearImGui& { return *m_imgui; }
+	[[nodiscard]] auto get_line_width_limit() const -> InclusiveRange<float> { return m_line_width_limit; }
 
 	[[nodiscard]] auto wait_for_frame(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
 	auto render(RenderFrame const& render_frame, std::uint32_t image_index) -> std::uint32_t;
@@ -62,6 +63,7 @@ class Renderer : public MonoInstance<Renderer> {
 	auto set_viewport(vk::Viewport viewport = {}) -> bool;
 	auto set_scissor(vk::Rect2D scissor) -> bool;
 
+	std::optional<glm::vec2> custom_world_frustum{};
 	glm::vec3 shadow_frustum{100.0f};
 	vk::Extent2D shadow_map_extent{2048, 2048};
 
@@ -93,15 +95,8 @@ class Renderer : public MonoInstance<Renderer> {
 		glm::vec4 tint;
 	};
 
-	struct BakedObject {
-		RenderObject object;
-		vk::DescriptorSet descriptor_set{};
-		std::uint32_t instance_count{};
-	};
-
+	using BakedObject = RenderObject::Baked;
 	using BakedList = std::span<BakedObject const>;
-
-	struct Pass;
 
 	[[nodiscard]] auto acquire_next_image(glm::uvec2 framebuffer_extent) -> std::optional<std::uint32_t>;
 	auto bake_objects(std::span<RenderObject const> objects, std::vector<BakedObject>& out) -> void;

@@ -14,15 +14,13 @@ class SceneRenderer {
 
 	explicit SceneRenderer();
 
-	auto render(Scene const& scene) -> graphics::RenderFrame const&;
+	auto render(Scene const& scene) -> graphics::RenderFrame;
 
   protected:
-	auto render_skybox(graphics::Cubemap const& cubemap) -> void;
-
 	graphics::StaticPrimitive m_skybox_cube{};
 	graphics::SkyboxMaterial m_skybox_mat{};
 	graphics::PipelineState m_skybox_pipeline{};
-	std::vector<graphics::RenderObject> m_objects{};
-	std::optional<graphics::RenderFrame> m_render_frame{};
+	std::vector<graphics::RenderObject> m_scene_objects{};
+	std::vector<graphics::RenderObject> m_ui_objects{};
 };
 } // namespace le

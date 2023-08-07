@@ -17,7 +17,7 @@ https://github.com/karnkaul/LittleEngineVk/assets/16272243/48f10879-075a-4be0-82
 - [x] In-game UI
 - [x] Dear ImGui
 - [x] AABB collisions
-- [ ] Shadow mapping
+- [x] Shadow mapping
 - [ ] Audio
 
 ## Requirements

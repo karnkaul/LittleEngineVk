@@ -1,3 +1,4 @@
+#include <impl/frame_profiler.hpp>
 #include <le/core/logger.hpp>
 #include <le/graphics/descriptor_updater.hpp>
 #include <le/graphics/device.hpp>
@@ -303,6 +304,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 	auto rendering_info = RenderingInfo{};
 
 	auto const shadow_pass = [&] {
+		FrameProfiler::self().profile(FrameProfiler::Type::eRenderShadowMap);
 		auto const ret = ImageView{
 			.image = shadow_map->image(),
 			.view = shadow_map->image_view(),
@@ -338,6 +340,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 	auto const shadow_map_image_view = shadow_pass();
 
 	auto const scene_ui_pass = [&] {
+		FrameProfiler::self().profile(FrameProfiler::Type::eRenderScene);
 		auto ret = std::uint32_t{};
 		auto const depth_image_view = ImageView{
 			.image = depth_image->image(),
@@ -376,6 +379,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 	auto const draw_calls = scene_ui_pass();
 
 	auto const dear_imgui_pass = [&] {
+		FrameProfiler::self().profile(FrameProfiler::Type::eRenderImGui);
 		auto const render_target = RenderTarget{.colour = swapchain_image};
 		auto const vri = rendering_info.build(render_target, {});
 		sync.command_buffer.beginRendering(vri);
@@ -393,6 +397,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 }
 
 auto Renderer::submit_frame(std::uint32_t const image_index) -> bool {
+	FrameProfiler::self().profile(FrameProfiler::Type::eRenderSubmit);
 	auto& sync = m_frame.syncs[get_frame_index()];
 
 	auto vsi = vk::SubmitInfo2{};

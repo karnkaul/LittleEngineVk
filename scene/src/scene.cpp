@@ -81,10 +81,6 @@ auto Scene::tick(Duration dt) -> void {
 		m_node_tree.remove(entity.m_node_id, destroy_entity);
 	}
 
-	if constexpr (debug_v) {
-		for (auto const& [_, entity] : m_entity_map) { assert(m_node_tree.find(entity.m_node_id)); }
-	}
-
 	m_ui_root.transform.extent = Engine::self().framebuffer_extent();
 	m_ui_root.tick(dt);
 

@@ -55,6 +55,8 @@ class BrainStem : public Scene {
 		main_camera.transform.set_position({0.0f, 1.0f, 3.0f});
 		// set a non-black clear colour.
 		main_camera.clear_colour = graphics::Rgba{.channels = {0x20, 0x15, 0x10, 0xff}};
+		// reduce shadow frustum to increase sharpness. (small scene.)
+		graphics::Renderer::self().shadow_frustum = glm::vec3{15.0f};
 	}
 
 	auto spawn_mesh() -> void {

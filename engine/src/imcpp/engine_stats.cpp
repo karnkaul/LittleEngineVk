@@ -14,10 +14,10 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
 	ImGui::Text("%s", FixedString{"validation layers: {}", stats.validation_enabled ? "on" : "off"}.c_str());
 
-	auto const& renderer = engine.get_renderer();
+	auto const& renderer = graphics::Renderer::self();
 	auto const current_mode = renderer.get_present_mode();
 	if (auto combo = Combo{"vsync", graphics::Renderer::to_vsync_string(current_mode).data()}) {
-		for (auto const present_mode : engine.get_renderer().get_supported_present_modes()) {
+		for (auto const present_mode : renderer.get_supported_present_modes()) {
 			if (combo.item(graphics::Renderer::to_vsync_string(present_mode).data(), present_mode == current_mode)) {
 				engine.request_present_mode(present_mode);
 			}

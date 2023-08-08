@@ -4,7 +4,7 @@
 
 [![Build Status](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml/badge.svg)](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml)
 
-https://github.com/karnkaul/LittleEngineVk/assets/16272243/48f10879-075a-4be0-8264-d07510843f08
+https://github.com/karnkaul/LittleEngineVk/assets/16272243/e8c41834-17ff-4a7c-9bf6-d9919f5bbdab
 
 ## Features
 
@@ -18,7 +18,7 @@ https://github.com/karnkaul/LittleEngineVk/assets/16272243/48f10879-075a-4be0-82
 - [x] Dear ImGui
 - [x] AABB collisions
 - [x] Shadow mapping
-- [ ] Audio
+- [x] Audio
 
 ## Requirements
 

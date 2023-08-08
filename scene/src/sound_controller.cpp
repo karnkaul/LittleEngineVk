@@ -3,7 +3,7 @@
 #include <le/scene/sound_controller.hpp>
 
 namespace le {
-auto SoundController::setup() -> void { source = audio::Device::self().get_sound().make_sound_source(); }
+auto SoundController::setup() -> void { source = audio::Device::self().make_sound_source(); }
 
 auto SoundController::tick(Duration /*dt*/) -> void {
 	auto const position = get_entity().global_position();

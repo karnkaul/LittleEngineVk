@@ -119,8 +119,6 @@ set(graphics_headers
 
 set(audio_headers
   ${prefix}/audio/device.hpp
-  ${prefix}/audio/music.hpp
-  ${prefix}/audio/sound.hpp
   ${prefix}/audio/volume.hpp
 )
 

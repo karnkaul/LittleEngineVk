@@ -13,8 +13,8 @@ auto SceneManager::tick(Duration dt) -> void {
 	if (m_switcher.m_standby) {
 		g_log.debug("Switching Scene...");
 		g_log.debug("Stopping audio");
-		audio::Device::self().get_music().stop(0s);
-		audio::Device::self().get_sound().stop_all();
+		audio::Device::self().stop_sounds();
+		audio::Device::self().stop_music();
 		g_log.debug("Clearing resources...");
 		Resources::self().clear();
 		g_log.debug("Clearing Vertex Buffer Cache...");

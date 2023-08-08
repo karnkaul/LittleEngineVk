@@ -18,6 +18,8 @@ class Sound {
 
 	auto play_once(Clip clip, Volume volume = Volume{100.0f}, glm::vec3 const& at = {}) -> void;
 
+	auto stop_all() -> void;
+
   private:
 	NotNull<capo::Device const*> m_device;
 	std::vector<std::shared_ptr<SoundSource>> m_sources{};

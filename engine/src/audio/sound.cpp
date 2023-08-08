@@ -27,4 +27,8 @@ auto Sound::play_once(Clip const clip, Volume const volume, glm::vec3 const& at)
 	source->set_clip(clip);
 	source->play();
 }
+
+auto Sound::stop_all() -> void {
+	for (auto const& source : m_sources) { source->stop(); }
+}
 } // namespace le::audio

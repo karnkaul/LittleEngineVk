@@ -56,6 +56,7 @@ set(resources_headers
   ${prefix}/resources/material_asset.hpp
   ${prefix}/resources/mesh_asset.hpp
   ${prefix}/resources/primitive_asset.hpp
+  ${prefix}/resources/pcm_asset.hpp
   ${prefix}/resources/resources.hpp
   ${prefix}/resources/animation_asset.hpp
   ${prefix}/resources/skeleton_asset.hpp

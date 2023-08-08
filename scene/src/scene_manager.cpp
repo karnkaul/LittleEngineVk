@@ -12,13 +12,14 @@ auto const g_log{logger::Logger{"SceneManager"}};
 auto SceneManager::tick(Duration dt) -> void {
 	if (m_switcher.m_standby) {
 		g_log.debug("Switching Scene...");
-		g_log.debug("Stopping Music");
+		g_log.debug("Stopping audio");
 		audio::Device::self().get_music().stop(0s);
-		m_switcher.m_active = std::move(m_switcher.m_standby);
+		audio::Device::self().get_sound().stop_all();
 		g_log.debug("Clearing resources...");
 		Resources::self().clear();
 		g_log.debug("Clearing Vertex Buffer Cache...");
 		graphics::VertexBufferCache::self().clear();
+		m_switcher.m_active = std::move(m_switcher.m_standby);
 		g_log.debug("Setting up Scene...");
 		m_switcher.m_active->setup();
 		g_log.debug("... Scene switched");

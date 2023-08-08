@@ -1,9 +1,11 @@
 #include <imgui.h>
+#include <le/core/fixed_string.hpp>
 #include <le/core/logger.hpp>
 #include <le/imcpp/engine_stats.hpp>
 #include <le/importer/importer.hpp>
 #include <le/input/receiver.hpp>
 #include <le/resources/mesh_asset.hpp>
+#include <le/resources/pcm_asset.hpp>
 #include <le/scene/freecam_controller.hpp>
 #include <le/scene/imcpp/scene_graph.hpp>
 #include <le/scene/mesh_animator.hpp>
@@ -31,13 +33,29 @@ class BrainStem : public Scene {
 
 		setup_camera();
 
-		spawn_mesh();
+		spawn_brain_stem();
 		spawn_free_cam();
 		set_title_text();
 	}
 
 	auto tick(Duration dt) -> void final {
 		Scene::tick(dt);
+
+		if (Resources::is_ready(m_mesh_future)) {
+			if (auto const* mesh_asset = m_mesh_future.get()) { spawn_mesh(&mesh_asset->mesh, m_loading_uri); }
+			m_loading_uri = {};
+		}
+
+		if (Resources::is_ready(m_pcm_future)) {
+			if (auto const* pcm = m_pcm_future.get()) {
+				auto& audio_device = audio::Device::self();
+				audio_device.set_track(&pcm->pcm);
+				audio_device.play_music();
+			}
+			m_loading_uri = {};
+		}
+
+		for (auto const& drop : Engine::self().input_state().drops) { handle_drop(drop); }
 
 		update_editor();
 
@@ -59,22 +77,20 @@ class BrainStem : public Scene {
 		graphics::Renderer::self().shadow_frustum = glm::vec3{15.0f};
 	}
 
-	auto spawn_mesh() -> void {
+	auto spawn_brain_stem() -> void {
 		// load mesh and its assets (materials, textures, skeleton, etc).
 		// load_async() can be used to obtain a std::future.
 		auto const* mesh_asset = Resources::self().load<MeshAsset>(m_mesh_uri);
 		// hard exit if the mesh failed to load, for the purpose of this example.
 		if (mesh_asset == nullptr) { throw Error{std::format("failed to load MeshAsset [{}]", m_mesh_uri.value())}; }
 
-		// spawn an entity and attach a mesh renderer (and animator).
-		auto& mesh_entity = spawn("mesh");
-		m_mesh_entity = mesh_entity.id();
-		mesh_entity.attach(std::make_unique<MeshRenderer>()).set_mesh(&mesh_asset->mesh);
-		// allow users to "override" the GLTF data with a static mesh.
-		if (mesh_asset->mesh.skeleton != nullptr) { mesh_entity.attach(std::make_unique<MeshAnimator>()).set_skeleton(mesh_asset->mesh.skeleton); }
+		m_mesh_entity = spawn_mesh(&mesh_asset->mesh, m_mesh_uri.value());
+		auto& mesh_entity = get_entity(*m_mesh_entity);
 
+		// create a child entity to attach an offset AABB collider.
 		auto& collider_entity = spawn("collider", &mesh_entity);
 		auto& collider = collider_entity.attach(std::make_unique<ColliderAabb>());
+		// offset the collider.
 		collider.aabb_size = {0.5f, 1.5f, 0.5f};
 		collider_entity.get_transform().set_position({0.0f, 0.5f * collider.aabb_size.y, 0.0f});
 	}
@@ -114,6 +130,45 @@ class BrainStem : public Scene {
 			ImGui::SetNextWindowPos({100.0f, 400.0f}, ImGuiCond_Once);
 			if (auto w = imcpp::Window{"Engine Stats", &m_show_stats}) { m_engine_stats.draw_to(w); }
 		}
+
+		if (auto loading = imcpp::Modal{"loading"}) {
+			ImGui::Text("%s", FixedString{"loading [{}]...", m_loading_uri.value()}.c_str());
+			if (m_loading_uri.is_empty()) { imcpp::Modal::close_current(); }
+		}
+	}
+
+	auto spawn_mesh(NotNull<graphics::Mesh const*> mesh, std::string_view const name) -> Id<Entity> {
+		// spawn an entity and attach a mesh renderer (and animator).
+		auto& mesh_entity = spawn(std::format("mesh_{}", name));
+		auto ret = mesh_entity.id();
+		mesh_entity.attach(std::make_unique<MeshRenderer>()).set_mesh(mesh);
+		// allow users to "override" the GLTF data with a static mesh.
+		if (mesh->skeleton != nullptr) { mesh_entity.attach(std::make_unique<MeshAnimator>()).set_skeleton(mesh->skeleton); }
+
+		return ret;
+	}
+
+	auto handle_drop(std::string_view const path) -> void {
+		if (!m_loading_uri.is_empty()) { return; }
+
+		auto uri = dynamic_cast<FileReader const&>(vfs::get_reader()).to_uri(path);
+		if (uri.is_empty()) { return; }
+
+		auto const extension = uri.extension();
+
+		if (extension == ".mp3" || extension == ".ogg" || extension == ".wav") {
+			m_pcm_future = Resources::self().load_async<PcmAsset>(uri);
+			m_loading_uri = std::move(uri);
+			imcpp::Modal::open("loading");
+			return;
+		}
+
+		if (extension == ".json" && Asset::get_asset_type(uri) == MeshAsset::type_name_v) {
+			m_mesh_future = Resources::self().load_async<MeshAsset>(uri);
+			m_loading_uri = std::move(uri);
+			imcpp::Modal::open("loading");
+			return;
+		}
 	}
 
 	// hard coded Uri, unpacked from data.zip at CMake configure time.
@@ -122,6 +177,10 @@ class BrainStem : public Scene {
 	Uri m_mesh_uri{};
 	std::optional<EntityId> m_mesh_entity{};
 	std::optional<EntityId> m_freecam_entity{};
+
+	std::future<Ptr<MeshAsset>> m_mesh_future{};
+	std::future<Ptr<PcmAsset>> m_pcm_future{};
+	Uri m_loading_uri{};
 
 	imcpp::SceneGraph m_scene_graph{};
 	imcpp::EngineStats m_engine_stats{};

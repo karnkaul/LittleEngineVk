@@ -9,6 +9,9 @@ class BasicGain {
 	using resolution_t = ResolutionT;
 	static constexpr auto resolution_v = static_cast<float>(ResolutionT::num) / static_cast<float>(ResolutionT::den);
 
+	static constexpr auto min_value_v{0.0f * resolution_v};
+	static constexpr auto max_value_v{1.0f * resolution_v};
+
 	BasicGain() = default;
 
 	explicit constexpr BasicGain(float const value) : gain(std::clamp(value / resolution_v, 0.0f, 1.0f)) {}

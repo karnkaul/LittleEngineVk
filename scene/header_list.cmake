@@ -25,4 +25,5 @@ set(header_list
   ${prefix}/scene/scene_switcher.hpp
   ${prefix}/scene/scene.hpp
   ${prefix}/scene/shape_renderer.hpp
+  ${prefix}/scene/sound_controller.hpp
 )

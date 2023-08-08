@@ -21,6 +21,7 @@ set(core_headers
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp
   ${prefix}/core/visitor.hpp
+  ${prefix}/core/wrap.hpp
   ${prefix}/core/zip_ranges.hpp
 )
 

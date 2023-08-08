@@ -1,5 +1,6 @@
 #pragma once
 #include <le/core/time.hpp>
+#include <le/core/wrap.hpp>
 #include <le/imcpp/common.hpp>
 
 namespace le::imcpp {
@@ -14,7 +15,6 @@ class EngineStats {
   private:
 	auto push_frame_time(Duration dt) -> void;
 
-	std::vector<float> m_frame_times{std::vector<float>(frame_time_count_v)};
-	std::size_t m_frame_time_offset{};
+	Wrap<std::vector<float>> m_frame_times{std::vector<float>(frame_time_count_v)};
 };
 } // namespace le::imcpp

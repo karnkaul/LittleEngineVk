@@ -1,4 +1,5 @@
 #pragma once
+#include <le/core/wrap.hpp>
 #include <array>
 #include <cstdint>
 
@@ -11,7 +12,7 @@ using Buffered = std::array<Type, buffering_v>;
 struct FrameIndex {
 	std::size_t value{};
 
-	constexpr auto increment() -> void { value = (value + 1) % buffering_v; }
+	constexpr auto increment() -> void { value = increment_wrapped(value, buffering_v); }
 
 	constexpr operator std::size_t() const { return value; }
 };

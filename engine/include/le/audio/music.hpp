@@ -4,6 +4,7 @@
 #include <le/audio/volume.hpp>
 #include <le/core/not_null.hpp>
 #include <le/core/time.hpp>
+#include <le/core/wrap.hpp>
 #include <array>
 
 namespace le::audio {
@@ -16,7 +17,7 @@ class Music {
 
 	explicit Music(NotNull<capo::Device*> device);
 
-	[[nodiscard]] auto get_music_state() const -> capo::State { return m_sources.at(m_current_stream).state(); }
+	[[nodiscard]] auto get_music_state() const -> capo::State { return m_sources.get_current().state(); }
 	[[nodiscard]] auto is_music_playing() const -> bool { return get_music_state() == capo::State::ePlaying; }
 
 	auto play(NotNull<Pcm const*> pcm, Duration cross_fade = 1s) -> void;
@@ -32,8 +33,7 @@ class Music {
 		Duration elapsed{};
 	};
 
-	std::array<StreamSource, 2> m_sources{};
-	std::size_t m_current_stream{};
+	Wrap<std::array<StreamSource, 2>> m_sources{};
 	std::optional<CrossFade> m_cross_fade{};
 };
 } // namespace le::audio

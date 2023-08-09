@@ -41,22 +41,8 @@ class BrainStem : public Scene {
 	auto tick(Duration dt) -> void final {
 		Scene::tick(dt);
 
-		if (Resources::is_ready(m_mesh_future)) {
-			if (auto const* mesh_asset = m_mesh_future.get()) { spawn_mesh(&mesh_asset->mesh, m_loading_uri); }
-			m_loading_uri = {};
-		}
-
-		if (Resources::is_ready(m_pcm_future)) {
-			if (auto const* pcm = m_pcm_future.get()) {
-				auto& audio_device = audio::Device::self();
-				audio_device.set_track(&pcm->pcm);
-				audio_device.play_music();
-			}
-			m_loading_uri = {};
-		}
-
-		for (auto const& drop : Engine::self().input_state().drops) { handle_drop(drop); }
-
+		update_futures();
+		handle_drops();
 		update_editor();
 
 		// check the current input state: this is fast but too coarse for say text input,
@@ -131,6 +117,7 @@ class BrainStem : public Scene {
 			if (auto w = imcpp::Window{"Engine Stats", &m_show_stats}) { m_engine_stats.draw_to(w); }
 		}
 
+		// loading modal.
 		if (auto loading = imcpp::Modal{"loading"}) {
 			ImGui::Text("%s", FixedString{"loading [{}]...", m_loading_uri.value()}.c_str());
 			if (m_loading_uri.is_empty()) { imcpp::Modal::close_current(); }
@@ -148,26 +135,67 @@ class BrainStem : public Scene {
 		return ret;
 	}
 
-	auto handle_drop(std::string_view const path) -> void {
-		if (!m_loading_uri.is_empty()) { return; }
-
+	auto handle_drop(std::string_view const path) -> bool {
+		// make path relative to mount point (data directory).
 		auto uri = dynamic_cast<FileReader const&>(vfs::get_reader()).to_uri(path);
-		if (uri.is_empty()) { return; }
+		if (uri.is_empty()) { return false; }
 
 		auto const extension = uri.extension();
 
+		// check if drop is a music file.
 		if (extension == ".mp3" || extension == ".ogg" || extension == ".wav") {
+			// start loading PcmAsset.
 			m_pcm_future = Resources::self().load_async<PcmAsset>(uri);
+			// set loading text.
 			m_loading_uri = std::move(uri);
+			// open modal.
 			imcpp::Modal::open("loading");
+			return true;
+		}
+
+		// check if drop is a MeshAsset.
+		if (extension == ".json" && Asset::get_asset_type(uri) == MeshAsset::type_name_v) {
+			// start loading MeshAsset.
+			m_mesh_future = Resources::self().load_async<MeshAsset>(uri);
+			// set loading text.
+			m_loading_uri = std::move(uri);
+			// open modal.
+			imcpp::Modal::open("loading");
+			return true;
+		}
+
+		return false;
+	}
+
+	auto handle_drops() -> void {
+		if (!m_loading_uri.is_empty()) {
+			// already busy loading.
 			return;
 		}
 
-		if (extension == ".json" && Asset::get_asset_type(uri) == MeshAsset::type_name_v) {
-			m_mesh_future = Resources::self().load_async<MeshAsset>(uri);
-			m_loading_uri = std::move(uri);
-			imcpp::Modal::open("loading");
-			return;
+		for (auto const& drop : Engine::self().input_state().drops) {
+			// break if loading started.
+			if (handle_drop(drop)) { break; }
+		}
+	}
+
+	auto update_futures() -> void {
+		// check if MeshAsset future is valid and ready.
+		if (Resources::is_ready(m_mesh_future)) {
+			if (auto const* mesh_asset = m_mesh_future.get()) { spawn_mesh(&mesh_asset->mesh, m_loading_uri); }
+			// reset loading modal.
+			m_loading_uri = {};
+		}
+
+		// check if PcmAsset future is valid and ready.
+		if (Resources::is_ready(m_pcm_future)) {
+			if (auto const* pcm = m_pcm_future.get()) {
+				auto& audio_device = audio::Device::self();
+				audio_device.set_track(&pcm->pcm);
+				audio_device.play_music();
+			}
+			// reset loading modal.
+			m_loading_uri = {};
 		}
 	}
 

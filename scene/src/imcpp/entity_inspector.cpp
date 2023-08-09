@@ -8,6 +8,7 @@
 #include <le/scene/mesh_animator.hpp>
 #include <le/scene/mesh_renderer.hpp>
 #include <le/scene/shape_renderer.hpp>
+#include <le/scene/sound_controller.hpp>
 
 namespace le::imcpp {
 namespace {
@@ -67,6 +68,11 @@ void inspect_component(OpenWindow w, FreecamController& freecam_controller) {
 
 void inspect_component(OpenWindow w, ColliderAabb& collider) { Reflector{w}("Size", collider.aabb_size, 0.25f); }
 
+auto inspect_component(OpenWindow /*w*/, SoundController& controller) {
+	auto volume = controller.get_volume().value();
+	if (ImGui::SliderFloat("volume", &volume, Volume::min_value_v, Volume::max_value_v)) { controller.set_volume(Volume{volume}); }
+}
+
 template <std::derived_from<Component> T>
 auto inspect_if(OpenWindow w, Entity& out, char const* label) -> void {
 	if (auto* component = out.find_component<T>()) {
@@ -95,6 +101,7 @@ auto EntityInspector::inspect_components(OpenWindow w, Entity& out) -> void {
 	inspect_if<MeshAnimator>(w, out, "MeshAnimator");
 	inspect_if<FreecamController>(w, out, "FreecamController");
 	inspect_if<ColliderAabb>(w, out, "ColliderAabb");
+	inspect_if<SoundController>(w, out, "SoundController");
 }
 
 auto EntityInspector::get_entity_name(Id<Entity> const id, std::string_view const name) -> InputText<>& {

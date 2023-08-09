@@ -44,7 +44,7 @@ auto TextureAsset::try_load(dj::Json const& json) -> bool {
 	return try_load(bytes, colour_space);
 }
 
-auto TextureAsset::try_load(std::span<std::uint8_t const> bytes, graphics::ColourSpace colour_space) -> bool {
+auto TextureAsset::try_load(std::span<std::byte const> bytes, graphics::ColourSpace colour_space) -> bool {
 	if (bytes.empty()) { return false; }
 
 	auto image = graphics::ImageFile{};
@@ -69,7 +69,7 @@ auto CubemapAsset::try_load(Uri const& uri) -> bool {
 	auto const json = read_json(json_uri);
 	if (!json) { return false; }
 
-	auto compressed_futures = std::array<std::future<std::vector<std::uint8_t>>, graphics::Image::cubemap_layers_v>{};
+	auto compressed_futures = std::array<std::future<std::vector<std::byte>>, graphics::Image::cubemap_layers_v>{};
 	for (auto [future, uri] : zip_ranges(compressed_futures, json["images"].array_view())) {
 		future = std::async(std::launch::async, [this, uri = uri.as<std::string>()] { return read_bytes(uri); });
 	}

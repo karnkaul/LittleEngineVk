@@ -2,17 +2,17 @@
 
 namespace le::graphics {
 Fallback::Fallback() {
-	auto pixel = std::array<std::uint8_t, 4>{};
+	auto pixel = std::array<std::byte, 4>{};
 	auto bitmap = Bitmap{pixel, {1, 1}};
 	auto make_cubemap = [&] { return std::array{bitmap, bitmap, bitmap, bitmap, bitmap, bitmap}; };
 
-	pixel = {0xff, 0xff, 0xff, 0xff};
+	pixel = {std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, std::byte{0xff}};
 	auto cubemap = make_cubemap();
 
 	m_textures.white.write(bitmap);
 	m_cubemaps.white.write(cubemap);
 
-	pixel = {0x0, 0x0, 0x0, 0xff};
+	pixel = {std::byte{}, std::byte{}, std::byte{}, std::byte{0xff}};
 	cubemap = make_cubemap();
 
 	m_textures.black.write(bitmap);

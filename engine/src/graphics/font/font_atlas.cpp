@@ -9,7 +9,7 @@ FontAtlas::FontAtlas(NotNull<GlyphSlot::Factory*> slot_factory, CreateInfo creat
 	};
 
 	auto writer = DynamicAtlas::Writer{m_atlas};
-	auto bitmap_buffer = std::vector<std::uint8_t>{};
+	auto bitmap_buffer = std::vector<std::byte>{};
 	auto entries = std::vector<Entry>{};
 
 	auto const add_codepoint = [&](Codepoint const codepoint) {
@@ -26,7 +26,7 @@ FontAtlas::FontAtlas(NotNull<GlyphSlot::Factory*> slot_factory, CreateInfo creat
 			auto const glyph_bitmap = m_page.make_bitmap(slot.pixmap);
 			bitmap_buffer.reserve(glyph_bitmap.bytes.size_bytes() * 4);
 			for (auto const byte : glyph_bitmap.bytes) {
-				auto const bytes = std::array<std::uint8_t, Bitmap::channels_v>{0xff, 0xff, 0xff, byte};
+				auto const bytes = std::array<std::byte, Bitmap::channels_v>{std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, byte};
 				bitmap_buffer.insert(bitmap_buffer.end(), bytes.begin(), bytes.end());
 			}
 			auto const bitmap = Bitmap{.bytes = bitmap_buffer, .extent = glyph_bitmap.extent};

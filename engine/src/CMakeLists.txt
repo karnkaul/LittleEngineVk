@@ -5,6 +5,7 @@ add_subdirectory(vfs)
 add_subdirectory(resources)
 add_subdirectory(graphics)
 add_subdirectory(imcpp)
+add_subdirectory(audio)
 
 target_sources(${PROJECT_NAME} PRIVATE
   engine.cpp

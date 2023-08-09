@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <le/audio/device.hpp>
 #include <le/core/enumerate.hpp>
 #include <le/core/fixed_string.hpp>
 #include <le/core/visitor.hpp>
@@ -36,46 +37,48 @@ void SceneInspector::draw_to(NotClosed<Window> w, Scene& scene) {
 		},
 		[&](Type type) {
 			switch (type) {
-			case Type::eCamera: {
-				imcpp::TreeNode::leaf("Camera", ImGuiTreeNodeFlags_SpanFullWidth);
-				if (auto tn = imcpp::TreeNode{"Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen}) {
-					bool unified_scaling{true};
-					imcpp::Reflector{w}(scene.main_camera.transform, unified_scaling, {});
-				}
-				ImGui::DragFloat("Exposure", &scene.main_camera.exposure, 0.25f, 1.0f, 100.0f);
-				std::string_view const type = std::holds_alternative<graphics::Camera::Orthographic>(scene.main_camera.type) ? "Orthographic" : "Perspective";
-				if (auto combo = imcpp::Combo{"Type", type.data()}) {
-					if (combo.item("Perspective", type == "Perspective")) { scene.main_camera.type = graphics::Camera::Perspective{}; }
-					if (combo.item("Orthographic", type == "Orthographic")) { scene.main_camera.type = graphics::Camera::Orthographic{}; }
-				}
-				std::visit([w](auto& camera) { Reflector{w}(camera); }, scene.main_camera.type);
-				break;
-			}
-			case Type::eLights: {
-				imcpp::TreeNode::leaf("Lights", ImGuiTreeNodeFlags_SpanFullWidth);
-				auto const inspect_dir_light = [w](graphics::Lights::Directional& dir_light) {
-					imcpp::Reflector{w}(dir_light.diffuse, false);
-					imcpp::Reflector{w}("Direction", dir_light.direction);
-				};
-				inspect_dir_light(scene.lights.primary);
-				if (auto tn = imcpp::TreeNode{"Directional", ImGuiTreeNodeFlags_Framed}) {
-					auto to_remove = std::optional<std::size_t>{};
-					for (auto [dir_light, index] : enumerate(scene.lights.directional)) {
-						if (auto tn = TreeNode{FixedString{"[{}]", index}.c_str()}) {
-							inspect_dir_light(dir_light);
-							if (small_button_red("X")) { to_remove = index; }
-						}
-					}
-					if (to_remove) { scene.lights.directional.erase(scene.lights.directional.begin() + static_cast<std::ptrdiff_t>(*to_remove)); }
-					ImGui::Separator();
-					if (ImGui::Button("Add")) { scene.lights.directional.push_back({}); }
-				}
-				break;
-			}
+			case Type::eCamera: inspect(w, scene.main_camera); break;
+			case Type::eLights: inspect(w, scene.lights); break;
 			}
 		},
 	};
 
 	std::visit(visitor, target.payload);
+}
+
+auto SceneInspector::inspect(OpenWindow w, graphics::Camera& camera) -> void {
+	imcpp::TreeNode::leaf("Camera", ImGuiTreeNodeFlags_SpanFullWidth);
+	if (auto tn = imcpp::TreeNode{"Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen}) {
+		bool unified_scaling{true};
+		imcpp::Reflector{w}(camera.transform, unified_scaling, {});
+	}
+	ImGui::DragFloat("Exposure", &camera.exposure, 0.25f, 1.0f, 100.0f);
+	std::string_view const type = std::holds_alternative<graphics::Camera::Orthographic>(camera.type) ? "Orthographic" : "Perspective";
+	if (auto combo = imcpp::Combo{"Type", type.data()}) {
+		if (combo.item("Perspective", type == "Perspective")) { camera.type = graphics::Camera::Perspective{}; }
+		if (combo.item("Orthographic", type == "Orthographic")) { camera.type = graphics::Camera::Orthographic{}; }
+	}
+	std::visit([w](auto& camera) { Reflector{w}(camera); }, camera.type);
+}
+
+auto SceneInspector::inspect(OpenWindow w, graphics::Lights& lights) -> void {
+	imcpp::TreeNode::leaf("Lights", ImGuiTreeNodeFlags_SpanFullWidth);
+	auto const inspect_dir_light = [w](graphics::Lights::Directional& dir_light) {
+		imcpp::Reflector{w}(dir_light.diffuse, false);
+		imcpp::Reflector{w}("Direction", dir_light.direction);
+	};
+	inspect_dir_light(lights.primary);
+	if (auto tn = imcpp::TreeNode{"Directional", ImGuiTreeNodeFlags_Framed}) {
+		auto to_remove = std::optional<std::size_t>{};
+		for (auto [dir_light, index] : enumerate(lights.directional)) {
+			if (auto tn = TreeNode{FixedString{"[{}]", index}.c_str()}) {
+				inspect_dir_light(dir_light);
+				if (small_button_red("X")) { to_remove = index; }
+			}
+		}
+		if (to_remove) { lights.directional.erase(lights.directional.begin() + static_cast<std::ptrdiff_t>(*to_remove)); }
+		ImGui::Separator();
+		if (ImGui::Button("Add")) { lights.directional.push_back({}); }
+	}
 }
 } // namespace le::imcpp

@@ -1,4 +1,6 @@
 #pragma once
+#include <le/graphics/camera.hpp>
+#include <le/graphics/lights.hpp>
 #include <le/imcpp/common.hpp>
 #include <le/imcpp/input_text.hpp>
 #include <le/scene/entity.hpp>
@@ -31,6 +33,9 @@ class SceneInspector {
 
   private:
 	void draw_to(NotClosed<Window> w, Scene& scene);
+
+	auto inspect(OpenWindow w, graphics::Camera& camera) -> void;
+	auto inspect(OpenWindow w, graphics::Lights& lights) -> void;
 
 	std::unique_ptr<EntityInspector> m_entity_inspector{std::make_unique<EntityInspector>()};
 };

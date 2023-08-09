@@ -9,7 +9,7 @@ class Font {
   public:
 	class Pen;
 
-	static auto try_make(std::vector<std::uint8_t> file_bytes) -> std::optional<Font>;
+	static auto try_make(std::vector<std::byte> file_bytes) -> std::optional<Font>;
 
 	explicit Font(NotNull<std::unique_ptr<GlyphSlot::Factory>> slot_factory);
 

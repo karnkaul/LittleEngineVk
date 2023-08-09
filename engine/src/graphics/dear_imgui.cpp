@@ -12,24 +12,12 @@ namespace le::graphics {
 DearImGui::DearImGui(Ptr<GLFWwindow> window, vk::Format colour) {
 	auto& device = Device::self();
 
-	static constexpr std::size_t multiplier_v{1000};
-
 	auto const pool_sizes = std::array{
-		vk::DescriptorPoolSize{vk::DescriptorType::eSampledImage, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eSampledImage, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eStorageImage, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eUniformTexelBuffer, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eStorageTexelBuffer, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eUniformBuffer, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eUniformBufferDynamic, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eStorageBufferDynamic, multiplier_v},
-		vk::DescriptorPoolSize{vk::DescriptorType::eInputAttachment, multiplier_v},
+		vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 2},
 	};
 	auto dpci = vk::DescriptorPoolCreateInfo{};
 	dpci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-	dpci.maxSets = multiplier_v * static_cast<std::uint32_t>(pool_sizes.size());
+	dpci.maxSets = 2;
 	dpci.poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size());
 	dpci.pPoolSizes = pool_sizes.data();
 	m_pool = device.get_device().createDescriptorPoolUnique(dpci);

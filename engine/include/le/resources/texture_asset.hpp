@@ -10,7 +10,7 @@ class TextureAsset : public Asset {
 	graphics::Texture texture{};
 
 	[[nodiscard]] auto try_load(dj::Json const& json) -> bool;
-	[[nodiscard]] auto try_load(std::span<std::uint8_t const> bytes, graphics::ColourSpace colour_space) -> bool;
+	[[nodiscard]] auto try_load(std::span<std::byte const> bytes, graphics::ColourSpace colour_space) -> bool;
 
 	[[nodiscard]] auto type_name() const -> std::string_view final { return type_name_v; }
 	[[nodiscard]] auto try_load(Uri const& uri) -> bool final;

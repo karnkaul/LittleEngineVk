@@ -21,6 +21,7 @@ set(core_headers
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp
   ${prefix}/core/visitor.hpp
+  ${prefix}/core/wrap.hpp
   ${prefix}/core/zip_ranges.hpp
 )
 
@@ -55,6 +56,7 @@ set(resources_headers
   ${prefix}/resources/material_asset.hpp
   ${prefix}/resources/mesh_asset.hpp
   ${prefix}/resources/primitive_asset.hpp
+  ${prefix}/resources/pcm_asset.hpp
   ${prefix}/resources/resources.hpp
   ${prefix}/resources/animation_asset.hpp
   ${prefix}/resources/skeleton_asset.hpp
@@ -115,27 +117,9 @@ set(graphics_headers
   ${prefix}/graphics/texture.hpp
 )
 
-set(scene_headers
-  ${prefix}/scene/ui/input_text.hpp
-  ${prefix}/scene/ui/primitive_renderer.hpp
-  ${prefix}/scene/ui/rect_transform.hpp
-  ${prefix}/scene/ui/renderable.hpp
-  ${prefix}/scene/ui/text.hpp
-  ${prefix}/scene/ui/view.hpp
-
-  ${prefix}/scene/collision.hpp
-  ${prefix}/scene/component.hpp
-  ${prefix}/scene/entity.hpp
-  ${prefix}/scene/freecam_controller.hpp
-  ${prefix}/scene/mesh_animator.hpp
-  ${prefix}/scene/mesh_renderer.hpp
-  ${prefix}/scene/particle_system.hpp
-  ${prefix}/scene/render_component.hpp
-  ${prefix}/scene/scene_manager.hpp
-  ${prefix}/scene/scene_renderer.hpp
-  ${prefix}/scene/scene_switcher.hpp
-  ${prefix}/scene/scene.hpp
-  ${prefix}/scene/shape_renderer.hpp
+set(audio_headers
+  ${prefix}/audio/device.hpp
+  ${prefix}/audio/volume.hpp
 )
 
 set(imcpp_headers
@@ -152,6 +136,7 @@ set(header_list
   ${resources_headers}
   ${graphics_headers}
   ${imcpp_headers}
+  ${audio_headers}
 
   ${prefix}/engine.hpp
   ${prefix}/environment.hpp

@@ -4,7 +4,7 @@
 #include <span>
 
 namespace le::vfs {
-[[nodiscard]] auto read_bytes(Uri const& uri) -> std::vector<std::uint8_t>;
+[[nodiscard]] auto read_bytes(Uri const& uri) -> std::vector<std::byte>;
 [[nodiscard]] auto read_string(Uri const& uri) -> std::string;
 
 [[nodiscard]] auto get_reader() -> Reader&;

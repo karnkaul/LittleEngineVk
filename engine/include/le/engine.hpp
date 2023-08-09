@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
+#include <le/audio/device.hpp>
 #include <le/core/time.hpp>
 #include <le/environment.hpp>
 #include <le/frame_profile.hpp>
@@ -31,8 +32,6 @@ class Engine : public MonoInstance<Engine> {
 
 	[[nodiscard]] auto get_window() const -> GLFWwindow const* { return m_window.get(); }
 	[[nodiscard]] auto get_window() -> GLFWwindow* { return m_window.get(); }
-
-	[[nodiscard]] auto get_renderer() const -> graphics::Renderer const& { return *m_renderer; }
 
 	[[nodiscard]] auto framebuffer_extent() const -> glm::uvec2;
 	[[nodiscard]] auto window_extent() const -> glm::uvec2;
@@ -65,6 +64,7 @@ class Engine : public MonoInstance<Engine> {
 	std::unique_ptr<GLFWwindow, Deleter> m_window{};
 	std::unique_ptr<graphics::Device> m_graphics_device{};
 	std::unique_ptr<graphics::Renderer> m_renderer{};
+	std::unique_ptr<audio::Device> m_audio_device{};
 
 	std::optional<std::uint32_t> m_image_index{};
 	DeltaTime m_delta_time{};

@@ -34,9 +34,9 @@ class GlyphSlot::Factory {
 
 	virtual auto set_height(TextHeight height) -> bool = 0;
 	[[nodiscard]] virtual auto height() const -> TextHeight = 0;
-	[[nodiscard]] virtual auto slot_for(Codepoint codepoint, std::vector<std::uint8_t>& out_bytes) const -> GlyphSlot = 0;
+	[[nodiscard]] virtual auto slot_for(Codepoint codepoint, std::vector<std::byte>& out_bytes) const -> GlyphSlot = 0;
 
-	auto slot_for(Codepoint codepoint, TextHeight height, std::vector<std::uint8_t>& out_bytes) -> GlyphSlot {
+	auto slot_for(Codepoint codepoint, TextHeight height, std::vector<std::byte>& out_bytes) -> GlyphSlot {
 		if (!set_height(height)) { return {}; }
 		return slot_for(codepoint, out_bytes);
 	}
@@ -47,6 +47,6 @@ struct GlyphSlot::Factory::Null : GlyphSlot::Factory {
 
 	auto set_height(TextHeight /*height*/) -> bool final { return true; }
 	[[nodiscard]] auto height() const -> TextHeight final { return {}; }
-	[[nodiscard]] auto slot_for(Codepoint /*codepoint*/, std::vector<std::uint8_t>& /*out_bytes*/) const -> GlyphSlot final { return {}; }
+	[[nodiscard]] auto slot_for(Codepoint /*codepoint*/, std::vector<std::byte>& /*out_bytes*/) const -> GlyphSlot final { return {}; }
 };
 } // namespace le::graphics

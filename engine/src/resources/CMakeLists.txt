@@ -5,6 +5,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   font_asset.cpp
   material_asset.cpp
   mesh_asset.cpp
+  pcm_asset.cpp
   primitive_asset.cpp
   resources.cpp
   animation_asset.cpp

@@ -4,7 +4,10 @@
 
 [![Build Status](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml/badge.svg)](https://github.com/karnkaul/LittleEngineVk/actions/workflows/ci.yml)
 
-https://github.com/karnkaul/LittleEngineVk/assets/16272243/304af3cc-de21-4900-95e7-5370d2197679
+**Demo video (running le-example)**
+
+https://github.com/karnkaul/LittleEngineVk/assets/16272243/e8c41834-17ff-4a7c-9bf6-d9919f5bbdab
+
 
 ## Features
 
@@ -17,8 +20,8 @@ https://github.com/karnkaul/LittleEngineVk/assets/16272243/304af3cc-de21-4900-95
 - [x] In-game UI
 - [x] Dear ImGui
 - [x] AABB collisions
-- [ ] Shadow mapping
-- [ ] Audio
+- [x] Shadow mapping
+- [x] Audio
 
 ## Requirements
 
@@ -51,7 +54,7 @@ LittleEngine Scene (`le::le-scene`) is an optional wrapper that provides `Entity
 
 Default shaders are provided as GLSL sources in `shaders/`. (These can be compiled to SPIR-V into your data directory using LittleEngine's tools.)
 
-See [example](example/example.cpp) for a basic example that renders an animated skinned mesh and some text, and responds to input.
+See [example](example/example.cpp) for a basic example that renders an animated skinned mesh and some text, and responds to input. The demo video above showcases this very example.
 
 ### Building
 

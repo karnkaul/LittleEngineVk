@@ -10,10 +10,10 @@ class AnimationAsset : public Asset {
 	[[nodiscard]] auto type_name() const -> std::string_view final { return type_name_v; }
 	[[nodiscard]] auto try_load(Uri const& uri) -> bool final;
 
-	static auto bin_pack_to(std::vector<std::uint8_t>& out, graphics::Animation::Channel const& sampler) -> void;
-	static auto bin_unpack_from(std::span<std::uint8_t const> bytes, graphics::Animation::Channel& out) -> bool;
-	static auto bin_pack_to(std::vector<std::uint8_t>& out, graphics::Animation const& animation) -> void;
-	static auto bin_unpack_from(std::span<std::uint8_t const> bytes, graphics::Animation& out) -> bool;
+	static auto bin_pack_to(std::vector<std::byte>& out, graphics::Animation::Channel const& sampler) -> void;
+	static auto bin_unpack_from(std::span<std::byte const> bytes, graphics::Animation::Channel& out) -> bool;
+	static auto bin_pack_to(std::vector<std::byte>& out, graphics::Animation const& animation) -> void;
+	static auto bin_unpack_from(std::span<std::byte const> bytes, graphics::Animation& out) -> bool;
 
 	graphics::Animation animation{};
 };

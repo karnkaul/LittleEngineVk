@@ -14,4 +14,5 @@ target_sources(${PROJECT_NAME} PRIVATE
   scene_renderer.cpp
   scene.cpp
   shape_renderer.cpp
+  sound_controller.cpp
 )

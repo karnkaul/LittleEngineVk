@@ -17,16 +17,16 @@ class FreetypeGlyphFactory : public GlyphSlot::Factory {
 	auto operator=(FreetypeGlyphFactory const&) -> FreetypeGlyphFactory& = delete;
 	auto operator=(FreetypeGlyphFactory&&) -> FreetypeGlyphFactory& = delete;
 
-	FreetypeGlyphFactory(FT_Face face, std::vector<std::uint8_t> bytes);
+	FreetypeGlyphFactory(FT_Face face, std::vector<std::byte> bytes);
 	~FreetypeGlyphFactory() override;
 
 	auto set_height(TextHeight height) -> bool final;
 	[[nodiscard]] auto height() const -> TextHeight final { return m_height; }
-	[[nodiscard]] auto slot_for(Codepoint codepoint, std::vector<std::uint8_t>& out_bytes) const -> GlyphSlot final;
+	[[nodiscard]] auto slot_for(Codepoint codepoint, std::vector<std::byte>& out_bytes) const -> GlyphSlot final;
 
   private:
 	FT_Face m_face{};
-	std::vector<std::uint8_t> m_font_bytes{};
+	std::vector<std::byte> m_font_bytes{};
 	TextHeight m_height{};
 };
 
@@ -40,7 +40,7 @@ class Freetype : public FontLibrary {
 	explicit Freetype();
 	~Freetype() override;
 
-	[[nodiscard]] auto load(std::vector<std::uint8_t> bytes) const -> std::unique_ptr<GlyphSlot::Factory> final;
+	[[nodiscard]] auto load(std::vector<std::byte> bytes) const -> std::unique_ptr<GlyphSlot::Factory> final;
 
   private:
 	FT_Library m_lib{};

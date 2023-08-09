@@ -1,0 +1,3 @@
+BrainStem GLTF asset: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/BrainStem
+Vera font: https://archlinux.org/packages/extra/any/ttf-bitstream-vera/
+Dance of the Sugar Plum Fairy music (used in demo video): https://musopen.org/music/2204-the-nutcracker-suite-op-71a/

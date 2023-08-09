@@ -60,13 +60,12 @@ auto setup_signals(GLFWwindow* window) -> void {
 		g_input_state.changed |= input::State::eCursorPosition;
 	});
 	glfwSetKeyCallback(window, [](GLFWwindow*, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
-		g_input_state.keyboard.at(static_cast<std::size_t>(key)) = to_action(action);
+		if (key >= 0 && key < static_cast<int>(g_input_state.keyboard.size())) { g_input_state.keyboard.at(static_cast<std::size_t>(key)) = to_action(action); }
 		for (auto* receiver : reversed(g_receivers)) {
 			if (receiver->on_key(key, action, mods)) { break; }
 		}
 	});
 	glfwSetCharCallback(window, [](GLFWwindow*, std::uint32_t codepoint) {
-		g_input_state.characters.push_back(codepoint);
 		for (auto* receiver : reversed(g_receivers)) {
 			if (receiver->on_char(graphics::Codepoint{codepoint})) { break; }
 		}
@@ -76,6 +75,10 @@ auto setup_signals(GLFWwindow* window) -> void {
 		for (auto* receiver : reversed(g_receivers)) {
 			if (receiver->on_mouse(button, action, mods)) { break; }
 		}
+	});
+	glfwSetDropCallback(window, [](GLFWwindow* /*window*/, int path_count, char const* paths[]) { // NOLINT
+		auto const span = std::span{paths, static_cast<std::size_t>(path_count)};
+		for (auto const* path : span) { g_input_state.drops.emplace_back(path); }
 	});
 }
 
@@ -168,7 +171,7 @@ auto Engine::next_frame() -> bool {
 
 	update_stats();
 
-	g_input_state.characters.clear();
+	g_input_state.drops.clear();
 	g_input_state.changed = {};
 	auto advance = [](auto& action_array) {
 		for (auto& action : action_array) {
@@ -211,6 +214,8 @@ auto Engine::render(graphics::RenderFrame const& frame) -> void {
 	m_stats.frame.draw_calls = m_renderer->render(frame, *m_image_index);
 	m_renderer->submit_frame(*m_image_index);
 	m_image_index.reset();
+
+	m_audio_device->set_transform(frame.camera->transform.position(), frame.camera->transform.orientation());
 
 	if (m_queued_ops.present_mode) {
 		// There are very few points where we can recreate the swapchain without stalling the device.
@@ -283,6 +288,8 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 
 	ret->m_stats.gpu_name = ret->m_graphics_device->get_physical_device().getProperties().deviceName.data();
 	ret->m_stats.validation_enabled = ret->m_graphics_device->get_info().validation;
+
+	ret->m_audio_device = std::make_unique<audio::Device>();
 
 	return ret;
 }

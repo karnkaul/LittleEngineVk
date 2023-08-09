@@ -5,7 +5,7 @@
 namespace le::graphics {
 class ImageFile {
   public:
-	auto decompress(std::span<std::uint8_t const> compressed) -> bool;
+	auto decompress(std::span<std::byte const> compressed) -> bool;
 
 	[[nodiscard]] auto bitmap() const -> Bitmap;
 

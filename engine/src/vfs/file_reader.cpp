@@ -27,7 +27,7 @@ auto FileReader::find_super_directory(std::string_view suffix, std::string_view 
 	return {};
 }
 
-auto FileReader::write_file(char const* path, std::span<std::uint8_t const> bytes, bool overwrite) -> bool {
+auto FileReader::write_file(char const* path, std::span<std::byte const> bytes, bool overwrite) -> bool {
 	if (fs::exists(path)) {
 		if (!overwrite) { return false; }
 		fs::remove(path);
@@ -39,8 +39,8 @@ auto FileReader::write_file(char const* path, std::span<std::uint8_t const> byte
 	return true;
 }
 
-auto FileReader::read_bytes(Uri const& uri) -> std::vector<std::uint8_t> {
-	auto ret = std::vector<std::uint8_t>{};
+auto FileReader::read_bytes(Uri const& uri) -> std::vector<std::byte> {
+	auto ret = std::vector<std::byte>{};
 	read_into(ret, uri.absolute(m_mount_point).c_str());
 	return ret;
 }
@@ -51,7 +51,12 @@ auto FileReader::read_string(Uri const& uri) -> std::string {
 	return ret;
 }
 
-auto FileReader::write_to(Uri const& uri, std::span<std::uint8_t const> bytes, bool overwrite) const -> bool {
+auto FileReader::write_to(Uri const& uri, std::span<std::byte const> bytes, bool overwrite) const -> bool {
 	return write_file(uri.absolute(m_mount_point).c_str(), bytes, overwrite);
+}
+
+auto FileReader::to_uri(std::string_view const path) const -> Uri {
+	if (!fs::exists(path)) { return {}; }
+	return fs::absolute(path).lexically_relative(fs::absolute(m_mount_point)).generic_string();
 }
 } // namespace le

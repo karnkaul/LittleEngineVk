@@ -370,6 +370,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 		m_rendering = true;
 		ret += pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
 		pass.shadow_map = {};
+		pass.world_frustum = full_projection;
 		render_camera.camera = &ui_camera_v;
 		ret += pass.render_list(render_camera, m_ui_objects, sync.command_buffer);
 		m_rendering = false;

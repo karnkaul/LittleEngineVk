@@ -6,7 +6,9 @@ class PrimitiveRenderer : public Renderable {
   public:
 	auto set_quad(graphics::Quad quad) -> void;
 
-	auto render_tree(std::vector<graphics::RenderObject>& out) const -> void override;
+	auto setup() -> void override{};
+	auto tick(Duration /*dt*/) -> void override {}
+	auto render(std::vector<graphics::RenderObject>& out) const -> void override;
 
 	graphics::DynamicPrimitive primitive{};
 	graphics::UnlitMaterial material{};

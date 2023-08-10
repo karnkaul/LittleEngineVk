@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include <le/core/logger.hpp>
-#include <le/core/version.hpp>
+#include <le/environment.hpp>
 #include <le/graphics/device.hpp>
 #include <le/graphics/resource.hpp>
 

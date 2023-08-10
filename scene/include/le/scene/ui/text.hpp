@@ -27,8 +27,9 @@ class Text : public Renderable {
 
 	[[nodiscard]] auto get_text_start() const -> glm::vec2 { return m_text_start; }
 
+	auto setup() -> void override {}
 	auto tick(Duration dt) -> void override;
-	auto render_tree(std::vector<graphics::RenderObject>& out) const -> void override;
+	auto render(std::vector<graphics::RenderObject>& out) const -> void override;
 
   private:
 	auto set_dirty() -> Text&;

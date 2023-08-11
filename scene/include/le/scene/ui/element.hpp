@@ -26,6 +26,9 @@ class Element {
 	[[nodiscard]] auto is_destroyed() const -> bool { return m_destroyed; }
 	auto set_destroyed() -> void { m_destroyed = true; }
 
+	[[nodiscard]] auto is_active() const -> bool { return m_active; }
+	virtual auto set_active(bool active) -> void { m_active = active; }
+
 	[[nodiscard]] auto get_parent() const -> View& { return *m_parent_view; }
 	[[nodiscard]] auto get_parent_matrix() const -> glm::mat4 const& { return m_parent_mat; }
 
@@ -38,6 +41,7 @@ class Element {
   private:
 	glm::mat4 m_parent_mat{1.0f};
 	Ptr<View> m_parent_view{};
+	bool m_active{true};
 	bool m_destroyed{};
 
 	friend class View;

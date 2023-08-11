@@ -3,6 +3,8 @@
 #include <memory>
 
 namespace le::ui {
+class Quad;
+
 class View {
   public:
 	View() = default;
@@ -13,12 +15,16 @@ class View {
 
 	virtual ~View() = default;
 
-	virtual auto setup() -> void {}
+	virtual auto setup() -> void;
 	virtual auto tick(Duration dt) -> void;
 	virtual auto render_tree(std::vector<RenderObject>& out) const -> void;
 
 	auto push_element(std::unique_ptr<Element> element) -> void;
 	auto push_sub_view(std::unique_ptr<View> sub_view) -> void;
+
+	[[nodiscard]] auto get_background() const -> std::optional<graphics::Rgba>;
+	auto set_background(graphics::Rgba tint = graphics::white_v) -> void;
+	auto reset_background() -> void;
 
 	[[nodiscard]] auto is_destroyed() const -> bool { return m_destroyed; }
 	auto set_destroyed() -> void { m_destroyed = true; }
@@ -35,6 +41,7 @@ class View {
 	std::vector<Ptr<View>> m_view_cache{};
 	std::vector<Ptr<Element>> m_element_cache{};
 	Ptr<View> m_parent{};
+	Ptr<Quad> m_background{};
 	bool m_destroyed{};
 };
 } // namespace le::ui

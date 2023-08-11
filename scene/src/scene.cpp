@@ -48,7 +48,10 @@ auto Scene::clear_entities() -> void {
 	m_destroyed.clear();
 }
 
-auto Scene::setup() -> void { collision.setup(); }
+auto Scene::setup() -> void {
+	m_ui_root.transform.extent = Engine::self().framebuffer_extent();
+	collision.setup();
+}
 
 auto Scene::tick(Duration dt) -> void {
 	// clear cache

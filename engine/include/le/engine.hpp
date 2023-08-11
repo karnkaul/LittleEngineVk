@@ -52,6 +52,8 @@ class Engine : public MonoInstance<Engine> {
 
 	Engine([[maybe_unused]] ConstructTag tag) noexcept {}
 
+	Duration min_frame_time{};
+
   private:
 	auto update_stats() -> void;
 

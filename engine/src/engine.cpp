@@ -9,6 +9,7 @@
 #include <le/error.hpp>
 #include <le/input/receiver.hpp>
 #include <format>
+#include <thread>
 
 namespace le {
 namespace {
@@ -225,6 +226,12 @@ auto Engine::render(graphics::RenderFrame const& frame) -> void {
 	}
 
 	FrameProfiler::self().finish();
+
+	if (min_frame_time > 0s) {
+		auto const frame_time = Clock::now() - m_delta_time.start;
+		auto const remain = min_frame_time - frame_time;
+		if (remain > 0s) { std::this_thread::sleep_for(remain); }
+	}
 }
 
 auto Engine::shutdown() -> void {

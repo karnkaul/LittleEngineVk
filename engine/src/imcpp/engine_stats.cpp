@@ -2,13 +2,25 @@
 #include <le/core/fixed_string.hpp>
 #include <le/engine.hpp>
 #include <le/imcpp/engine_stats.hpp>
+#include <span>
 
 namespace le::imcpp {
+namespace {
+constexpr auto get_fps_colour(std::span<EngineStats::FpsRgb const> map, std::uint32_t const fps) -> ImVec4 {
+	for (auto const& fps_rgb : map) {
+		if (fps < fps_rgb.lower_bound) { return {fps_rgb.rgb.x, fps_rgb.rgb.y, fps_rgb.rgb.z, 1.0f}; }
+	}
+	return ImVec4{0.0f, 1.0f, 0.0f, 1.0f};
+}
+} // namespace
+
 auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	auto& engine = Engine::self();
 	auto const& stats = engine.get_stats();
 
-	m_frame_times.get_current() = std::chrono::duration<float, std::milli>{stats.frame.time}.count();
+	m_frame_times.data.resize(static_cast<std::size_t>(frame_samples));
+	m_frame_times.update_offset() = std::chrono::duration<float, std::milli>{stats.frame.time}.count();
+	m_frame_times.advance();
 
 	ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
 	ImGui::Text("%s", FixedString{"validation layers: {}", stats.validation_enabled ? "on" : "off"}.c_str());
@@ -32,10 +44,13 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	if (auto tn = TreeNode{"frame"}) {
 		ImGui::Text("%s", FixedString{"count: {}", stats.frame.count}.c_str());
 		ImGui::Text("%s", FixedString{"draw calls: {}", stats.frame.draw_calls}.c_str());
+		auto min_ft = std::chrono::duration<float, std::milli>{engine.min_frame_time}.count();
+		if (ImGui::DragFloat("min frame time", &min_ft, 1.0f, 0.0f, 100.0f)) { engine.min_frame_time = std::chrono::duration<float, std::milli>{min_ft}; }
+		ImGui::DragInt("samples", &frame_samples, 5.0f, 5, 1000);
 		auto const overlay_text = FixedString{"{:.1f}ms", m_frame_times.get_current()};
 		ImGui::PlotLines("time", m_frame_times.data.data(), static_cast<int>(m_frame_times.data.size()), static_cast<int>(m_frame_times.offset),
 						 overlay_text.c_str(), 0.1f, 30.0f, {0.0f, 50.0f});
-		ImGui::Text("%s", FixedString{"rate: {}FPS", stats.frame.rate}.c_str());
+		ImGui::TextColored(get_fps_colour(fps_rgb, stats.frame.rate), "%s", FixedString{"rate: {}FPS", stats.frame.rate}.c_str());
 	}
 	if (auto tn = TreeNode{"cache"}) {
 		ImGui::Text("%s", FixedString{"shaders: {}", stats.cache.shaders}.c_str());
@@ -53,8 +68,6 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 			ImGui::ProgressBar(ratio, {-1.0f, 0.0f}, overlay.c_str());
 		}
 	}
-
-	m_frame_times.advance();
 }
 
 auto EngineStats::set_frame_time_count(std::size_t const count) -> void {

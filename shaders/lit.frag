@@ -127,17 +127,18 @@ float compute_visibility() {
 		return 1.0;
 	}
 	// float bias = max(0.05 * (1.0 - dot(in_normal, -in_shadow_dir)), 0.005);
-	float slope = tan(acos(max(dot(in_normal, -in_shadow_dir), 0.0)));
-	float bias = clamp(0.005 * slope, 0.001, 0.05);
-	float current_depth = projected.z - bias;
+	const float slope = tan(acos(max(dot(in_normal, -in_shadow_dir), 0.0)));
+	const float bias = clamp(0.005 * slope, 0.001, 0.05);
+	const float current_depth = projected.z - bias;
 	projected = projected * 0.5 + 0.5;
 	projected.y = 1.0 - projected.y;
+	
 	float ret = 1.0;
-	vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
+	const vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
 	for (int x = -1; x <= 1; ++x) {
 		for (int y = -1; y <= 1; ++y) {
-			float pcf_depth = texture(shadow_map, projected.xy + vec2(x, y) * texel_size).x;
-			float shadow = current_depth > pcf_depth ? 0.1 : 0.0;
+			const float pcf_depth = texture(shadow_map, projected.xy + vec2(x, y) * texel_size).x;
+			const float shadow = current_depth > pcf_depth ? 0.1 : 0.0;
 			ret -= shadow;
 		}
 	}

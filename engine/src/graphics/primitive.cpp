@@ -99,9 +99,10 @@ auto DynamicPrimitive::set_geometry(Geometry&& geometry) -> void {
 }
 
 auto DynamicPrimitive::draw(std::uint32_t instances, vk::CommandBuffer cmd) const -> void {
-	if (m_geometry.vertices.empty()) { return; }
-
 	auto const index = Renderer::self().get_frame_index();
+
+	if (m_geometry.vertices.empty() || !m_vertices_indices[index]) { return; }
+
 	write_at(index);
 
 	auto const buffers = Buffers{

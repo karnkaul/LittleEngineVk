@@ -8,13 +8,13 @@
 namespace le::graphics {
 class Primitive {
   public:
-	Primitive() = default;
-
 	Primitive(Primitive const&) = delete;
-	Primitive(Primitive&&) = delete;
 	auto operator=(Primitive const&) -> Primitive& = delete;
-	auto operator=(Primitive&&) -> Primitive& = delete;
 
+	Primitive(Primitive&&) = default;
+	auto operator=(Primitive&&) -> Primitive& = default;
+
+	Primitive() = default;
 	virtual ~Primitive() = default;
 
 	struct Layout {

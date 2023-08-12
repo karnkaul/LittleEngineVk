@@ -19,8 +19,9 @@ auto Resources::try_load(Uri const& uri, Asset& out) -> bool {
 }
 
 auto Resources::store(Uri const& uri, std::unique_ptr<Asset> asset) -> Ptr<Asset> {
+	auto const type_name = asset->type_name();
 	auto* ret = set(uri, std::move(asset));
-	if (ret != nullptr) { g_log.info("'{}' {} stored", uri.value(), asset->type_name()); }
+	if (ret != nullptr) { g_log.info("'{}' {} stored", uri.value(), type_name); }
 	return ret;
 }
 

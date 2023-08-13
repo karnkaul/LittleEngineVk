@@ -298,6 +298,9 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 
 	ret->m_audio_device = std::make_unique<audio::Device>();
 
+	g_input_state.window_extent = ret->window_extent();
+	g_input_state.framebuffer_extent = ret->framebuffer_extent();
+
 	return ret;
 }
 } // namespace le

@@ -17,6 +17,17 @@ struct Quad {
 	auto operator==(Quad const&) const -> bool = default;
 };
 
+struct Circle {
+	static constexpr std::uint8_t resolution_v{128};
+
+	float diameter{1.0f};
+	std::uint32_t resolution{resolution_v};
+	Rgba rgb{white_v};
+	glm::vec3 origin{};
+
+	auto operator==(Circle const&) const -> bool = default;
+};
+
 struct Cube {
 	glm::vec3 size{1.0f, 1.0f, 1.0f};
 	Rgba rgb{white_v};
@@ -56,6 +67,7 @@ struct Geometry {
 	auto append(std::span<Vertex const> vs, std::span<std::uint32_t const> is) -> Geometry&;
 
 	auto append(Quad const& quad) -> Geometry&;
+	auto append(Circle const& circle) -> Geometry&;
 	auto append(Cube const& cube) -> Geometry&;
 	auto append(Sphere const& sphere) -> Geometry&;
 

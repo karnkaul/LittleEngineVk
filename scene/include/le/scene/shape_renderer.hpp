@@ -13,12 +13,14 @@ class ShapeRenderer : public RenderComponent {
 		primitive.set_geometry(graphics::Geometry::from(shape));
 	}
 
+	auto set_tint(graphics::Rgba tint) -> void { m_instance.tint = tint; }
+	auto get_tint() const -> graphics::Rgba { return m_instance.tint; }
+
 	graphics::DynamicPrimitive primitive{};
 	std::unique_ptr<graphics::Material> material{std::make_unique<graphics::UnlitMaterial>()};
 	graphics::PipelineState pipeline_state{};
-	graphics::Rgba tint{};
 
   protected:
-	mutable graphics::RenderInstance m_instance{};
+	graphics::RenderInstance m_instance{};
 };
 } // namespace le

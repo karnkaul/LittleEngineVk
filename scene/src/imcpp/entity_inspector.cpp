@@ -31,7 +31,8 @@ void inspect_instances(OpenWindow w, std::vector<graphics::RenderInstance>& out_
 
 void inspect_component(OpenWindow w, ShapeRenderer& shape_renderer) {
 	auto const reflector = imcpp::Reflector{w};
-	reflector(shape_renderer.tint, true);
+	auto tint = shape_renderer.get_tint();
+	if (reflector(tint, true)) { shape_renderer.set_tint(tint); }
 }
 
 void inspect_component(OpenWindow w, MeshRenderer& mesh_renderer) { inspect_instances(w, mesh_renderer.instances); }

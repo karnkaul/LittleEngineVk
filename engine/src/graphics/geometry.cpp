@@ -32,6 +32,34 @@ auto Geometry::append(Quad const& quad) -> Geometry& {
 	return append(vs, is);
 }
 
+auto Geometry::append(Circle const& circle) -> Geometry& {
+	auto deg = 0.0f;
+	auto const& o = circle.origin;
+	auto const rgba = circle.rgb.to_vec4();
+	auto const radius = 0.5f * circle.diameter;
+	auto const add_tri = [&](glm::vec2 const prev, glm::vec2 const curr) {
+		// NOLINTNEXTLINE
+		Vertex const vs[] = {
+			{o, rgba, front_v, glm::vec2{0.5f}},
+			{o + glm::vec3{radius * prev, 0.0f}, rgba, front_v, prev},
+			{o + glm::vec3{radius * curr, 0.0f}, rgba, front_v, curr},
+		};
+		// NOLINTNEXTLINE
+		std::uint32_t const is[] = {0, 1, 2};
+		append(vs, is);
+	};
+	auto const step = 360.0f / static_cast<float>(circle.resolution);
+	auto prev = glm::vec2{1.0f, 0.0f};
+	// NOLINTNEXTLINE
+	for (deg = step; deg <= 360.0f; deg += step) {
+		auto const rad = glm::radians(deg);
+		auto const curr = glm::vec2{std::cos(rad), -std::sin(rad)};
+		add_tri(prev, curr);
+		prev = curr;
+	}
+	return *this;
+}
+
 auto Geometry::append(Cube const& cube) -> Geometry& {
 	auto const h = 0.5f * cube.size;
 	auto const& o = cube.origin;

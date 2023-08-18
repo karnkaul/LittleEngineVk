@@ -25,7 +25,7 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
 	ImGui::Text("%s", FixedString{"validation layers: {}", stats.validation_enabled ? "on" : "off"}.c_str());
 
-	auto const& renderer = graphics::Renderer::self();
+	auto& renderer = graphics::Renderer::self();
 	auto const current_mode = renderer.get_present_mode();
 	if (auto combo = Combo{"vsync", graphics::Renderer::to_vsync_string(current_mode).data()}) {
 		for (auto const present_mode : renderer.get_supported_present_modes()) {
@@ -34,6 +34,8 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 			}
 		}
 	}
+	bool is_wireframe = renderer.polygon_mode == vk::PolygonMode::eLine;
+	if (ImGui::Checkbox("wireframe", &is_wireframe)) { renderer.polygon_mode = is_wireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill; }
 
 	auto const framebuffer_extent = engine.framebuffer_extent();
 	ImGui::Text("%s", FixedString{"framebuffer: {}x{}", framebuffer_extent.x, framebuffer_extent.y}.c_str());

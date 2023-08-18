@@ -66,6 +66,7 @@ class Renderer : public MonoInstance<Renderer> {
 	std::optional<glm::vec2> custom_world_frustum{};
 	glm::vec3 shadow_frustum{100.0f};
 	vk::Extent2D shadow_map_extent{2048, 2048};
+	vk::PolygonMode polygon_mode{vk::PolygonMode::eFill};
 
   private:
 	struct Frame {

@@ -1,5 +1,4 @@
 #pragma once
-#include <le/vfs/uri.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -10,7 +9,6 @@ struct PipelineFormat {
 
 struct PipelineState {
 	vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
-	vk::PolygonMode polygon_mode{vk::PolygonMode::eFill};
 	vk::CompareOp depth_compare{vk::CompareOp::eLess};
 	vk::Bool32 depth_test_write{vk::True};
 	float line_width{1.0f};

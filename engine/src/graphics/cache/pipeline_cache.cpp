@@ -49,9 +49,10 @@ struct PipelineShaderLayout {
 auto const g_log{logger::Logger{"Cache"}};
 } // namespace
 
-PipelineCache::Key::Key(PipelineFormat format, Shader shader, PipelineState state) : format(format), shader(std::move(shader)), state(state) {
-	cached_hash = make_combined_hash(shader.vertex.hash(), shader.fragment.hash(), state.topology, state.polygon_mode, state.depth_compare,
-									 state.depth_test_write, format.colour, format.depth);
+PipelineCache::Key::Key(PipelineFormat format, Shader shader, PipelineState state, vk::PolygonMode polygon_mode)
+	: format(format), shader(std::move(shader)), state(state), polygon_mode(polygon_mode) {
+	cached_hash = make_combined_hash(shader.vertex.hash(), shader.fragment.hash(), state.topology, polygon_mode, state.depth_compare, state.depth_test_write,
+									 format.colour, format.depth);
 }
 
 PipelineCache::PipelineCache(ShaderLayout shader_layout) { set_shader_layout(std::move(shader_layout)); }
@@ -71,8 +72,8 @@ auto PipelineCache::set_shader_layout(ShaderLayout shader_layout) -> void {
 	m_pipeline_layout = m_device.createPipelineLayoutUnique(plci);
 }
 
-auto PipelineCache::load(PipelineFormat format, Shader shader, PipelineState state) -> vk::Pipeline {
-	auto const key = Key{format, std::move(shader), state};
+auto PipelineCache::load(PipelineFormat format, Shader shader, PipelineState state, vk::PolygonMode polygon_mode) -> vk::Pipeline {
+	auto const key = Key{format, std::move(shader), state, polygon_mode};
 	auto itr = m_pipelines.find(key);
 	if (itr == m_pipelines.end()) {
 		auto ret = build(key);
@@ -123,7 +124,7 @@ auto PipelineCache::build(Key const& key) -> vk::UniquePipeline {
 	gpci.pStages = shader_stages.data();
 
 	auto prsci = vk::PipelineRasterizationStateCreateInfo{};
-	prsci.polygonMode = key.state.polygon_mode;
+	prsci.polygonMode = key.polygon_mode;
 	prsci.cullMode = vk::CullModeFlagBits::eNone;
 	gpci.pRasterizationState = &prsci;
 

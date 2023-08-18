@@ -9,7 +9,7 @@
 
 namespace le::graphics {
 struct Quad {
-	glm::vec2 size{1.0f, 1.0f};
+	glm::vec2 size{1.0f};
 	UvRect uv{uv_rect_v};
 	Rgba rgb{white_v};
 	glm::vec3 origin{};
@@ -29,7 +29,7 @@ struct Circle {
 };
 
 struct Cube {
-	glm::vec3 size{1.0f, 1.0f, 1.0f};
+	glm::vec3 size{1.0f};
 	Rgba rgb{white_v};
 	glm::vec3 origin{};
 

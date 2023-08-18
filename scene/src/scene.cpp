@@ -100,7 +100,7 @@ auto Scene::render_entities(std::vector<graphics::RenderObject>& out) const -> v
 	}
 
 	// sort render components in order of layers (since render_entities() is const)
-	std::ranges::sort(m_active.render_components, [](Ptr<RenderComponent const> a, Ptr<RenderComponent const> b) { return a->layer < b->layer; });
+	std::ranges::sort(m_active.render_components, [](Ptr<RenderComponent const> a, Ptr<RenderComponent const> b) { return a->render_layer < b->render_layer; });
 
 	for (auto const& render_component : m_active.render_components) { render_component->render_to(out); }
 

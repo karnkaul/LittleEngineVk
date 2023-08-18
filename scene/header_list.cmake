@@ -21,6 +21,7 @@ set(header_list
   ${prefix}/scene/mesh_renderer.hpp
   ${prefix}/scene/particle_system.hpp
   ${prefix}/scene/render_component.hpp
+  ${prefix}/scene/render_layer.hpp
   ${prefix}/scene/scene_manager.hpp
   ${prefix}/scene/scene_renderer.hpp
   ${prefix}/scene/scene_switcher.hpp

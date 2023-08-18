@@ -58,13 +58,13 @@ auto make_debug_messenger(vk::Instance instance) -> vk::UniqueDebugUtilsMessenge
 		static auto const log{logger::Logger{"vk"}};
 		std::string_view const msg = (pCallbackData != nullptr) && (pCallbackData->pMessage != nullptr) ? pCallbackData->pMessage : "UNKNOWN";
 		switch (messageSeverity) {
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: log.error("{}", msg); return vk::Bool32{1};
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: log.error("{}", msg); return vk::True;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: log.warn("{}", msg); break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: log.info("{}", msg); break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: log.debug("{}", msg); break;
 		default: break;
 		}
-		return vk::Bool32{0};
+		return vk::False;
 	};
 
 	auto dumci = vk::DebugUtilsMessengerCreateInfoEXT{};
@@ -192,7 +192,7 @@ Device::Device(Ptr<GLFWwindow> window, CreateInfo const& create_info) {
 Device::~Device() { m_device->waitIdle(); }
 
 auto Device::wait_for(vk::Fence const fence, std::uint64_t const timeout) const -> bool {
-	return get_device().waitForFences(fence, vk::Bool32{1}, timeout) == vk::Result::eSuccess;
+	return get_device().waitForFences(fence, vk::True, timeout) == vk::Result::eSuccess;
 }
 
 auto Device::reset(vk::Fence const fence, bool wait_first) const -> bool {

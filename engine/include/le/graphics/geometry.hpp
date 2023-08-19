@@ -28,6 +28,21 @@ struct Circle {
 	auto operator==(Circle const&) const -> bool = default;
 };
 
+struct NineSlice {
+	glm::vec2 size{1.0f};
+	glm::vec2 top{0.25f};
+	glm::vec2 bottom{0.25f};
+	UvRect top_uv{.lt = {}, .rb = glm::vec2{0.25f}};
+	UvRect bottom_uv{.lt = glm::vec2{0.75f}, .rb = glm::vec2{1.0f}};
+	bool rounded_corners{}; // TODO
+	Rgba rgb{white_v};
+	glm::vec3 origin{};
+
+	[[nodiscard]] auto rescaled(glm::vec2 extent) const -> NineSlice;
+
+	auto operator==(NineSlice const&) const -> bool = default;
+};
+
 struct Cube {
 	glm::vec3 size{1.0f};
 	Rgba rgb{white_v};
@@ -68,6 +83,8 @@ struct Geometry {
 
 	auto append(Quad const& quad) -> Geometry&;
 	auto append(Circle const& circle) -> Geometry&;
+	auto append(NineSlice const& nine_slice) -> Geometry&;
+
 	auto append(Cube const& cube) -> Geometry&;
 	auto append(Sphere const& sphere) -> Geometry&;
 

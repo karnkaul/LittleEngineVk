@@ -55,7 +55,7 @@ auto Font::Pen::generate_quads(Geometry& out, std::string_view line) -> Pen& {
 		auto const quad = Quad{
 			.size = rect.extent(),
 			.uv = glyph.uv_rect,
-			.rgb = vertex_colour,
+			.rgba = vertex_colour,
 			.origin = glm::vec3{rect.centre(), 0.0f},
 		};
 		out.append(quad);

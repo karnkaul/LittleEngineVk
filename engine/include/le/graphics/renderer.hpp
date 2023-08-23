@@ -101,7 +101,7 @@ class Renderer : public MonoInstance<Renderer> {
 	auto bake_objects(RenderFrame const& render_frame) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
-	PipelineCache m_pipeline_cache;
+	PipelineCache m_pipeline_cache{};
 	SamplerCache m_sampler_cache{};
 	DescriptorCache m_descriptor_cache{};
 	ScratchBufferCache m_scratch_buffer_cache{};

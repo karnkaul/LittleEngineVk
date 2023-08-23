@@ -93,7 +93,7 @@ auto PipelineCache::clear_pipelines() -> void {
 }
 
 auto PipelineCache::clear_pipelines_and_shaders() -> void {
-	Device::self().get_device().waitIdle();
+	m_device.waitIdle();
 	clear_pipelines();
 	m_shader_cache.clear_shaders();
 }

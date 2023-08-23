@@ -145,8 +145,8 @@ auto make_device(Gpu const& gpu) -> vk::UniqueDevice {
 		}
 	}
 
-	auto dynamic_rendering_feature = vk::PhysicalDeviceDynamicRenderingFeatures{1};
-	auto synchronization_2_feature = vk::PhysicalDeviceSynchronization2FeaturesKHR{1};
+	auto dynamic_rendering_feature = vk::PhysicalDeviceDynamicRenderingFeatures{vk::True};
+	auto synchronization_2_feature = vk::PhysicalDeviceSynchronization2FeaturesKHR{vk::True};
 	synchronization_2_feature.pNext = &dynamic_rendering_feature;
 
 	dci.queueCreateInfoCount = 1;

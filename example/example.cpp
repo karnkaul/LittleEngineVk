@@ -99,7 +99,7 @@ class BrainStem : public Scene {
 		// offset y downwards by 100 pixels.
 		title_text->transform.position.y = -100.0f;
 		// push title to root view.
-		get_ui_root().push_sub_view(std::move(title_text));
+		get_ui_root().push_element(std::move(title_text));
 	}
 
 	auto update_editor() -> void {

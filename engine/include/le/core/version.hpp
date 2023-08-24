@@ -14,7 +14,5 @@ struct Version {
 	auto operator<=>(Version const&) const = default;
 };
 
-constexpr Version const build_version_v{LE_VERSION_MAJOR, LE_VERSION_MINOR, LE_VERSION_PATCH};
-
 auto to_string(Version const& version) -> std::string;
 } // namespace le

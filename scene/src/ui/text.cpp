@@ -59,10 +59,7 @@ auto Text::tick(Duration /*dt*/) -> void {
 	if (m_text_dirty) { refresh(); }
 }
 
-auto Text::render_tree(std::vector<graphics::RenderObject>& out) const -> void {
-	render_text(out);
-	Renderable::render_tree(out);
-}
+auto Text::render(std::vector<graphics::RenderObject>& out) const -> void { render_text(out); }
 
 auto Text::render_text(std::vector<graphics::RenderObject>& out) const -> void { render_to(out, &m_text_material, &m_text_primitive); }
 } // namespace le::ui

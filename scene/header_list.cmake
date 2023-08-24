@@ -5,6 +5,7 @@ set(header_list
   ${prefix}/scene/imcpp/scene_inspector.hpp
   ${prefix}/scene/imcpp/scene_graph.hpp
 
+  ${prefix}/scene/ui/element.hpp
   ${prefix}/scene/ui/input_text.hpp
   ${prefix}/scene/ui/primitive_renderer.hpp
   ${prefix}/scene/ui/rect_transform.hpp
@@ -20,6 +21,7 @@ set(header_list
   ${prefix}/scene/mesh_renderer.hpp
   ${prefix}/scene/particle_system.hpp
   ${prefix}/scene/render_component.hpp
+  ${prefix}/scene/render_layer.hpp
   ${prefix}/scene/scene_manager.hpp
   ${prefix}/scene/scene_renderer.hpp
   ${prefix}/scene/scene_switcher.hpp

@@ -6,9 +6,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
   $<$<BOOL:${LE_PCH}>:LE_PCH>
   $<$<BOOL:${LE_USE_FREETYPE}>:LE_USE_FREETYPE>
   $<$<BOOL:${CAPO_USE_OPENAL}>:CAPO_USE_OPENAL>
-  LE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-  LE_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-  LE_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -21,6 +18,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   include
+  "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -30,6 +28,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_compile_features(${PROJECT_NAME} PUBLIC
   cxx_std_20
 )
+
+configure_file(src/build_version.hpp.in "${CMAKE_CURRENT_BINARY_DIR}/include/le/build_version.hpp")
 
 add_subdirectory(src)
 

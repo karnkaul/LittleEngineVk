@@ -5,7 +5,11 @@ using namespace std::chrono_literals;
 
 namespace le {
 using Clock = std::chrono::steady_clock;
-using Duration = std::chrono::duration<float>;
+
+template <typename PeriodT = std::ratio<1, 1>>
+using FDuration = std::chrono::duration<float, PeriodT>;
+
+using Duration = FDuration<>;
 
 ///
 /// \brief Stateful delta-time computer.

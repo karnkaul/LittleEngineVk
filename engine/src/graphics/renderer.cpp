@@ -146,11 +146,12 @@ struct RenderPass { // NOLINT
 	RenderTarget render_target{};
 	ImageView shadow_map{};
 	glm::vec2 world_frustum{};
+	vk::PolygonMode polygon_mode{};
 
 	mutable Ptr<Material const> last_bound{};
 
-	RenderPass(RenderTarget const& render_target, ImageView const& shadow_map, glm::vec2 world_frustum)
-		: render_target(render_target), shadow_map(shadow_map), world_frustum(world_frustum) {}
+	RenderPass(RenderTarget const& render_target, ImageView const& shadow_map, glm::vec2 world_frustum, vk::PolygonMode polygon_mode)
+		: render_target(render_target), shadow_map(shadow_map), world_frustum(world_frustum), polygon_mode(polygon_mode) {}
 
 	virtual auto get_shader(Material const& material) const -> Shader { return material.get_shader(); }
 
@@ -170,7 +171,7 @@ struct RenderPass { // NOLINT
 			auto shader = get_shader(material);
 			if (!shader) { continue; }
 
-			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state);
+			auto const pipeline = PipelineCache::self().load(pipeline_format, std::move(shader), baked.object.pipeline_state, polygon_mode);
 			if (!renderer.bind_pipeline(pipeline)) { continue; }
 
 			cmd.setLineWidth(renderer.get_line_width_limit().clamp(baked.object.pipeline_state.line_width));
@@ -191,7 +192,7 @@ struct RenderPass { // NOLINT
 };
 
 struct ShadowPass : RenderPass { // NOLINT
-	ShadowPass(RenderTarget const& render_target, glm::vec2 world_frustum) : RenderPass(render_target, {}, world_frustum) {}
+	ShadowPass(RenderTarget const& render_target, glm::vec2 world_frustum) : RenderPass(render_target, {}, world_frustum, vk::PolygonMode::eFill) {}
 
 	auto get_shader(Material const& material) const -> Shader final {
 		if (!material.cast_shadow()) { return {}; }
@@ -354,6 +355,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 			render_target,
 			shadow_map_image_view,
 			custom_world_frustum.value_or(full_projection),
+			polygon_mode,
 		};
 		auto render_camera = RenderCamera{
 			.camera = render_frame.camera,
@@ -370,6 +372,7 @@ auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image
 		m_rendering = true;
 		ret += pass.render_list(render_camera, m_scene_objects, sync.command_buffer);
 		pass.shadow_map = {};
+		pass.world_frustum = full_projection;
 		render_camera.camera = &ui_camera_v;
 		ret += pass.render_list(render_camera, m_ui_objects, sync.command_buffer);
 		m_rendering = false;

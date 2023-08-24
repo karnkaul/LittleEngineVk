@@ -9,6 +9,7 @@
 #include <le/error.hpp>
 #include <le/input/receiver.hpp>
 #include <format>
+#include <thread>
 
 namespace le {
 namespace {
@@ -225,6 +226,12 @@ auto Engine::render(graphics::RenderFrame const& frame) -> void {
 	}
 
 	FrameProfiler::self().finish();
+
+	if (min_frame_time > 0s) {
+		auto const frame_time = Clock::now() - m_delta_time.start;
+		auto const remain = min_frame_time - frame_time;
+		if (remain > 0s) { std::this_thread::sleep_for(remain); }
+	}
 }
 
 auto Engine::shutdown() -> void {
@@ -290,6 +297,9 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 	ret->m_stats.validation_enabled = ret->m_graphics_device->get_info().validation;
 
 	ret->m_audio_device = std::make_unique<audio::Device>();
+
+	g_input_state.window_extent = ret->window_extent();
+	g_input_state.framebuffer_extent = ret->framebuffer_extent();
 
 	return ret;
 }

@@ -1,9 +1,12 @@
 #pragma once
 #include <le/graphics/primitive.hpp>
-#include <le/scene/ui/view.hpp>
+#include <le/scene/ui/element.hpp>
 
 namespace le::ui {
-class Renderable : public View {
+using graphics::Material;
+using graphics::Primitive;
+
+class Renderable : public Element {
   public:
 	static constexpr auto pipeline_state_v{graphics::PipelineState{.depth_test_write = 0}};
 

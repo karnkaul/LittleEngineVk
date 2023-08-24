@@ -1,0 +1,10 @@
+#pragma once
+#include <le/core/version.hpp>
+
+namespace le {
+constexpr Version build_version_v{
+	.major = @PROJECT_VERSION_MAJOR@,
+	.minor = @PROJECT_VERSION_MINOR@,
+	.patch = @PROJECT_VERSION_PATCH@,
+};
+}

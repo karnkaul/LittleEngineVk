@@ -16,13 +16,14 @@ class EntityInspector {
 
 	auto inspect(OpenWindow w, Entity& out) -> void;
 
+  protected:
+	virtual auto inspect_components(OpenWindow w, Entity& out) -> void;
+
   private:
 	struct EntityName {
 		std::optional<Id<Entity>> previous{};
 		imcpp::InputText<> input_text{};
 	};
-
-	virtual auto inspect_components(OpenWindow w, Entity& out) -> void;
 
 	auto get_entity_name(Id<Entity> id, std::string_view name) -> imcpp::InputText<>&;
 

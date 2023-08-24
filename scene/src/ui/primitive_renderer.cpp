@@ -3,12 +3,15 @@
 namespace le::ui {
 auto PrimitiveRenderer::set_quad(graphics::Quad quad) -> void { primitive.set_geometry(graphics::Geometry::from(quad)); }
 
-auto PrimitiveRenderer::render_tree(std::vector<graphics::RenderObject>& out) const -> void {
+auto PrimitiveRenderer::render(std::vector<graphics::RenderObject>& out) const -> void {
+	if (!is_active()) { return; }
+
 	render_to(out, &material, &primitive);
-	Renderable::render_tree(out);
 }
 
 auto Quad::tick(Duration dt) -> void {
+	if (!is_active()) { return; }
+
 	PrimitiveRenderer::tick(dt);
 
 	set_quad(graphics::Quad{.size = transform.extent});

@@ -13,14 +13,15 @@ auto Resources::try_load(Uri const& uri, Asset& out) -> bool {
 		g_log.error("failed to load {}: '{}'", out.type_name(), uri.value());
 		return false;
 	}
-	auto const dt = std::chrono::duration<float, std::milli>{delta_time()};
+	auto const dt = FDuration<std::milli>{delta_time()};
 	g_log.info("[{:.1f}ms] '{}' {} loaded", dt.count(), uri.value(), out.type_name());
 	return true;
 }
 
 auto Resources::store(Uri const& uri, std::unique_ptr<Asset> asset) -> Ptr<Asset> {
+	auto const type_name = asset->type_name();
 	auto* ret = set(uri, std::move(asset));
-	if (ret != nullptr) { g_log.info("'{}' {} stored", uri.value(), asset->type_name()); }
+	if (ret != nullptr) { g_log.info("'{}' {} stored", uri.value(), type_name); }
 	return ret;
 }
 

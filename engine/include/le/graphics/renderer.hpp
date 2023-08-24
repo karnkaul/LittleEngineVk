@@ -66,6 +66,7 @@ class Renderer : public MonoInstance<Renderer> {
 	std::optional<glm::vec2> custom_world_frustum{};
 	glm::vec3 shadow_frustum{100.0f};
 	vk::Extent2D shadow_map_extent{2048, 2048};
+	vk::PolygonMode polygon_mode{vk::PolygonMode::eFill};
 
   private:
 	struct Frame {
@@ -100,7 +101,7 @@ class Renderer : public MonoInstance<Renderer> {
 	auto bake_objects(RenderFrame const& render_frame) -> void;
 
 	std::unique_ptr<DearImGui> m_imgui{};
-	PipelineCache m_pipeline_cache;
+	PipelineCache m_pipeline_cache{};
 	SamplerCache m_sampler_cache{};
 	DescriptorCache m_descriptor_cache{};
 	ScratchBufferCache m_scratch_buffer_cache{};

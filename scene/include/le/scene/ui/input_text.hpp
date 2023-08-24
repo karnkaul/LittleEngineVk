@@ -1,6 +1,8 @@
 #pragma once
 #include <le/input/receiver.hpp>
+#include <le/scene/ui/primitive_renderer.hpp>
 #include <le/scene/ui/text.hpp>
+#include <le/scene/ui/view.hpp>
 
 namespace le::ui {
 struct Cursor {
@@ -13,7 +15,7 @@ struct Cursor {
 	std::size_t position{};
 };
 
-class InputText : public Renderable, public input::Receiver {
+class InputText : public View, public input::Receiver {
   public:
 	auto reset_blink() -> void;
 	auto write(std::string_view str) -> void;
@@ -33,16 +35,14 @@ class InputText : public Renderable, public input::Receiver {
   protected:
 	auto setup() -> void override;
 	auto tick(Duration dt) -> void override;
-	auto render_tree(std::vector<graphics::RenderObject>& out) const -> void override;
 
 	auto on_key(int key, int action, int mods) -> bool override;
 	auto on_char(input::Codepoint codepoint) -> bool override;
 
 	auto update_cursor(Duration dt) -> void;
-	auto render_cursor(std::vector<graphics::RenderObject>& out) const -> void;
 
-	graphics::DynamicPrimitive m_cursor_primitive{};
 	Duration m_cursor_elapsed{};
+	Ptr<PrimitiveRenderer> m_cursor{};
 	Ptr<Text> m_text{};
 };
 } // namespace le::ui

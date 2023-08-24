@@ -4,27 +4,20 @@
 
 namespace le::ui {
 auto InputText::setup() -> void {
-	Renderable::setup();
+	View::setup();
 
 	auto text_view = std::make_unique<Text>();
 	m_text = text_view.get();
-	push_sub_view(std::move(text_view));
+	push_element(std::move(text_view));
+
+	auto cursor = std::make_unique<PrimitiveRenderer>();
+	m_cursor = cursor.get();
+	push_element(std::move(cursor));
 }
 
 auto InputText::tick(Duration dt) -> void {
-	Renderable::tick(dt);
-	// if (is_connected()) { update_input(); }
+	View::tick(dt);
 	update_cursor(dt);
-}
-
-auto InputText::render_tree(std::vector<graphics::RenderObject>& out) const -> void {
-	render_cursor(out);
-	Renderable::render_tree(out);
-}
-
-auto InputText::render_cursor(std::vector<graphics::RenderObject>& out) const -> void {
-	if (!enabled) { return; }
-	render_to(out, &graphics::Material::or_default({}), &m_cursor_primitive);
 }
 
 auto InputText::reset_blink() -> void { m_cursor_elapsed = {}; }
@@ -152,15 +145,20 @@ auto InputText::update_cursor(Duration dt) -> void {
 	m_cursor_elapsed += dt;
 	if (m_cursor_elapsed > cursor.blink_rate) { m_cursor_elapsed = {}; }
 
-	auto const blink_ratio = m_cursor_elapsed / cursor.blink_rate;
-	auto const alpha = 2.0f * std::abs(blink_ratio - 0.5f);
-	render_instance.tint = m_text->get_tint();
-	render_instance.tint.channels[3] = graphics::Rgba::to_u8(alpha);
+	if (enabled) {
+		auto const blink_ratio = m_cursor_elapsed / cursor.blink_rate;
+		auto const alpha = 2.0f * std::abs(blink_ratio - 0.5f);
+		auto tint = m_text->get_tint();
+		tint.channels[3] = graphics::Rgba::to_u8(alpha);
+		m_cursor->set_tint(tint);
+	} else {
+		m_cursor->set_tint(graphics::blank_v);
+	}
 
 	auto const cursor_size = static_cast<float>(m_text->get_height()) * cursor.scale;
 	auto const pre_cursor_text = m_text->get_text().substr(0, cursor.position);
 	auto const pre_cursor_text_extent = graphics::Font::Pen{m_text->get_font(), m_text->get_height()}.calc_line_extent(pre_cursor_text);
 	auto cursor_offset = m_text->get_text_start() + glm::vec2{pre_cursor_text_extent.x, cursor.n_y_offset * cursor_size.y};
-	m_cursor_primitive.set_geometry(graphics::Geometry::from(graphics::Quad{.size = cursor_size, .origin = {cursor_offset, 0.0f}}));
+	m_cursor->primitive.set_geometry(graphics::Geometry::from(graphics::Quad{.size = cursor_size, .origin = {cursor_offset, 0.0f}}));
 }
 } // namespace le::ui

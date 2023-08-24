@@ -1,6 +1,7 @@
 #pragma once
 #include <le/core/mono_instance.hpp>
 #include <le/core/ptr.hpp>
+#include <le/core/time.hpp>
 #include <le/error.hpp>
 #include <le/resources/asset.hpp>
 #include <le/vfs/uri.hpp>
@@ -53,7 +54,7 @@ class Resources : public MonoInstance<Resources> {
 	template <std::derived_from<Asset> Type>
 	[[nodiscard]] static auto is_ready(std::future<Ptr<Type>> const& future) -> bool {
 		if (!future.valid()) { return false; }
-		return future.wait_for(std::chrono::seconds{}) == std::future_status::ready;
+		return future.wait_for(0s) == std::future_status::ready;
 	}
 
 	auto clear() -> void;

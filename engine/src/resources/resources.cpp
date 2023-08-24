@@ -13,7 +13,7 @@ auto Resources::try_load(Uri const& uri, Asset& out) -> bool {
 		g_log.error("failed to load {}: '{}'", out.type_name(), uri.value());
 		return false;
 	}
-	auto const dt = std::chrono::duration<float, std::milli>{delta_time()};
+	auto const dt = FDuration<std::milli>{delta_time()};
 	g_log.info("[{:.1f}ms] '{}' {} loaded", dt.count(), uri.value(), out.type_name());
 	return true;
 }

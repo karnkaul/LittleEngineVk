@@ -19,7 +19,7 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	auto const& stats = engine.get_stats();
 
 	m_frame_times.data.resize(static_cast<std::size_t>(frame_samples));
-	m_frame_times.update_offset() = std::chrono::duration<float, std::milli>{stats.frame.time}.count();
+	m_frame_times.update_offset() = FDuration<std::milli>{stats.frame.time}.count();
 	m_frame_times.advance();
 
 	ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
@@ -46,8 +46,8 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 	if (auto tn = TreeNode{"frame"}) {
 		ImGui::Text("%s", FixedString{"count: {}", stats.frame.count}.c_str());
 		ImGui::Text("%s", FixedString{"draw calls: {}", stats.frame.draw_calls}.c_str());
-		auto min_ft = std::chrono::duration<float, std::milli>{engine.min_frame_time}.count();
-		if (ImGui::DragFloat("min frame time", &min_ft, 1.0f, 0.0f, 100.0f)) { engine.min_frame_time = std::chrono::duration<float, std::milli>{min_ft}; }
+		auto min_ft = FDuration<std::milli>{engine.min_frame_time}.count();
+		if (ImGui::DragFloat("min frame time", &min_ft, 1.0f, 0.0f, 100.0f)) { engine.min_frame_time = FDuration<std::milli>{min_ft}; }
 		ImGui::DragInt("samples", &frame_samples, 5.0f, 5, 1000);
 		auto const overlay_text = FixedString{"{:.1f}ms", m_frame_times.get_current()};
 		ImGui::PlotLines("time", m_frame_times.data.data(), static_cast<int>(m_frame_times.data.size()), static_cast<int>(m_frame_times.offset),

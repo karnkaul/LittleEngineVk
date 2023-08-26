@@ -55,6 +55,9 @@ class Entity final {
 	template <std::derived_from<Component> ComponentT>
 	[[nodiscard]] auto find_component() const -> Ptr<ComponentT> {
 		if (auto it = m_components.find(typeid(ComponentT)); it != m_components.end()) { return static_cast<ComponentT*>(it->second.component.get()); }
+		for (auto const& [_, comp] : m_components) {
+			if (auto* ret = dynamic_cast<ComponentT*>(comp.component.get())) { return ret; }
+		}
 		return nullptr;
 	}
 

@@ -48,7 +48,10 @@ struct Particle::Config {
 	} initial{};
 
 	struct {
-		InclusiveRange<glm::vec3> linear{glm::vec3{-1.0f}, glm::vec3{1.0f}};
+		struct {
+			InclusiveRange<Radians> angle{Degrees{-180.0f}, Degrees{180.0f}};
+			InclusiveRange<float> speed{-1.0f, 1.0f};
+		} linear{};
 		InclusiveRange<Radians> angular{Degrees{-90.0f}, Degrees{90.0f}};
 	} velocity{};
 

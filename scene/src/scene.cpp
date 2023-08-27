@@ -12,7 +12,7 @@ Scene::~Scene() {
 }
 
 auto Scene::spawn(std::string name, Ptr<Entity> parent) -> Entity& {
-	auto const parent_id = parent != nullptr ? std::optional<Id<Node>>{parent->m_node_id} : std::nullopt;
+	auto const parent_id = parent != nullptr ? std::optional<Id<Node>>{parent->node_id()} : std::nullopt;
 	auto& node = m_node_tree.add(NodeCreateInfo{.name = std::move(name), .parent = parent_id});
 	node.entity_id = m_next_id++;
 	auto [it, _] = m_entity_map.insert_or_assign(*node.entity_id, Entity{this, &node});
@@ -36,7 +36,7 @@ auto Scene::get_entity(Id<Entity> id) const -> Entity const& {
 // NOLINTNEXTLINE
 auto Scene::get_entity(Id<Entity> id) -> Entity& { return const_cast<Entity&>(std::as_const(*this).get_entity(id)); }
 
-auto Scene::reparent(Entity& entity, Entity& parent) -> void { m_node_tree.reparent(entity.get_node(), parent.m_node_id); }
+auto Scene::reparent(Entity& entity, Entity& parent) -> void { m_node_tree.reparent(entity.get_node(), parent.node_id()); }
 
 auto Scene::unparent(Entity& entity) -> void { m_node_tree.reparent(entity.get_node(), {}); }
 
@@ -81,7 +81,7 @@ auto Scene::tick(Duration dt) -> void {
 	auto const destroy_entity = [this](Node const& node) { m_entity_map.erase(*node.entity_id); };
 	for (auto const destroyed : m_destroyed) {
 		auto const& entity = m_entity_map.at(destroyed);
-		m_node_tree.remove(entity.m_node_id, destroy_entity);
+		m_node_tree.remove(entity.node_id(), destroy_entity);
 	}
 
 	m_ui_root.transform.extent = Engine::self().framebuffer_extent();

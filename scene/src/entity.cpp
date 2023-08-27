@@ -5,11 +5,6 @@
 namespace le {
 Entity::Entity(NotNull<Scene*> scene, NotNull<Node const*> node) : m_scene(scene), m_id(*node->entity_id), m_node_id(node->id()) {}
 
-Entity::~Entity() {
-	// subcomponent destructors might call get_entity() / get_scene(), need to invoke them before this destructor exits
-	m_components.clear();
-}
-
 auto Entity::get_node() const -> Node const& { return m_scene->get_node_tree().get(m_node_id); }
 auto Entity::get_node() -> Node& { return m_scene->make_node_locator().get(m_node_id); }
 

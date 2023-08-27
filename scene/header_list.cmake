@@ -14,6 +14,7 @@ set(header_list
   ${prefix}/scene/ui/view.hpp
 
   ${prefix}/scene/collision.hpp
+  ${prefix}/scene/component_map.hpp
   ${prefix}/scene/component.hpp
   ${prefix}/scene/entity.hpp
   ${prefix}/scene/freecam_controller.hpp

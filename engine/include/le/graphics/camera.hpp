@@ -36,8 +36,8 @@ struct Camera {
 
 	struct Fog {
 		Rgba tint{.channels = {0x77, 0x77, 0x77, 0xff}};
-		float start{10.0f};
-		float thickness{40.0f};
+		float start{0.0f};
+		float thickness{0.0f};
 	};
 
 	static auto orthographic(glm::vec2 extent, ViewPlane view_plane = {-100.0f, 100.0f}) -> glm::mat4;

@@ -102,7 +102,7 @@ auto append_sliced(Geometry& out, Sliced const& sliced) -> void {
 		0.5f * glm::vec3{-nine_slice.size.bottom.x, nine_slice.size.bottom.y, 0.0f}, // 22
 	};
 
-	auto const rgba = Rgba::to_linear(nine_slice.rgba.to_tint());
+	auto const rgba = Rgba::to_linear(nine_slice.rgba.to_vec4());
 	auto const append_corner = [&](std::size_t index, glm::vec2 size, UvRect uv, glm::vec3 const& origin) {
 		if (sliced.corner_resolution > 1) {
 			auto const arc = corner_arcs.at(index);
@@ -187,7 +187,7 @@ auto Geometry::append(Quad const& quad) -> Geometry& {
 	if (quad.size.x <= 0.0f || quad.size.y <= 0.0f) { return *this; }
 	auto const h = 0.5f * quad.size;
 	auto const& o = quad.origin;
-	auto const rgba = quad.rgba.to_vec4();
+	auto const rgba = Rgba::to_linear(quad.rgba.to_vec4());
 	// NOLINTNEXTLINE
 	Vertex const vs[] = {
 		{{o.x - h.x, o.y + h.y, 0.0f}, rgba, front_v, quad.uv.top_left()},
@@ -245,7 +245,7 @@ auto Geometry::append(Cube const& cube) -> Geometry& {
 	if (cube.size.x <= 0.0f || cube.size.y <= 0.0f) { return *this; }
 	auto const h = 0.5f * cube.size;
 	auto const& o = cube.origin;
-	auto const rgba = cube.rgba.to_vec4();
+	auto const rgba = Rgba::to_linear(cube.rgba.to_vec4());
 	// NOLINTNEXTLINE
 	Vertex const vs[] = {
 		// front
@@ -330,7 +330,7 @@ auto Geometry::append(Sphere const& sphere) -> Geometry& {
 		}
 	}
 
-	auto const rgba = sphere.rgba.to_vec4();
+	auto const rgba = Rgba::to_linear(sphere.rgba.to_vec4());
 	auto add_side = [&sphere, &scratch, rgba](std::vector<std::pair<glm::vec3, glm::vec2>>& out_points, nvec3 (*transform)(glm::vec3 const&)) {
 		auto indices = std::array<std::uint32_t, 4>{};
 		auto next_index = std::size_t{};

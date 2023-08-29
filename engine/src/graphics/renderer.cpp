@@ -79,6 +79,12 @@ struct RenderingInfo {
 };
 
 struct RenderCamera {
+	struct Std140Fog {
+		glm::vec4 tint;
+		float start;
+		float thickness;
+	};
+
 	struct Std140View {
 		glm::mat4 view;
 		glm::mat4 projection;
@@ -86,6 +92,7 @@ struct RenderCamera {
 		glm::vec4 vdir_ortho;
 		glm::mat4 mat_shadow;
 		glm::vec4 shadow_dir;
+		Std140Fog fog;
 	};
 
 	struct Std430DirLight {
@@ -96,6 +103,11 @@ struct RenderCamera {
 
 	auto bind_set(glm::vec2 projection, ImageView const& shadow_map, vk::CommandBuffer cmd) const -> void {
 		std::uint32_t const is_ortho = std::holds_alternative<Camera::Orthographic>(camera->type) ? 1 : 0;
+		auto const fog = Std140Fog{
+			.tint = Rgba::to_linear(camera->fog.tint.to_tint()),
+			.start = camera->fog.start,
+			.thickness = camera->fog.thickness,
+		};
 		auto const view = Std140View{
 			.view = camera->view(),
 			.projection = camera->projection(projection),
@@ -103,6 +115,7 @@ struct RenderCamera {
 			.vdir_ortho = {front_v * camera->transform.orientation(), std::bit_cast<float>(is_ortho)},
 			.mat_shadow = *mat_shadow,
 			.shadow_dir = shadow_dir,
+			.fog = fog,
 		};
 
 		auto dir_lights = std::vector<Std430DirLight>{};

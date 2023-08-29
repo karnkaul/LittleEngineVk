@@ -16,6 +16,22 @@ struct Material {
 	vec4 emissive;
 };
 
+struct Fog {
+	vec4 tint;
+	float start;
+	float thickness;
+};
+
+layout (set = 0, binding = 0) uniform View {
+	mat4 view;
+	mat4 projection;
+	vec4 vpos_exposure;
+	vec4 vdir_ortho;
+	mat4 mat_shadow;
+	vec4 shadow_dir;
+	Fog fog;
+};
+
 layout (set = 0, binding = 1) readonly buffer DL {
 	DirLight dir_lights[];
 };
@@ -34,11 +50,7 @@ layout (location = 0) in vec4 in_rgba;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec4 in_frag_pos;
 layout (location = 3) in vec3 in_normal;
-layout (location = 4) in vec4 in_vpos_exposure;
-layout (location = 5) in vec3 in_vdir;
-layout (location = 6) flat in uint in_is_ortho;
-layout (location = 7) in vec4 in_fpos_shadow;
-layout (location = 8) in vec3 in_shadow_dir;
+layout (location = 4) in vec4 in_fpos_shadow;
 
 layout (location = 0) out vec4 out_rgba;
 
@@ -90,7 +102,8 @@ vec3 cook_torrance() {
 	const vec3 f0 = mix(vec3(0.04), vec3(material.albedo), metallic);
 
 	vec3 L0 = vec3(0.0);
-	const vec3 V = normalize(in_is_ortho == 1 ? in_vdir : in_vpos_exposure.xyz - in_frag_pos.xyz);
+	const uint is_ortho = floatBitsToUint(vdir_ortho.w);
+	const vec3 V = normalize(is_ortho == 1 ? vdir_ortho.xyz : vpos_exposure.xyz - in_frag_pos.xyz);
 	const vec3 N = in_normal;
 	for (int i = 0; i < dir_lights.length(); ++i) {
 		DirLight light = dir_lights[i];
@@ -112,7 +125,7 @@ vec3 cook_torrance() {
 		const float denom = 4.0 * NdotV * NdotL + 0.0001;
 		const vec3 spec = num / denom;
 
-		L0 += (kD * vec3(material.albedo) / pi_v + spec) * light.diffuse * max(in_vpos_exposure.w, 0.0) * NdotL;
+		L0 += (kD * vec3(material.albedo) / pi_v + spec) * light.diffuse * max(vpos_exposure.w, 0.0) * NdotL;
 	}
 
 	vec3 colour = max(L0, 0.03 * vec3(material.albedo));
@@ -126,8 +139,8 @@ float compute_visibility() {
 	if (projected.z > 1.0) {
 		return 1.0;
 	}
-	// float bias = max(0.05 * (1.0 - dot(in_normal, -in_shadow_dir)), 0.005);
-	const float slope = tan(acos(max(dot(in_normal, -in_shadow_dir), 0.0)));
+	// float bias = max(0.05 * (1.0 - dot(in_normal, -shadow_dir.xyz)), 0.005);
+	const float slope = tan(acos(max(dot(in_normal, -shadow_dir.xyz), 0.0)));
 	const float bias = clamp(0.005 * slope, 0.001, 0.05);
 	const float current_depth = projected.z - bias;
 	projected = projected * 0.5 + 0.5;
@@ -145,6 +158,15 @@ float compute_visibility() {
 	return max(ret, 0.1);
 }
 
+vec4 fogify(vec4 rgba) {
+	if (fog.thickness <= 0.0) {
+		return rgba;
+	}
+	const vec3 view_to_frag = vpos_exposure.xyz - in_frag_pos.xyz;
+	const float t = clamp((abs(view_to_frag.z) - fog.start) / fog.thickness, 0.0, 1.0);
+	return mix(rgba, fog.tint, t);
+}
+
 void main() {
 	vec4 diffuse = texture(base_colour, in_uv);
 	const float alpha_cutoff = material.m_r_aco_am.z;
@@ -157,9 +179,11 @@ void main() {
 	}
 
 	const float visibility = compute_visibility();
-	out_rgba = (visibility * vec4(cook_torrance(), 1.0)) * vec4(vec3(in_rgba), 1.0) * diffuse + material.emissive * texture(emissive, in_uv);
+	const vec4 rgba = (visibility * vec4(cook_torrance(), 1.0)) * vec4(vec3(in_rgba), 1.0) * diffuse + material.emissive * texture(emissive, in_uv);
 
-	if (alpha_mode == ALPHA_BLEND && out_rgba.w <= 0.0) {
+	if (alpha_mode == ALPHA_BLEND && rgba.w <= 0.0) {
 		discard;
 	}
+
+	out_rgba = fogify(rgba);
 }

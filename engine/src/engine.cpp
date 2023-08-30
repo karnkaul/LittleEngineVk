@@ -39,50 +39,6 @@ constexpr auto screen_to_world(glm::vec2 screen, glm::vec2 extent, glm::vec2 dis
 	return dr * ret;
 }
 
-auto g_input_state = input::State{};					// NOLINT
-auto g_receivers = std::vector<Ptr<input::Receiver>>{}; // NOLINT
-
-auto setup_signals(GLFWwindow* window) -> void {
-	glfwSetWindowCloseCallback(window, [](GLFWwindow*) { g_input_state.shutting_down = true; });
-	glfwSetWindowFocusCallback(window, [](GLFWwindow*, int focus) {
-		g_input_state.in_focus = focus == GLFW_TRUE;
-		g_input_state.changed |= input::State::eFocus;
-	});
-	glfwSetWindowSizeCallback(window, [](GLFWwindow*, int width, int height) {
-		g_input_state.window_extent = glm::ivec2{width, height};
-		g_input_state.changed |= input::State::eWindowSize;
-	});
-	glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int width, int height) {
-		g_input_state.framebuffer_extent = glm::ivec2{width, height};
-		g_input_state.changed |= input::State::eFramebufferSize;
-	});
-	glfwSetCursorPosCallback(window, [](GLFWwindow*, double pos_x, double pos_y) {
-		g_input_state.raw_cursor_position = glm::dvec2{pos_x, pos_y};
-		g_input_state.changed |= input::State::eCursorPosition;
-	});
-	glfwSetKeyCallback(window, [](GLFWwindow*, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
-		if (key >= 0 && key < static_cast<int>(g_input_state.keyboard.size())) { g_input_state.keyboard.at(static_cast<std::size_t>(key)) = to_action(action); }
-		for (auto* receiver : reversed(g_receivers)) {
-			if (receiver->on_key(key, action, mods)) { break; }
-		}
-	});
-	glfwSetCharCallback(window, [](GLFWwindow*, std::uint32_t codepoint) {
-		for (auto* receiver : reversed(g_receivers)) {
-			if (receiver->on_char(graphics::Codepoint{codepoint})) { break; }
-		}
-	});
-	glfwSetMouseButtonCallback(window, [](GLFWwindow*, int button, int action, [[maybe_unused]] int mods) {
-		g_input_state.mouse_buttons.at(static_cast<std::size_t>(button)) = to_action(action);
-		for (auto* receiver : reversed(g_receivers)) {
-			if (receiver->on_mouse(button, action, mods)) { break; }
-		}
-	});
-	glfwSetDropCallback(window, [](GLFWwindow* /*window*/, int path_count, char const* paths[]) { // NOLINT
-		auto const span = std::span{paths, static_cast<std::size_t>(path_count)};
-		for (auto const* path : span) { g_input_state.drops.emplace_back(path); }
-	});
-}
-
 auto update_gamepad(input::Gamepad& out, GLFWgamepadstate const& in) -> bool {
 	bool ret{};
 	for (auto const [glfw_button, gamepad_button] : zip_ranges(in.buttons, out.buttons)) {
@@ -127,19 +83,14 @@ auto update_gamepad(input::Gamepad& out, GLFWgamepadstate const& in) -> bool {
 	return ret;
 }
 
-auto update_gamepads() -> void {
-	for (auto [gamepad, id] : enumerate<int>(g_input_state.gamepads)) {
-		auto gamepad_state = GLFWgamepadstate{};
-		if (gamepad.is_connected = glfwGetGamepadState(id, &gamepad_state) == GLFW_TRUE; !gamepad.is_connected) { continue; }
-		if (update_gamepad(gamepad, gamepad_state)) { g_input_state.last_engaged_gamepad_index = static_cast<std::size_t>(id); }
-	}
-}
+auto g_receivers = std::vector<Ptr<input::Receiver>>{}; // NOLINT
 } // namespace
 
 input::Receiver::Receiver() { g_receivers.push_back(this); }
 input::Receiver::~Receiver() { std::erase(g_receivers, this); }
 
 auto Engine::Deleter::operator()(GLFWwindow* ptr) const -> void {
+	glfwSetWindowUserPointer(ptr, nullptr);
 	glfwDestroyWindow(ptr);
 	glfwTerminate();
 }
@@ -163,7 +114,7 @@ auto Engine::window_extent() const -> glm::uvec2 {
 
 auto Engine::delta_time() const -> Duration { return m_stats.frame.time; }
 
-auto Engine::input_state() const -> input::State const& { return g_input_state; } // NOLINT
+auto Engine::input_state() const -> input::State const& { return m_input_state; }
 
 auto Engine::frame_profile() const -> FrameProfile const& { return FrameProfiler::self().previous_profile(); } // NOLINT
 
@@ -172,8 +123,8 @@ auto Engine::next_frame() -> bool {
 
 	update_stats();
 
-	g_input_state.drops.clear();
-	g_input_state.changed = {};
+	m_input_state.drops.clear();
+	m_input_state.changed = {};
 	auto advance = [](auto& action_array) {
 		for (auto& action : action_array) {
 			switch (action) {
@@ -186,11 +137,11 @@ auto Engine::next_frame() -> bool {
 		}
 	};
 
-	advance(g_input_state.keyboard);
-	advance(g_input_state.mouse_buttons);
+	advance(m_input_state.keyboard);
+	advance(m_input_state.mouse_buttons);
 	update_gamepads();
 
-	g_input_state.cursor_position = screen_to_world(g_input_state.raw_cursor_position, g_input_state.window_extent, g_input_state.display_ratio());
+	m_input_state.cursor_position = screen_to_world(m_input_state.raw_cursor_position, m_input_state.window_extent, m_input_state.display_ratio());
 
 	glfwPollEvents();
 	if (!is_running()) { return false; }
@@ -236,7 +187,7 @@ auto Engine::render(graphics::RenderFrame const& frame) -> void {
 
 auto Engine::shutdown() -> void {
 	glfwSetWindowShouldClose(m_window.get(), GLFW_TRUE);
-	g_input_state.shutting_down = true;
+	m_input_state.shutting_down = true;
 }
 
 auto Engine::request_present_mode(vk::PresentModeKHR mode) -> bool {
@@ -244,6 +195,62 @@ auto Engine::request_present_mode(vk::PresentModeKHR mode) -> bool {
 	if (std::ranges::find(supported, mode) == supported.end()) { return false; }
 	m_queued_ops.present_mode = mode;
 	return true;
+}
+
+auto Engine::get_engine(GLFWwindow* window) -> Engine& {
+	auto* ret = static_cast<Engine*>(glfwGetWindowUserPointer(window));
+	assert(ret);
+	return *ret;
+}
+
+auto Engine::setup_signals(GLFWwindow* window) -> void {
+	glfwSetWindowUserPointer(window, this);
+	glfwSetWindowCloseCallback(window, [](GLFWwindow* window) { get_engine(window).m_input_state.shutting_down = true; });
+	glfwSetWindowFocusCallback(window, [](GLFWwindow* window, int focus) {
+		auto& input_state = get_engine(window).m_input_state;
+		input_state.in_focus = focus == GLFW_TRUE;
+		input_state.changed |= input::State::eFocus;
+	});
+	glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+		auto& input_state = get_engine(window).m_input_state;
+		input_state.window_extent = glm::ivec2{width, height};
+		input_state.changed |= input::State::eWindowSize;
+	});
+	glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+		auto& input_state = get_engine(window).m_input_state;
+		input_state.framebuffer_extent = glm::ivec2{width, height};
+		input_state.changed |= input::State::eFramebufferSize;
+	});
+	glfwSetCursorPosCallback(window, [](GLFWwindow* window, double pos_x, double pos_y) {
+		auto& input_state = get_engine(window).m_input_state;
+		input_state.raw_cursor_position = glm::dvec2{pos_x, pos_y};
+		input_state.changed |= input::State::eCursorPosition;
+	});
+	glfwSetKeyCallback(window, [](GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
+		auto& engine = get_engine(window);
+		auto& input_state = engine.m_input_state;
+		if (key >= 0 && key < static_cast<int>(input_state.keyboard.size())) { input_state.keyboard.at(static_cast<std::size_t>(key)) = to_action(action); }
+		for (auto* receiver : reversed(g_receivers)) {
+			if (receiver->on_key(key, action, mods)) { break; }
+		}
+	});
+	glfwSetCharCallback(window, [](GLFWwindow* /*window*/, std::uint32_t codepoint) {
+		for (auto* receiver : reversed(g_receivers)) {
+			if (receiver->on_char(graphics::Codepoint{codepoint})) { break; }
+		}
+	});
+	glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, [[maybe_unused]] int mods) {
+		auto& input_state = get_engine(window).m_input_state;
+		input_state.mouse_buttons.at(static_cast<std::size_t>(button)) = to_action(action);
+		for (auto* receiver : reversed(g_receivers)) {
+			if (receiver->on_mouse(button, action, mods)) { break; }
+		}
+	});
+	glfwSetDropCallback(window, [](GLFWwindow* window, int path_count, char const* paths[]) { // NOLINT
+		auto& input_state = get_engine(window).m_input_state;
+		auto const span = std::span{paths, static_cast<std::size_t>(path_count)};
+		for (auto const* path : span) { input_state.drops.emplace_back(path); }
+	});
 }
 
 auto Engine::update_stats() -> void {
@@ -262,6 +269,14 @@ auto Engine::update_stats() -> void {
 	m_stats.cache.vertex_buffers = static_cast<std::uint32_t>(graphics::VertexBufferCache::self().buffer_count());
 }
 
+auto Engine::update_gamepads() -> void {
+	for (auto [gamepad, id] : enumerate<int>(m_input_state.gamepads)) {
+		auto gamepad_state = GLFWgamepadstate{};
+		if (gamepad.is_connected = glfwGetGamepadState(id, &gamepad_state) == GLFW_TRUE; !gamepad.is_connected) { continue; }
+		if (update_gamepad(gamepad, gamepad_state)) { m_input_state.last_engaged_gamepad_index = static_cast<std::size_t>(id); }
+	}
+}
+
 auto Engine::Builder::set_extent(glm::uvec2 const value) -> Builder& {
 	if (value.x > 0 && value.y > 0) { m_extent = value; }
 	return *this;
@@ -278,7 +293,7 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 	ret->m_resources = std::make_unique<Resources>();
 
 	ret->m_window = std::unique_ptr<GLFWwindow, Deleter>{make_window(m_title.c_str(), m_extent)};
-	setup_signals(ret->m_window.get());
+	ret->setup_signals(ret->m_window.get());
 
 	auto rdci = graphics::Device::CreateInfo{
 		.validation = debug_v,
@@ -298,8 +313,8 @@ auto Engine::Builder::build() -> std::unique_ptr<Engine> {
 
 	ret->m_audio_device = std::make_unique<audio::Device>();
 
-	g_input_state.window_extent = ret->window_extent();
-	g_input_state.framebuffer_extent = ret->framebuffer_extent();
+	ret->m_input_state.window_extent = ret->window_extent();
+	ret->m_input_state.framebuffer_extent = ret->framebuffer_extent();
 
 	return ret;
 }

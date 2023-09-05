@@ -3,12 +3,12 @@
 
 #include <impl/frame_profiler.hpp>
 #include <le/core/enumerate.hpp>
-#include <le/core/reversed.hpp>
 #include <le/core/zip_ranges.hpp>
 #include <le/engine.hpp>
 #include <le/error.hpp>
 #include <le/input/receiver.hpp>
 #include <format>
+#include <ranges>
 #include <thread>
 
 namespace le {
@@ -230,19 +230,19 @@ auto Engine::setup_signals(GLFWwindow* window) -> void {
 		auto& engine = get_engine(window);
 		auto& input_state = engine.m_input_state;
 		if (key >= 0 && key < static_cast<int>(input_state.keyboard.size())) { input_state.keyboard.at(static_cast<std::size_t>(key)) = to_action(action); }
-		for (auto* receiver : reversed(g_receivers)) {
+		for (auto* receiver : std::ranges::reverse_view(g_receivers)) {
 			if (receiver->on_key(key, action, mods)) { break; }
 		}
 	});
 	glfwSetCharCallback(window, [](GLFWwindow* /*window*/, std::uint32_t codepoint) {
-		for (auto* receiver : reversed(g_receivers)) {
+		for (auto* receiver : std::ranges::reverse_view(g_receivers)) {
 			if (receiver->on_char(graphics::Codepoint{codepoint})) { break; }
 		}
 	});
 	glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, [[maybe_unused]] int mods) {
 		auto& input_state = get_engine(window).m_input_state;
 		input_state.mouse_buttons.at(static_cast<std::size_t>(button)) = to_action(action);
-		for (auto* receiver : reversed(g_receivers)) {
+		for (auto* receiver : std::ranges::reverse_view(g_receivers)) {
 			if (receiver->on_mouse(button, action, mods)) { break; }
 		}
 	});

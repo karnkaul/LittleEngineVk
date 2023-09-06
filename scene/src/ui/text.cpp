@@ -3,7 +3,7 @@
 #include <le/scene/ui/text.hpp>
 
 namespace le::ui {
-Text::Text() {
+Text::Text(NotNull<View*> parent_view) : Renderable(parent_view) {
 	if (auto* font = Resources::self().load<FontAsset>(default_font_uri)) { m_font = &*font->font; }
 }
 

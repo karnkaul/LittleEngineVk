@@ -92,14 +92,12 @@ class BrainStem : public Scene {
 	auto set_title_text() -> void {
 		// setup some UI title text.
 		ui::Text::default_font_uri = font_uri;
-		auto title_text = std::make_unique<ui::Text>();
-		title_text->set_text("BrainStem");
+		auto& title_text = get_ui_root().push_element<ui::Text>();
+		title_text.set_text("BrainStem");
 		// anchor to top of parent view (the whole screen, as it will be pushed to the root view).
-		title_text->transform.anchor.y = 0.5f;
+		title_text.transform.anchor.y = 0.5f;
 		// offset y downwards by 100 pixels.
-		title_text->transform.position.y = -100.0f;
-		// push title to root view.
-		get_ui_root().push_element(std::move(title_text));
+		title_text.transform.position.y = -100.0f;
 	}
 
 	auto update_editor() -> void {

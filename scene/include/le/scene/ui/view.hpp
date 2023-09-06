@@ -19,7 +19,15 @@ class View {
 	virtual auto tick(Duration dt) -> void;
 	virtual auto render_tree(std::vector<RenderObject>& out) const -> void;
 
-	auto push_element(std::unique_ptr<Element> element) -> void;
+	template <std::derived_from<Element> Type, typename... Args>
+		requires(std::constructible_from<Type, View*, Args...>)
+	auto push_element(Args&&... args) -> Type& {
+		auto element = std::make_unique<Type>(this, std::forward<Args>(args)...);
+		auto& ret = *element;
+		m_elements.push_back(std::move(element));
+		return ret;
+	}
+
 	auto push_sub_view(std::unique_ptr<View> sub_view) -> void;
 
 	[[nodiscard]] auto get_background() const -> std::optional<graphics::Rgba>;

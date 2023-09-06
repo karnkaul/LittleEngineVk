@@ -4,9 +4,7 @@
 
 namespace le::ui {
 auto View::setup() -> void {
-	auto background = std::make_unique<Quad>();
-	m_background = background.get();
-	push_element(std::move(background));
+	m_background = &push_element<Quad>();
 	set_background();
 	m_background->set_active(false);
 }
@@ -36,13 +34,6 @@ auto View::tick(Duration dt) -> void { // NOLINT
 auto View::render_tree(std::vector<RenderObject>& out) const -> void { // NOLINT
 	for (auto const& element : m_elements) { element->render(out); }
 	for (auto const& view : m_sub_views) { view->render_tree(out); }
-}
-
-auto View::push_element(std::unique_ptr<Element> element) -> void {
-	if (!element) { return; }
-	element->m_parent_view = this;
-	element->setup();
-	m_elements.push_back(std::move(element));
 }
 
 auto View::push_sub_view(std::unique_ptr<View> sub_view) -> void {

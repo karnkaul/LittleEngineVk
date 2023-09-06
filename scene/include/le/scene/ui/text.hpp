@@ -11,7 +11,7 @@ class Text : public Renderable {
 	// NOLINTNEXTLINE
 	inline static Uri default_font_uri{"fonts/default.ttf"};
 
-	Text();
+	Text(NotNull<View*> parent_view);
 
 	[[nodiscard]] auto get_font() const -> graphics::Font& { return *m_font; }
 	auto set_font(NotNull<graphics::Font*> font) -> Text&;
@@ -27,7 +27,6 @@ class Text : public Renderable {
 
 	[[nodiscard]] auto get_text_start() const -> glm::vec2 { return m_text_start; }
 
-	auto setup() -> void override {}
 	auto tick(Duration dt) -> void override;
 	auto render(std::vector<graphics::RenderObject>& out) const -> void override;
 

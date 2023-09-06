@@ -11,7 +11,6 @@ class View;
 
 class Element {
   public:
-	Element() = default;
 	Element(Element const&) = default;
 	Element(Element&&) = default;
 	auto operator=(Element const&) -> Element& = default;
@@ -19,7 +18,8 @@ class Element {
 
 	virtual ~Element() = default;
 
-	virtual auto setup() -> void = 0;
+	Element(NotNull<View*> parent_view) : m_parent_view(parent_view) {}
+
 	virtual auto tick(Duration dt) -> void = 0;
 	virtual auto render(std::vector<RenderObject>& out) const -> void = 0;
 

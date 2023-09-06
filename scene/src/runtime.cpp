@@ -19,7 +19,7 @@ auto Runtime::run() -> void {
 	}
 }
 
-auto Runtime::setup() -> void { m_scene_manager = std::make_unique<SceneManager>(); }
+auto Runtime::setup() -> void { m_scene_manager.emplace(); }
 
 auto Runtime::tick(Duration dt) -> void { m_scene_manager->tick(dt); }
 

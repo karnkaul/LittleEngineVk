@@ -27,7 +27,7 @@ class InputText : public View, public input::Receiver {
 	auto goto_end() -> void;
 	auto paste_clipboard() -> void;
 
-	auto get_text() const -> Text& { return *m_text; }
+	[[nodiscard]] auto get_text() const -> Text& { return *m_text; }
 
 	Cursor cursor{};
 	bool enabled{true};

@@ -4,6 +4,7 @@
 #include <le/graphics/image_barrier.hpp>
 #include <le/graphics/resource.hpp>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <numeric>
 
@@ -168,11 +169,19 @@ struct CopyImageToImage {
 		if (mip_levels > 1) { MipMapWriter{target_barrier, target.extent, cmd, mip_levels, array_layers}(); }
 	}
 };
+
+std::atomic<vk::DeviceSize> g_buffer_bytes{}; // NOLINT
+std::atomic<vk::DeviceSize> g_image_bytes{};  // NOLINT
 } // namespace
 
 Buffer::Buffer(vk::BufferUsageFlags usage, vk::DeviceSize capacity, bool host_visible) : m_usage(usage), m_host(host_visible) { resize(capacity); }
 
-Buffer::~Buffer() { vmaDestroyBuffer(Allocator::instance(), m_buffer, m_allocation); }
+Buffer::~Buffer() { destroy(); }
+
+auto Buffer::destroy() -> void {
+	vmaDestroyBuffer(Allocator::instance(), m_buffer, m_allocation);
+	g_buffer_bytes -= m_capacity;
+}
 
 auto Buffer::resize(std::size_t new_capacity) -> void {
 	auto vaci = VmaAllocationCreateInfo{};
@@ -190,7 +199,7 @@ auto Buffer::resize(std::size_t new_capacity) -> void {
 		throw Error{"Failed to allocate Vulkan Buffer"};
 	}
 
-	if (m_buffer) { vmaDestroyBuffer(Allocator::instance(), m_buffer, m_allocation); }
+	destroy();
 
 	m_buffer = buffer;
 	m_allocation = allocation;
@@ -198,8 +207,12 @@ auto Buffer::resize(std::size_t new_capacity) -> void {
 	m_mapped = alloc_info.pMappedData;
 	m_size = {};
 
+	g_buffer_bytes += m_capacity;
+
 	if (m_host) { assert(m_mapped); }
 }
+
+auto Buffer::bytes_allocated() -> vk::DeviceSize { return g_buffer_bytes; }
 
 auto HostBuffer::write(void const* data, std::size_t size) -> void {
 	if (size > m_capacity) { resize(size); }
@@ -228,7 +241,12 @@ Image::Image(ImageCreateInfo const& info, vk::Extent2D extent) {
 	recreate(extent);
 }
 
-Image::~Image() { vmaDestroyImage(Allocator::instance(), m_image, m_allocation); }
+Image::~Image() { destroy(); }
+
+auto Image::destroy() -> void {
+	vmaDestroyImage(Allocator::instance(), m_image, m_allocation);
+	g_image_bytes -= m_bytes_allocated;
+}
 
 auto Image::recreate(vk::Extent2D extent) -> void {
 	if (extent.width == 0 || extent.height == 0) { return; }
@@ -236,7 +254,7 @@ auto Image::recreate(vk::Extent2D extent) -> void {
 	auto const mip_levels = m_create_info.mip_map ? compute_mip_levels(extent) : 1;
 	auto vma_image = VmaImage::make(m_create_info, extent, mip_levels);
 
-	if (m_image) { vmaDestroyImage(Allocator::instance(), m_image, m_allocation); }
+	destroy();
 
 	m_image = vma_image.image;
 	m_view = std::move(vma_image.image_view);
@@ -244,6 +262,12 @@ auto Image::recreate(vk::Extent2D extent) -> void {
 	m_extent = extent;
 	m_layout = vk::ImageLayout::eUndefined;
 	m_mip_levels = mip_levels;
+
+	auto info = VmaAllocationInfo{};
+	vmaGetAllocationInfo(Allocator::self(), m_allocation, &info);
+	m_bytes_allocated = info.size;
+
+	g_image_bytes += m_bytes_allocated;
 }
 
 auto Image::copy_from(std::span<Layer const> layers, vk::Extent2D target_extent) -> bool {
@@ -364,4 +388,6 @@ auto Image::resize(vk::Extent2D extent) -> void {
 
 	cmd.submit();
 }
+
+auto Image::bytes_allocated() -> vk::DeviceSize { return g_image_bytes; }
 } // namespace le::graphics

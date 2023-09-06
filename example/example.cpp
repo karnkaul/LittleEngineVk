@@ -75,7 +75,7 @@ class BrainStem : public Scene {
 
 		// create a child entity to attach an offset AABB collider.
 		auto& collider_entity = spawn("collider", &mesh_entity);
-		auto& collider = collider_entity.attach(std::make_unique<ColliderAabb>());
+		auto& collider = collider_entity.attach<ColliderAabb>();
 		// offset the collider.
 		collider.aabb_size = {0.5f, 1.5f, 0.5f};
 		collider_entity.get_transform().set_position({0.0f, 0.5f * collider.aabb_size.y, 0.0f});
@@ -86,7 +86,7 @@ class BrainStem : public Scene {
 		// hold right click to engage.
 		auto& free_cam = spawn("freecam");
 		m_freecam_entity = free_cam.id();
-		free_cam.attach(std::make_unique<FreecamController>());
+		free_cam.attach<FreecamController>();
 	}
 
 	auto set_title_text() -> void {
@@ -128,9 +128,9 @@ class BrainStem : public Scene {
 		// spawn an entity and attach a mesh renderer (and animator).
 		auto& mesh_entity = spawn(std::format("mesh_{}", name));
 		auto ret = mesh_entity.id();
-		mesh_entity.attach(std::make_unique<MeshRenderer>()).set_mesh(mesh);
+		mesh_entity.attach<MeshRenderer>().set_mesh(mesh);
 		// allow users to "override" the GLTF data with a static mesh.
-		if (mesh->skeleton != nullptr) { mesh_entity.attach(std::make_unique<MeshAnimator>()).set_skeleton(mesh->skeleton); }
+		if (mesh->skeleton != nullptr) { mesh_entity.attach<MeshAnimator>().set_skeleton(mesh->skeleton); }
 
 		return ret;
 	}

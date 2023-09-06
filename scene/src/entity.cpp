@@ -15,7 +15,7 @@ auto Entity::tick(Duration dt) -> void {
 	m_cache.reserve(m_components.size());
 	for (auto const& [_, comp] : m_components) { m_cache.push_back(comp.component.get()); }
 	// sort by order of attachment before ticking
-	std::ranges::sort(m_cache, [](Ptr<Component> a, Ptr<Component> b) { return a->m_self_id < b->m_self_id; });
+	std::ranges::sort(m_cache, [](Ptr<Component> a, Ptr<Component> b) { return a->id() < b->id(); });
 	for (auto* component : m_cache) { component->tick(dt); }
 }
 

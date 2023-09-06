@@ -8,7 +8,7 @@ using capo::SoundSource;
 
 class SoundController : public Component {
   public:
-	auto setup() -> void override;
+	SoundController(Entity& entity);
 	auto tick(Duration dt) -> void override;
 
 	[[nodiscard]] auto get_volume() const -> Volume { return Gain{source.gain()}; }

@@ -7,6 +7,8 @@
 namespace le {
 class RenderComponent : public Component {
   public:
+	using Component::Component;
+
 	virtual auto render_to(std::vector<graphics::RenderObject>& out) const -> void = 0;
 
 	RenderLayer render_layer{};

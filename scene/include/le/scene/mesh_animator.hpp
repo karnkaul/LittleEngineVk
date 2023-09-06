@@ -6,6 +6,8 @@
 namespace le {
 class MeshAnimator : public Component {
   public:
+	using Component::Component;
+
 	auto tick(Duration dt) -> void override;
 
 	auto set_skeleton(NotNull<graphics::Skeleton const*> skeleton, std::optional<Id<graphics::Animation>> id = 0) -> void;

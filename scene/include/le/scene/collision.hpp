@@ -41,9 +41,10 @@ struct Aabb {
 
 class ColliderAabb : public Component {
   public:
+	ColliderAabb(Entity& entity);
+
 	[[nodiscard]] auto aabb() const -> Aabb;
 
-	auto setup() -> void override;
 	auto tick(Duration /*dt*/) -> void override {}
 
 	glm::vec3 aabb_size{1.0f};

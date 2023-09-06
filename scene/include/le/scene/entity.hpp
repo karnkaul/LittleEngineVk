@@ -23,7 +23,15 @@ class Entity final : public ComponentMap {
 	template <std::derived_from<Component> ComponentT>
 	auto attach(std::unique_ptr<ComponentT> component) -> ComponentT& {
 		if (!component) { throw Error{"attempt to attach a null component"}; }
-		component->initialize(m_scene, this, m_next_component_id++);
+		auto* ret = component.get();
+		insert_or_assign(std::move(component));
+		return *ret;
+	}
+
+	template <std::derived_from<Component> ComponentT, typename... Args>
+		requires(std::constructible_from<ComponentT, Entity&, Args...>)
+	auto attach(Args&&... args) -> ComponentT& {
+		auto component = std::make_unique<ComponentT>(*this, std::forward<Args>(args)...);
 		auto* ret = component.get();
 		insert_or_assign(std::move(component));
 		return *ret;

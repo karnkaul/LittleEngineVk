@@ -9,7 +9,7 @@ auto ColliderAabb::aabb() const -> Aabb {
 	return ret;
 }
 
-auto ColliderAabb::setup() -> void { get_scene().collision.track(get_entity()); }
+ColliderAabb::ColliderAabb(Entity& entity) : Component(entity) { entity.get_scene().collision.track(get_entity()); }
 
 auto Collision::track(Entity const& entity) -> void { m_entries.emplace(entity.id(), Entry{}); }
 

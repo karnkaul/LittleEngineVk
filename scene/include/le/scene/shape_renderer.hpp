@@ -5,6 +5,8 @@
 namespace le {
 class ShapeRenderer : public RenderComponent {
   public:
+	using RenderComponent::RenderComponent;
+
 	auto tick(Duration /*dt*/) -> void override {}
 	auto render_to(std::vector<graphics::RenderObject>& out) const -> void override;
 

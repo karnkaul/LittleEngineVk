@@ -5,6 +5,8 @@
 namespace le {
 class ParticleSystem : public RenderComponent {
   public:
+	using RenderComponent::RenderComponent;
+
 	using Particle = graphics::Particle;
 
 	std::vector<Particle::Emitter> emitters{};

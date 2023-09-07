@@ -17,6 +17,8 @@ struct Cursor {
 
 class InputText : public View, public input::Receiver {
   public:
+	InputText(Ptr<View> parent_view);
+
 	auto reset_blink() -> void;
 	auto write(std::string_view str) -> void;
 	auto backspace() -> void;
@@ -33,7 +35,6 @@ class InputText : public View, public input::Receiver {
 	bool enabled{true};
 
   protected:
-	auto setup() -> void override;
 	auto tick(Duration dt) -> void override;
 
 	auto on_key(int key, int action, int mods) -> bool override;

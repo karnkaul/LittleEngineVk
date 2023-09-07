@@ -7,7 +7,6 @@ class Quad;
 
 class View {
   public:
-	View() = default;
 	View(View const&) = delete;
 	View(View&&) = delete;
 	auto operator=(View const&) -> View& = delete;
@@ -15,7 +14,8 @@ class View {
 
 	virtual ~View() = default;
 
-	virtual auto setup() -> void;
+	explicit View(Ptr<View> parent_view = {});
+
 	virtual auto tick(Duration dt) -> void;
 	virtual auto render_tree(std::vector<RenderObject>& out) const -> void;
 
@@ -28,7 +28,14 @@ class View {
 		return ret;
 	}
 
-	auto push_sub_view(std::unique_ptr<View> sub_view) -> void;
+	template <std::derived_from<View> Type, typename... Args>
+		requires(std::constructible_from<Type, View*, Args...>)
+	auto push_sub_view(Args&&... args) -> Type& {
+		auto view = std::make_unique<Type>(this, std::forward<Args>(args)...);
+		auto& ret = *view;
+		m_sub_views.push_back(std::move(view));
+		return ret;
+	}
 
 	[[nodiscard]] auto get_background() const -> std::optional<graphics::Rgba>;
 	auto set_background(graphics::Rgba tint = graphics::white_v) -> void;

@@ -8,9 +8,10 @@ namespace le::ui {
 struct Cursor {
 	static constexpr Duration blink_rate_v{1s};
 	static constexpr glm::vec2 scale_v{0.1f, 1.0f};
+	static constexpr float n_y_offset_v{0.4f};
 
 	glm::vec2 scale{scale_v};
-	float n_y_offset{0.4f};
+	float n_y_offset{n_y_offset_v};
 	Duration blink_rate{blink_rate_v};
 	std::size_t position{};
 };

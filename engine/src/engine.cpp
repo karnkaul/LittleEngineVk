@@ -77,8 +77,8 @@ auto update_gamepad(input::Gamepad& out, GLFWgamepadstate const& in) -> bool {
 	out.axes[GLFW_GAMEPAD_AXIS_LEFT_Y] = -in.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
 	out.axes[GLFW_GAMEPAD_AXIS_RIGHT_X] = in.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
 	out.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y] = -in.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
-	out.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] = (in.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] + 1.0f) * 0.5f;
-	out.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] = (in.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] + 1.0f) * 0.5f;
+	out.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] = (in.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] + 1.0f) * 0.5f;	  // NOLINT
+	out.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] = (in.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] + 1.0f) * 0.5f; // NOLINT
 
 	return ret;
 }

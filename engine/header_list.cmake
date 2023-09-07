@@ -16,6 +16,7 @@ set(core_headers
   ${prefix}/core/ptr.hpp
   ${prefix}/core/radians.hpp
   ${prefix}/core/random.hpp
+  ${prefix}/core/reverse_view.hpp
   ${prefix}/core/signal.hpp
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp

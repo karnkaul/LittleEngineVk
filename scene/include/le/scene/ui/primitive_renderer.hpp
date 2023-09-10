@@ -14,11 +14,4 @@ class PrimitiveRenderer : public Renderable {
 	graphics::DynamicPrimitive primitive{};
 	graphics::UnlitMaterial material{};
 };
-
-class Quad : public PrimitiveRenderer {
-  public:
-	using PrimitiveRenderer::PrimitiveRenderer;
-
-	auto tick(Duration dt) -> void override;
-};
 } // namespace le::ui

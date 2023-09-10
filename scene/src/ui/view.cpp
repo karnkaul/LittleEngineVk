@@ -1,4 +1,4 @@
-#include <le/scene/ui/primitive_renderer.hpp>
+#include <le/scene/ui/quad.hpp>
 #include <le/scene/ui/view.hpp>
 #include <algorithm>
 

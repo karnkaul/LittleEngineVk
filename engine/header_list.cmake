@@ -125,9 +125,11 @@ set(audio_headers
 
 set(imcpp_headers
   ${prefix}/imcpp/common.hpp
+  ${prefix}/imcpp/console_window.hpp
   ${prefix}/imcpp/engine_stats.hpp
   ${prefix}/imcpp/input_text.hpp
   ${prefix}/imcpp/reflector.hpp
+  ${prefix}/imcpp/str_buf.hpp
 )
 
 set(header_list

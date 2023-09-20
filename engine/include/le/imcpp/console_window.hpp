@@ -1,8 +1,10 @@
 #pragma once
 #include <glm/vec4.hpp>
 #include <le/core/ptr.hpp>
+#include <le/core/string_trie.hpp>
 #include <le/imcpp/str_buf.hpp>
 #include <deque>
+#include <optional>
 #include <string>
 
 struct ImGuiInputTextCallbackData;
@@ -15,7 +17,7 @@ struct CommandLine { // NOLINT(cppcoreguidelines-virtual-class-destructor)
 	};
 
 	virtual auto execute(std::string_view command) -> Outcome = 0;
-	virtual void autocomplete(std::string_view word, std::vector<std::string_view>& out_candidates) = 0;
+	[[nodiscard]] virtual auto get_trie() const -> StringTrie const& = 0;
 };
 
 class ConsoleWindow {
@@ -53,7 +55,7 @@ class ConsoleWindow {
 	std::deque<Entry> m_log{};
 	std::deque<std::string> m_history{};
 	std::optional<std::size_t> m_history_index{};
-	std::vector<std::string_view> m_candidates{};
+	std::vector<std::string> m_candidates{};
 	StrBuf m_input{};
 	bool m_scroll_to_bottom{};
 

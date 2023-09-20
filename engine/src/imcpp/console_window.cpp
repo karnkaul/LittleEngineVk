@@ -85,7 +85,9 @@ void ConsoleWindow::on_autocomplete(ImGuiInputTextCallbackData& data) {
 	}
 
 	m_candidates.clear();
-	m_cli->autocomplete(word, m_candidates);
+	auto const& trie = m_cli->get_trie();
+	trie.add_candidates_to(m_candidates, word);
+	// m_cli->autocomplete(word, m_candidates);
 
 	if (!m_candidates.empty()) {
 		if (m_candidates.size() == 1) {
@@ -97,7 +99,7 @@ void ConsoleWindow::on_autocomplete(ImGuiInputTextCallbackData& data) {
 			}
 		} else {
 			auto response = std::string{};
-			for (auto const candidate : m_candidates) { std::format_to(std::back_inserter(response), "{}\n", candidate); }
+			for (auto const& candidate : m_candidates) { std::format_to(std::back_inserter(response), "{}\n", candidate); }
 			m_log.push_front(Entry{.response = std::move(response)});
 		}
 	}

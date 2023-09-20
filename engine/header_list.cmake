@@ -19,6 +19,7 @@ set(core_headers
   ${prefix}/core/result.hpp
   ${prefix}/core/reverse_view.hpp
   ${prefix}/core/signal.hpp
+  ${prefix}/core/string_trie.hpp
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp
   ${prefix}/core/visitor.hpp

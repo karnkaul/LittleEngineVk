@@ -1,8 +1,9 @@
 #pragma once
 #include <glm/vec4.hpp>
+#include <le/cli/adapter.hpp>
 #include <le/core/ptr.hpp>
-#include <le/core/string_trie.hpp>
 #include <le/imcpp/str_buf.hpp>
+#include <array>
 #include <deque>
 #include <optional>
 #include <string>
@@ -10,22 +11,19 @@
 struct ImGuiInputTextCallbackData;
 
 namespace le::imcpp {
-struct CommandLine { // NOLINT(cppcoreguidelines-virtual-class-destructor)
-	struct Outcome {
-		std::string response{};
-		bool clear_log{};
-	};
-
-	virtual auto execute(std::string_view command) -> Outcome = 0;
-	[[nodiscard]] virtual auto get_trie() const -> StringTrie const& = 0;
-};
-
 class ConsoleWindow {
   public:
 	static constexpr std::size_t max_log_entries_v{100};
 	static constexpr std::size_t max_history_v{100};
 
-	void update(CommandLine& cli);
+	static constexpr std::string_view builtin_clear_v{"clear"};
+	static constexpr std::string_view builtin_close_v{"close"};
+
+	static constexpr auto builtins_v = std::array{
+		builtin_clear_v,
+	};
+
+	void update(cli::Adapter& cli);
 	void clear_log();
 
 	struct {
@@ -41,8 +39,9 @@ class ConsoleWindow {
   private:
 	static auto on_text_edit(ImGuiInputTextCallbackData* data) -> int;
 
-	void update_input(CommandLine& cli);
+	void update_input(cli::Adapter& cli);
 	void update_log();
+	auto exec_builtin(std::string_view command) -> bool;
 
 	void on_autocomplete(ImGuiInputTextCallbackData& data);
 	void on_history(ImGuiInputTextCallbackData& data);
@@ -59,6 +58,6 @@ class ConsoleWindow {
 	StrBuf m_input{};
 	bool m_scroll_to_bottom{};
 
-	Ptr<CommandLine> m_cli{};
+	Ptr<cli::Adapter> m_cli{};
 };
 } // namespace le::imcpp

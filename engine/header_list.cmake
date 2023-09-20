@@ -124,6 +124,10 @@ set(audio_headers
   ${prefix}/audio/volume.hpp
 )
 
+set(cli_headers
+  ${prefix}/cli/adapter.hpp
+)
+
 set(imcpp_headers
   ${prefix}/imcpp/common.hpp
   ${prefix}/imcpp/console_window.hpp
@@ -139,8 +143,9 @@ set(header_list
   ${vfs_headers}
   ${resources_headers}
   ${graphics_headers}
-  ${imcpp_headers}
   ${audio_headers}
+  ${cli_headers}
+  ${imcpp_headers}
 
   ${prefix}/engine.hpp
   ${prefix}/environment.hpp

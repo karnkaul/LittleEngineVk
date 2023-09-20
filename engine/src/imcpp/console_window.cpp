@@ -4,7 +4,15 @@
 #include <le/imcpp/console_window.hpp>
 
 namespace le::imcpp {
-void ConsoleWindow::update(CommandLine& cli) {
+namespace {
+constexpr auto trim(std::string_view in) -> std::string_view {
+	while (!in.empty() && in.front() == ' ') { in = in.substr(1); }
+	while (!in.empty() && in.back() == ' ') { in = in.substr(0, in.size() - 1); }
+	return in;
+}
+} // namespace
+
+void ConsoleWindow::update(cli::Adapter& cli) {
 	if (!show_window) { return; }
 
 	ImGui::SetNextWindowSize({300.0f, 300.0f}, ImGuiCond_Once); // NOLINT
@@ -16,7 +24,7 @@ void ConsoleWindow::update(CommandLine& cli) {
 
 void ConsoleWindow::clear_log() { m_log.clear(); }
 
-void ConsoleWindow::update_input(CommandLine& cli) {
+void ConsoleWindow::update_input(cli::Adapter& cli) {
 	bool reclaim_focus = false;
 	static constexpr ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll |
 															ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory |
@@ -27,13 +35,14 @@ void ConsoleWindow::update_input(CommandLine& cli) {
 	ImGui::SetNextItemWidth(-1.0f);
 	m_cli = &cli;
 	if (ImGui::InputText("##console_input", m_input.buf.data(), m_input.buf.size(), input_text_flags, &on_text_edit, this)) {
-		auto const text = m_input.view();
-		auto outcome = cli.execute(text);
-		m_history.emplace_back(text);
-		while (m_history.size() > max_history) { m_history.pop_front(); }
-		m_log.push_front(Entry{std::string{text}, std::move(outcome.response)});
-		if (outcome.clear_log) { clear_log(); }
-		while (m_log.size() > max_log_entries) { m_log.pop_back(); }
+		auto const line = trim(m_input.view());
+		if (!exec_builtin(line)) {
+			auto response = cli.get_response(line);
+			m_history.emplace_back(line);
+			while (m_history.size() > max_history) { m_history.pop_front(); }
+			m_log.push_front(Entry{std::string{line}, std::move(response)});
+			while (m_log.size() > max_log_entries) { m_log.pop_back(); }
+		}
 		m_input.clear();
 		m_history_index = {};
 		m_scroll_to_bottom = true;
@@ -64,6 +73,15 @@ void ConsoleWindow::update_log() {
 	}
 }
 
+auto ConsoleWindow::exec_builtin(std::string_view const command) -> bool {
+	if (command == builtin_clear_v) {
+		clear_log();
+		return true;
+	}
+
+	return false;
+}
+
 auto ConsoleWindow::on_text_edit(ImGuiInputTextCallbackData* data) -> int {
 	auto& self = *reinterpret_cast<ConsoleWindow*>(data->UserData); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	switch (data->EventFlag) {
@@ -85,16 +103,16 @@ void ConsoleWindow::on_autocomplete(ImGuiInputTextCallbackData& data) {
 	}
 
 	m_candidates.clear();
-	auto const& trie = m_cli->get_trie();
+	auto trie = m_cli->get_command_trie();
+	for (auto const builtin : builtins_v) { trie.add(builtin); }
 	trie.add_candidates_to(m_candidates, word);
-	// m_cli->autocomplete(word, m_candidates);
 
 	if (!m_candidates.empty()) {
 		if (m_candidates.size() == 1) {
 			auto const to_insert = m_candidates.front();
 			if (word_start + to_insert.size() < m_input.capacity()) {
 				data.DeleteChars(static_cast<int>(word_start), static_cast<int>(word.size()));
-				data.InsertChars(static_cast<int>(word_start), to_insert.data(), to_insert.data() + to_insert.size());
+				data.InsertChars(static_cast<int>(word_start), to_insert.data(), to_insert.data() + to_insert.size()); // NOLINT
 				data.InsertChars(data.CursorPos, " ");
 			}
 		} else {

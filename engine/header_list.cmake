@@ -13,13 +13,13 @@ set(core_headers
   ${prefix}/core/not_null.hpp
   ${prefix}/core/nvec3.hpp
   ${prefix}/core/offset_span.hpp
+  ${prefix}/core/polymorphic.hpp
   ${prefix}/core/ptr.hpp
   ${prefix}/core/radians.hpp
   ${prefix}/core/random.hpp
   ${prefix}/core/result.hpp
   ${prefix}/core/reverse_view.hpp
   ${prefix}/core/signal.hpp
-  ${prefix}/core/string_trie.hpp
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp
   ${prefix}/core/visitor.hpp
@@ -125,7 +125,11 @@ set(audio_headers
 )
 
 set(cli_headers
-  ${prefix}/cli/adapter.hpp
+  ${prefix}/cli/args.hpp
+  ${prefix}/cli/command.hpp
+  ${prefix}/cli/console.hpp
+  ${prefix}/cli/driver.hpp
+  ${prefix}/cli/responder.hpp
 )
 
 set(imcpp_headers

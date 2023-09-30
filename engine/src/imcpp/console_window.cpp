@@ -12,37 +12,20 @@ constexpr auto trim(std::string_view in) -> std::string_view {
 }
 } // namespace
 
-auto ConsoleWindow::get_command_line() const -> std::string_view { return trim(m_input.view()); }
-
-auto ConsoleWindow::get_cursor() const -> std::size_t {
-	if (m_data == nullptr) { return 0; }
-
-	return static_cast<std::size_t>(m_data->CursorPos);
-}
-
-auto ConsoleWindow::insert(std::string_view const text) -> bool {
-	if (m_data == nullptr) { return false; }
-
-	if (m_input.view().size() + text.size() >= m_input.capacity()) { return false; }
-
-	m_data->InsertChars(m_data->CursorPos, text.data(), text.data() + text.size());
-	return true;
-}
-
-void ConsoleWindow::update(cli::Responder& responder) {
+void ConsoleWindow::update(console::Console& console) {
 	if (!show_window) { return; }
 
-	m_responder = &responder;
+	m_console = &console;
 	ImGui::SetNextWindowSize({300.0f, 300.0f}, ImGuiCond_Once); // NOLINT
 	if (auto w_main = Window{"console", &show_window}) {
 		update_input();
 		if (auto w_log = Window{w_main, "log", {}, {}, ImGuiWindowFlags_HorizontalScrollbar}) { update_log(); }
 	}
-	m_responder = nullptr;
+	m_console = nullptr;
 }
 
 void ConsoleWindow::update_input() {
-	assert(m_responder);
+	assert(m_console);
 
 	bool reclaim_focus = false;
 	static constexpr ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll |
@@ -53,7 +36,7 @@ void ConsoleWindow::update_input() {
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(-1.0f);
 	if (ImGui::InputText("##console_input", m_input.buf.data(), m_input.buf.size(), input_text_flags, &on_text_edit, this)) {
-		m_responder->submit(*this);
+		m_console->submit(trim(m_input.view()));
 
 		m_input.clear();
 		m_cached.clear();
@@ -71,13 +54,19 @@ void ConsoleWindow::update_log() {
 		m_scroll_to_top = false;
 		ImGui::SetScrollHereY(1.0f);
 	}
-	for (auto const& entry : m_entries) {
-		if (!entry.cmd.empty()) {
+	for (auto const& entry : m_console->get_entries()) {
+		if (!entry.request.empty()) {
 			auto const c = cmd_rgba.to_vec4();
-			ImGui::TextColored({c.x, c.y, c.z, c.w}, "%.*s", static_cast<int>(entry.cmd.size()), entry.cmd.data()); // NOLINT
+			ImGui::TextColored({c.x, c.y, c.z, c.w}, "%.*s", static_cast<int>(entry.request.size()), entry.request.data()); // NOLINT
 		}
-		auto const c = entry.rgba.to_vec4();
-		ImGui::TextColored({c.x, c.y, c.z, c.w}, "%s", entry.response.c_str()); // NOLINT
+		if (!entry.response.error.empty()) {
+			auto const c = err_rgba.to_vec4();
+			ImGui::TextColored({c.x, c.y, c.z, c.w}, "%s", entry.response.error.c_str()); // NOLINT
+		}
+		if (!entry.response.message.empty()) {
+			auto const c = msg_rgba.to_vec4();
+			ImGui::TextColored({c.x, c.y, c.z, c.w}, "%s", entry.response.message.c_str()); // NOLINT
+		}
 		ImGui::Separator();
 	}
 }
@@ -101,12 +90,24 @@ void ConsoleWindow::on_char_filter() {
 }
 
 void ConsoleWindow::on_autocomplete() {
-	assert(m_responder);
-	m_responder->autocomplete(*this);
+	assert(m_console);
+	auto ac = m_console->autocomplete(trim(m_input.view()), static_cast<std::size_t>(m_data->CursorPos));
+
+	if (!ac.common_suffix.empty()) { m_data->InsertChars(m_data->CursorPos, ac.common_suffix.data(), ac.common_suffix.data() + ac.common_suffix.size()); }
+
+	if (ac.candidates.size() == 1) {
+		// exclusive match, insert space
+		m_data->InsertChars(m_data->CursorPos, " ");
+	} else if (!ac.candidates.empty()) {
+		// multiple matches: log all of them
+		m_console->add_entry(ac);
+	}
 }
 
 void ConsoleWindow::on_history() {
-	if (m_history.empty()) { return; }
+	assert(m_console);
+	auto const& history = m_console->get_history();
+	if (history.empty()) { return; }
 
 	auto const prev_history_index = m_history_index;
 	if (!m_history_index) { m_cached = m_input.view(); }
@@ -116,23 +117,23 @@ void ConsoleWindow::on_history() {
 		if (!m_history_index) {
 			m_history_index = 0;
 		} else {
-			m_history_index = increment_wrapped(*m_history_index, m_history.size() + 1);
+			m_history_index = increment_wrapped(*m_history_index, history.size() + 1);
 		}
 	} else if (m_data->EventKey == ImGuiKey_DownArrow) {
 		if (!m_history_index) {
-			m_history_index = m_history.size() - 1;
+			m_history_index = history.size() - 1;
 		} else {
-			m_history_index = decrement_wrapped(*m_history_index, m_history.size() + 1);
+			m_history_index = decrement_wrapped(*m_history_index, history.size() + 1);
 		}
 	}
 
 	if (prev_history_index != m_history_index && m_history_index) {
 		m_data->DeleteChars(0, m_data->BufTextLen);
-		if (*m_history_index == m_history.size()) {
+		if (*m_history_index == history.size()) {
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 			m_data->InsertChars(0, m_cached.data(), m_cached.data() + m_cached.size());
 		} else {
-			auto const& item = m_history.at(*m_history_index);
+			auto const& item = history.at(*m_history_index);
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 			m_data->InsertChars(0, item.data(), item.data() + item.size());
 		}

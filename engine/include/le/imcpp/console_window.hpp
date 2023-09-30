@@ -1,7 +1,8 @@
 #pragma once
 #include <glm/vec4.hpp>
-#include <le/cli/responder.hpp>
+#include <le/console/console.hpp>
 #include <le/core/ptr.hpp>
+#include <le/graphics/rgba.hpp>
 #include <le/imcpp/str_buf.hpp>
 #include <deque>
 #include <optional>
@@ -9,17 +10,17 @@
 struct ImGuiInputTextCallbackData;
 
 namespace le::imcpp {
-class ConsoleWindow : public cli::Console {
+class ConsoleWindow {
   public:
-	[[nodiscard]] auto get_command_line() const -> std::string_view final;
-	[[nodiscard]] auto get_cursor() const -> std::size_t final;
+	static constexpr auto cmd_rgba_v = graphics::Rgba{.channels = {0xff, 0xff, 0x0, 0xff}};
+	static constexpr auto msg_rgba_v = graphics::Rgba{.channels = {0xff, 0xff, 0xff, 0xff}};
+	static constexpr auto err_rgba_v = graphics::Rgba{.channels = {0xff, 0x77, 0x0, 0xff}};
 
-	auto insert(std::string_view text) -> bool final;
+	void update(console::Console& console);
 
-	void update(cli::Responder& responder);
-
-	std::size_t max_log_entries{max_log_entries_v};
-	std::size_t max_history{max_history_v};
+	graphics::Rgba cmd_rgba{cmd_rgba_v};
+	graphics::Rgba msg_rgba{msg_rgba_v};
+	graphics::Rgba err_rgba{err_rgba_v};
 	bool show_window{true};
 
   private:
@@ -38,6 +39,6 @@ class ConsoleWindow : public cli::Console {
 	bool m_scroll_to_top{};
 
 	Ptr<ImGuiInputTextCallbackData> m_data{};
-	Ptr<cli::Responder> m_responder{};
+	Ptr<console::Console> m_console{};
 };
 } // namespace le::imcpp

@@ -124,12 +124,11 @@ set(audio_headers
   ${prefix}/audio/volume.hpp
 )
 
-set(cli_headers
-  ${prefix}/cli/args.hpp
-  ${prefix}/cli/command.hpp
-  ${prefix}/cli/console.hpp
-  ${prefix}/cli/driver.hpp
-  ${prefix}/cli/responder.hpp
+set(console_headers
+  ${prefix}/console/console.hpp
+  ${prefix}/console/command.hpp
+  ${prefix}/console/property.hpp
+  ${prefix}/console/trigger.hpp
 )
 
 set(imcpp_headers
@@ -148,7 +147,7 @@ set(header_list
   ${resources_headers}
   ${graphics_headers}
   ${audio_headers}
-  ${cli_headers}
+  ${console_headers}
   ${imcpp_headers}
 
   ${prefix}/engine.hpp

@@ -16,11 +16,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   .
 )
 
-function(add_le_test NAME SOURCES)
-  add_executable(${PROJECT_NAME}-${NAME})
-  target_sources(${PROJECT_NAME}-${NAME} PRIVATE ${SOURCES})
-  target_link_libraries(${PROJECT_NAME}-${NAME} PRIVATE ${PROJECT_NAME})
-  add_test(NAME ${PROJECT_NAME}-${NAME} COMMAND ${PROJECT_NAME}-${NAME})
-endfunction()
-
-add_le_test(result test_result.cpp)
+add_subdirectory(tests)

@@ -25,7 +25,9 @@ auto tintify(Particle& out) -> void { out.tint.channels = glm::mix(out.lerp.tint
 auto Particle::Emitter::make_particle() const -> Particle {
 	auto ret = Particle{};
 
-	ret.velocity.linear = random_vec3(config.velocity.linear);
+	auto const spread = Degrees{random_range(config.velocity.linear.angle.lo.value, config.velocity.linear.angle.hi.value)};
+	auto const direction = glm::vec3{glm::sin(spread), glm::cos(spread), 0.0f};
+	ret.velocity.linear = random_range(config.velocity.linear.speed.lo, config.velocity.linear.speed.hi) * direction;
 	ret.velocity.angular = random_range(config.velocity.angular.lo.value, config.velocity.angular.hi.value);
 
 	ret.lerp.scale = config.lerp.scale;

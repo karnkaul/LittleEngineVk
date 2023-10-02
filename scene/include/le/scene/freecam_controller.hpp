@@ -7,6 +7,8 @@
 namespace le {
 class FreecamController : public Component {
   public:
+	using Component::Component;
+
 	auto tick(Duration dt) -> void override;
 
 	glm::vec3 move_speed{10.0f};

@@ -24,6 +24,11 @@ class Device : public MonoInstance<Device> {
 		bool portability{};
 	};
 
+	Device(Device const&) = delete;
+	Device(Device&&) = delete;
+	auto operator=(Device const&) -> Device& = delete;
+	auto operator=(Device&&) -> Device& = delete;
+
 	explicit Device(Ptr<GLFWwindow> window, CreateInfo const& create_info = {});
 	~Device();
 

@@ -13,10 +13,12 @@ set(core_headers
   ${prefix}/core/not_null.hpp
   ${prefix}/core/nvec3.hpp
   ${prefix}/core/offset_span.hpp
+  ${prefix}/core/polymorphic.hpp
   ${prefix}/core/ptr.hpp
   ${prefix}/core/radians.hpp
   ${prefix}/core/random.hpp
-  ${prefix}/core/reversed.hpp
+  ${prefix}/core/result.hpp
+  ${prefix}/core/reverse_view.hpp
   ${prefix}/core/signal.hpp
   ${prefix}/core/time.hpp
   ${prefix}/core/version.hpp
@@ -122,11 +124,20 @@ set(audio_headers
   ${prefix}/audio/volume.hpp
 )
 
+set(console_headers
+  ${prefix}/console/console.hpp
+  ${prefix}/console/command.hpp
+  ${prefix}/console/property.hpp
+  ${prefix}/console/trigger.hpp
+)
+
 set(imcpp_headers
   ${prefix}/imcpp/common.hpp
+  ${prefix}/imcpp/console_window.hpp
   ${prefix}/imcpp/engine_stats.hpp
   ${prefix}/imcpp/input_text.hpp
   ${prefix}/imcpp/reflector.hpp
+  ${prefix}/imcpp/str_buf.hpp
 )
 
 set(header_list
@@ -135,8 +146,9 @@ set(header_list
   ${vfs_headers}
   ${resources_headers}
   ${graphics_headers}
-  ${imcpp_headers}
   ${audio_headers}
+  ${console_headers}
+  ${imcpp_headers}
 
   ${prefix}/engine.hpp
   ${prefix}/environment.hpp

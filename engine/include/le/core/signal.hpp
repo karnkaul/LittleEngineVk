@@ -13,7 +13,6 @@ class Signal {
 	using Callback = std::function<void(Args const&...)>;
 
 	class Listener;
-
 	class Handle;
 
 	Signal(Signal&&) noexcept = default;
@@ -32,9 +31,10 @@ class Signal {
 		return Handle{m_storage, id_};
 	}
 
-	template <typename Type, typename Func>
-	auto connect(Ptr<Type> object, Func member_func) -> Handle {
-		return connect([object, member_func](Args const&... args) { (object->*member_func)(args...); });
+	template <typename PointerT, typename MemberFuncT>
+		requires(std::is_invocable_v<MemberFuncT, PointerT, Args...>)
+	auto connect(PointerT object, MemberFuncT member_func) -> Handle {
+		return connect([object, member_func](Args const&... args) { std::invoke(member_func, object)(args...); });
 	}
 
 	auto dispatch(Args const&... args) const -> void {

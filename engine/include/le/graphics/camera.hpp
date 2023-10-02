@@ -34,6 +34,12 @@ struct Camera {
 		glm::vec2 fixed_view{};
 	};
 
+	struct Fog {
+		Rgba tint{.channels = {0x77, 0x77, 0x77, 0xff}};
+		float start{0.0f};
+		float thickness{0.0f};
+	};
+
 	static auto orthographic(glm::vec2 extent, ViewPlane view_plane = {-100.0f, 100.0f}) -> glm::mat4;
 
 	auto view() const -> glm::mat4;
@@ -45,5 +51,6 @@ struct Camera {
 	float exposure{2.0f};
 	Face face{Face::eNegativeZ};
 	Rgba clear_colour{black_v};
+	Fog fog{};
 };
 } // namespace le::graphics

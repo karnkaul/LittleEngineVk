@@ -20,7 +20,7 @@ auto read_into(OutT& out, char const* path) -> void {
 } // namespace
 
 auto FileReader::find_super_directory(std::string_view suffix, std::string_view start_path) -> std::string {
-	for (auto path = fs::path{start_path}; !path.empty() && path != path.parent_path(); path = path.parent_path()) {
+	for (auto path = fs::absolute(start_path); !path.empty() && path != path.parent_path(); path = path.parent_path()) {
 		auto ret = path / suffix;
 		if (fs::is_directory(ret)) { return ret.generic_string(); }
 	}

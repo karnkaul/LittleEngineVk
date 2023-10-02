@@ -41,12 +41,16 @@ class Buffer : public Resource {
 
 	auto resize(std::size_t new_capacity) -> void;
 
+	static auto bytes_allocated() -> vk::DeviceSize;
+
 	virtual auto write(void const* data, std::size_t size) -> void = 0;
 
 	operator vk::Buffer() const { return buffer(); }
 
   protected:
 	explicit Buffer(vk::BufferUsageFlags usage, vk::DeviceSize capacity, bool host_visible);
+
+	auto destroy() -> void;
 
 	vk::BufferUsageFlags m_usage{};
 	vk::DeviceSize m_capacity{};
@@ -90,7 +94,7 @@ struct ImageWrite {
 	glm::uvec2 top_left{};
 };
 
-class Image : Resource {
+class Image : public Resource {
   public:
 	using Layer = std::span<std::byte const>;
 
@@ -125,15 +129,20 @@ class Image : Resource {
 
 	[[nodiscard]] auto create_info() const -> ImageCreateInfo const& { return m_create_info; }
 
+	static auto bytes_allocated() -> vk::DeviceSize;
+
 	operator vk::Image() const { return m_image; }
 	operator vk::ImageView() const { return *m_view; }
 
   protected:
+	auto destroy() -> void;
+
 	ImageCreateInfo m_create_info{};
 	vk::Image m_image{};
 	vk::Extent2D m_extent{};
 	vk::UniqueImageView m_view{};
 	vk::ImageLayout m_layout{};
+	vk::DeviceSize m_bytes_allocated{};
 	std::uint32_t m_mip_levels{};
 };
 } // namespace le::graphics

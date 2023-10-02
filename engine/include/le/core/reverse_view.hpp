@@ -12,12 +12,12 @@ struct Reversed {
 };
 
 template <typename It>
-constexpr auto reversed(It first, It last) {
+constexpr auto reverse_view(It first, It last) {
 	return Reversed<It>{first, last};
 }
 
 template <typename ContainerT>
-constexpr auto reversed(ContainerT&& container) {
-	return reversed(std::end(container), std::begin(container));
+constexpr auto reverse_view(ContainerT&& container) {
+	return reverse_view(std::end(container), std::begin(container));
 }
 } // namespace le

@@ -55,7 +55,11 @@ class Engine : public MonoInstance<Engine> {
 	Duration min_frame_time{};
 
   private:
+	static auto get_engine(GLFWwindow* window) -> Engine&;
+
+	auto setup_signals(GLFWwindow* window) -> void;
 	auto update_stats() -> void;
+	auto update_gamepads() -> void;
 
 	struct Deleter {
 		void operator()(GLFWwindow* ptr) const;
@@ -67,6 +71,8 @@ class Engine : public MonoInstance<Engine> {
 	std::unique_ptr<graphics::Device> m_graphics_device{};
 	std::unique_ptr<graphics::Renderer> m_renderer{};
 	std::unique_ptr<audio::Device> m_audio_device{};
+
+	input::State m_input_state{};
 
 	std::optional<std::uint32_t> m_image_index{};
 	DeltaTime m_delta_time{};

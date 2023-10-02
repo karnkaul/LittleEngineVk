@@ -27,6 +27,6 @@ class Runtime {
 	std::shared_ptr<logger::File> m_log_file{};
 	std::unique_ptr<Engine> m_engine{};
 
-	std::unique_ptr<SceneManager> m_scene_manager{};
+	std::optional<SceneManager> m_scene_manager{};
 };
 } // namespace le

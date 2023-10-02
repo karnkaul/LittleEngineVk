@@ -5,6 +5,8 @@
 namespace le {
 class MeshRenderer : public RenderComponent {
   public:
+	using RenderComponent::RenderComponent;
+
 	std::vector<graphics::RenderInstance> instances{};
 	graphics::PipelineState pipeline_state{};
 

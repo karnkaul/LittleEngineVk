@@ -10,6 +10,8 @@ class Renderable : public Element {
   public:
 	static constexpr auto pipeline_state_v{graphics::PipelineState{.depth_test_write = 0}};
 
+	using Element::Element;
+
 	auto render_to(std::vector<RenderObject>& out, NotNull<Material const*> material, NotNull<Primitive const*> primitive) const -> void;
 
 	[[nodiscard]] auto get_tint() const -> graphics::Rgba { return render_instance.tint; }

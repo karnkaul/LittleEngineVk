@@ -3,17 +3,7 @@
 #include <le/scene/ui/input_text.hpp>
 
 namespace le::ui {
-auto InputText::setup() -> void {
-	View::setup();
-
-	auto text_view = std::make_unique<Text>();
-	m_text = text_view.get();
-	push_element(std::move(text_view));
-
-	auto cursor = std::make_unique<PrimitiveRenderer>();
-	m_cursor = cursor.get();
-	push_element(std::move(cursor));
-}
+InputText::InputText(Ptr<View> parent_view) : View(parent_view), m_cursor(&push_element<PrimitiveRenderer>()), m_text(&push_element<Text>()) {}
 
 auto InputText::tick(Duration dt) -> void {
 	View::tick(dt);

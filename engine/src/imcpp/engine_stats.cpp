@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <le/core/fixed_string.hpp>
+#include <le/core/format_unit.hpp>
 #include <le/engine.hpp>
 #include <le/imcpp/engine_stats.hpp>
 #include <span>
@@ -58,6 +59,11 @@ auto EngineStats::draw_to(OpenWindow /*w*/) -> void {
 		ImGui::Text("%s", FixedString{"shaders: {}", stats.cache.shaders}.c_str());
 		ImGui::Text("%s", FixedString{"pipelines: {}", stats.cache.pipelines}.c_str());
 		ImGui::Text("%s", FixedString{"vertex buffers: {}", stats.cache.vertex_buffers}.c_str());
+	}
+	if (auto tn = TreeNode{"vram"}) {
+		ImGui::Text("%s", FixedString{"buffers: {}", format_bytes(graphics::Buffer::bytes_allocated())}.c_str());
+		ImGui::Text("%s", FixedString{"images: {}", format_bytes(graphics::Image::bytes_allocated())}.c_str());
+		ImGui::Text("%s", FixedString{"total: {}", format_bytes(graphics::Buffer::bytes_allocated() + graphics::Image::bytes_allocated())}.c_str());
 	}
 
 	ImGui::Separator();

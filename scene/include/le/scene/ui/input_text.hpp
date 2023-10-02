@@ -8,15 +8,18 @@ namespace le::ui {
 struct Cursor {
 	static constexpr Duration blink_rate_v{1s};
 	static constexpr glm::vec2 scale_v{0.1f, 1.0f};
+	static constexpr float n_y_offset_v{0.4f};
 
 	glm::vec2 scale{scale_v};
-	float n_y_offset{0.4f};
+	float n_y_offset{n_y_offset_v};
 	Duration blink_rate{blink_rate_v};
 	std::size_t position{};
 };
 
 class InputText : public View, public input::Receiver {
   public:
+	InputText(Ptr<View> parent_view);
+
 	auto reset_blink() -> void;
 	auto write(std::string_view str) -> void;
 	auto backspace() -> void;
@@ -27,13 +30,12 @@ class InputText : public View, public input::Receiver {
 	auto goto_end() -> void;
 	auto paste_clipboard() -> void;
 
-	auto get_text() const -> Text& { return *m_text; }
+	[[nodiscard]] auto get_text() const -> Text& { return *m_text; }
 
 	Cursor cursor{};
 	bool enabled{true};
 
   protected:
-	auto setup() -> void override;
 	auto tick(Duration dt) -> void override;
 
 	auto on_key(int key, int action, int mods) -> bool override;

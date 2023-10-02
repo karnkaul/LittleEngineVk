@@ -1,6 +1,8 @@
 #include <le/console/console.hpp>
 #include <algorithm>
 #include <array>
+#include <format>
+#include <span>
 #include <unordered_set>
 
 namespace le::console {

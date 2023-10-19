@@ -5,15 +5,8 @@
 namespace le::ui {
 class Quad;
 
-class View {
+class View : public Polymorphic {
   public:
-	View(View const&) = delete;
-	View(View&&) = delete;
-	auto operator=(View const&) -> View& = delete;
-	auto operator=(View&&) -> View& = delete;
-
-	virtual ~View() = default;
-
 	explicit View(Ptr<View> parent_view = {});
 
 	virtual auto tick(Duration dt) -> void;
@@ -46,6 +39,7 @@ class View {
 
 	[[nodiscard]] auto get_parent() const -> Ptr<View> { return m_parent; }
 	[[nodiscard]] auto get_parent_matrix() const -> glm::mat4 { return m_parent_mat; }
+	[[nodiscard]] auto global_position() const -> glm::vec3;
 
 	RectTransform transform{};
 

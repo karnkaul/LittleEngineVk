@@ -8,7 +8,7 @@ View::View(Ptr<View> parent_view) : m_parent(parent_view), m_background(&push_el
 	m_background->set_active(false);
 }
 
-auto View::tick(Duration dt) -> void { // NOLINT
+auto View::tick(Duration dt) -> void { // NOLINT(misc-no-recursion)
 	if (m_background != nullptr) { m_background->transform.extent = transform.extent; }
 
 	auto do_tick = [this, dt](auto& cache, auto& source) {
@@ -30,7 +30,7 @@ auto View::tick(Duration dt) -> void { // NOLINT
 	do_tick(m_view_cache, m_sub_views);
 }
 
-auto View::render_tree(std::vector<RenderObject>& out) const -> void { // NOLINT
+auto View::render_tree(std::vector<RenderObject>& out) const -> void { // NOLINT(misc-no-recursion)
 	for (auto const& element : m_elements) { element->render(out); }
 	for (auto const& view : m_sub_views) { view->render_tree(out); }
 }
@@ -46,4 +46,11 @@ auto View::set_background(graphics::Rgba tint) -> void {
 }
 
 auto View::reset_background() -> void { m_background->set_active(false); }
+
+auto View::global_position() const -> glm::vec3 {
+	auto offset_transform = transform;
+	offset_transform.position += transform.anchor * transform.extent;
+	auto const mat = get_parent_matrix() * offset_transform.matrix();
+	return Transform::from(mat).position();
+}
 } // namespace le::ui

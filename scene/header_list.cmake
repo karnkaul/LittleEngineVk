@@ -5,8 +5,10 @@ set(header_list
   ${prefix}/scene/imcpp/scene_inspector.hpp
   ${prefix}/scene/imcpp/scene_graph.hpp
 
+  ${prefix}/scene/ui/button.hpp
   ${prefix}/scene/ui/element.hpp
   ${prefix}/scene/ui/input_text.hpp
+  ${prefix}/scene/ui/interactable.hpp
   ${prefix}/scene/ui/primitive_renderer.hpp
   ${prefix}/scene/ui/quad.hpp
   ${prefix}/scene/ui/rect_transform.hpp

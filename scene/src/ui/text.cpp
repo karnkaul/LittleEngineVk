@@ -36,18 +36,24 @@ auto Text::refresh() -> void {
 	if (m_font == nullptr) { return; }
 
 	auto const n_offset = [&] {
-		switch (m_align) {
-		// NOLINTNEXTLINE
-		case Align::eLeft: return -0.5f;
-		// NOLINTNEXTLINE
-		case Align::eRight: return +0.5f;
-		default: return 0.0f;
+		auto ret = glm::vec2{};
+		switch (m_align.horz) {
+		case HorzAlign::eLeft: ret.x = -0.5f; break;  // NOLINT
+		case HorzAlign::eRight: ret.x = +0.5f; break; // NOLINT
+		default: break;
 		}
+		switch (m_align.vert) {
+		case VertAlign::eTop: ret.y = 0.5f; break;	   // NOLINT
+		case VertAlign::eBottom: ret.y = -0.5f; break; // NOLINT
+		default: break;
+		}
+		return ret;
 	}();
 
 	auto pen = graphics::Font::Pen{*m_font, m_height};
-	auto const offset_x = (n_offset - 0.5f) * pen.calc_line_extent(m_text).x;
-	pen.cursor.x = offset_x;
+	auto const offset = (n_offset - 0.5f) * pen.calc_line_extent(m_text);
+	pen.cursor.x = offset.x;
+	pen.cursor.y = offset.y;
 	m_text_start = pen.cursor;
 	m_text_primitive.set_geometry(pen.generate_quads(m_text));
 	m_text_material.texture = &pen.get_texture();

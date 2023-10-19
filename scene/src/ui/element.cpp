@@ -1,3 +1,4 @@
+#include <le/core/transform.hpp>
 #include <le/scene/ui/element.hpp>
 
 namespace le::ui {
@@ -14,5 +15,10 @@ auto Element::local_matrix() const -> glm::mat4 {
 	};
 	auto const s = glm::scale(identity_v, glm::vec3{transform.scale, 1.0f});
 	return t * r * s;
+}
+
+auto Element::global_position() const -> glm::vec3 {
+	auto const mat = get_parent_matrix() * local_matrix();
+	return Transform::from(mat).position();
 }
 } // namespace le::ui

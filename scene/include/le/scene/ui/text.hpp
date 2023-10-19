@@ -4,12 +4,17 @@
 #include <le/vfs/uri.hpp>
 
 namespace le::ui {
+enum class HorzAlign { eLeft, eMid, eRight };
+enum class VertAlign { eTop, eMid, eBottom };
+
 class Text : public Renderable {
   public:
-	enum class Align : std::uint8_t { eLeft, eMid, eRight };
+	struct Align {
+		HorzAlign horz{HorzAlign::eMid};
+		VertAlign vert{VertAlign::eTop};
+	};
 
-	// NOLINTNEXTLINE
-	inline static Uri default_font_uri{"fonts/default.ttf"};
+	inline static Uri default_font_uri{"fonts/default.ttf"}; // NOLINT
 
 	Text(NotNull<View*> parent_view);
 
@@ -39,7 +44,7 @@ class Text : public Renderable {
 	std::string m_text{};
 	Ptr<graphics::Font> m_font{};
 	graphics::TextHeight m_height{graphics::TextHeight::eDefault};
-	Align m_align{Align::eMid};
+	Align m_align{};
 
 	graphics::DynamicPrimitive m_text_primitive{};
 	graphics::UnlitMaterial m_text_material{};

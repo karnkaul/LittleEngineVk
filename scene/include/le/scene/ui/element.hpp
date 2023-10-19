@@ -1,4 +1,5 @@
 #pragma once
+#include <le/core/polymorphic.hpp>
 #include <le/core/radians.hpp>
 #include <le/core/time.hpp>
 #include <le/graphics/render_object.hpp>
@@ -9,15 +10,8 @@ using graphics::RenderObject;
 
 class View;
 
-class Element {
+class Element : public Polymorphic {
   public:
-	Element(Element const&) = default;
-	Element(Element&&) = default;
-	auto operator=(Element const&) -> Element& = default;
-	auto operator=(Element&&) -> Element& = default;
-
-	virtual ~Element() = default;
-
 	Element(NotNull<View*> parent_view) : m_parent_view(parent_view) {}
 
 	virtual auto tick(Duration dt) -> void = 0;
@@ -33,6 +27,7 @@ class Element {
 	[[nodiscard]] auto get_parent_matrix() const -> glm::mat4 const& { return m_parent_mat; }
 
 	[[nodiscard]] auto local_matrix() const -> glm::mat4;
+	[[nodiscard]] auto global_position() const -> glm::vec3;
 
 	RectTransform transform{};
 	float z_index{};

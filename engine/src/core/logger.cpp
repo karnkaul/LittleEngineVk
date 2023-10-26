@@ -10,6 +10,10 @@
 #include <mutex>
 #include <thread>
 
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
+
 namespace le {
 namespace {
 namespace fs = std::filesystem;
@@ -88,6 +92,9 @@ auto logger::print(std::string_view const domain, std::string_view const message
 	if (auto file = g_file.lock()) { file->push(line); }
 	auto& stream = level == error_v ? std::cerr : std::cout;
 	stream << line;
+#if defined(_WIN32)
+	OutputDebugStringA(line.c_str());
+#endif
 }
 
 auto logger::log_to_file(std::string path) -> std::shared_ptr<File> {

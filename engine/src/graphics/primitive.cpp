@@ -5,7 +5,8 @@
 
 namespace le::graphics {
 namespace {
-auto write_vertices_indices(Buffer& out, Geometry const& geometry) -> vk::DeviceSize {
+// returns index offset if geometry has indices, else nullopt
+auto write_vertices_indices(Buffer& out, Geometry const& geometry) -> std::optional<vk::DeviceSize> {
 	auto const vertices = std::span{geometry.vertices};
 	auto const indices = std::span{geometry.indices};
 	auto const vibo_size = vertices.size_bytes() + indices.size_bytes();
@@ -18,6 +19,8 @@ auto write_vertices_indices(Buffer& out, Geometry const& geometry) -> vk::Device
 	}
 
 	out.write(bytes.data(), bytes.size());
+
+	if (geometry.indices.empty()) { return std::nullopt; }
 
 	return vertices.size_bytes();
 }
@@ -40,7 +43,7 @@ auto Primitive::draw(Buffers const& buffers, std::uint32_t const instances, vk::
 	assert(buffers.vertices);
 
 	cmd.bindVertexBuffers(bindings.vertex.buffer, buffers.vertices, vk::DeviceSize{});
-	if (buffers.indices != nullptr) { cmd.bindIndexBuffer(buffers.indices, buffers.index_offset, vk::IndexType::eUint32); }
+	if (buffers.indices != nullptr && buffers.index_offset) { cmd.bindIndexBuffer(buffers.indices, *buffers.index_offset, vk::IndexType::eUint32); }
 
 	if (buffers.bones != nullptr) {
 		cmd.bindVertexBuffers(bindings.skeleton.buffer, buffers.bones, vk::DeviceSize{});

@@ -12,7 +12,7 @@ struct Entry {
 };
 
 struct Autocomplete {
-	std::string_view common_suffix{};
+	std::string common_suffix{};
 	std::vector<std::string_view> candidates{};
 };
 

@@ -12,7 +12,7 @@ class Asset : public NamedType {
 	[[nodiscard]] virtual auto try_load(Uri const& uri) -> bool = 0;
 
 	[[nodiscard]] static auto get_asset_type(dj::Json const& json) -> std::string_view { return json["asset_type"].as_string(); }
-	[[nodiscard]] static auto get_asset_type(Uri const& uri) -> std::string_view;
+	[[nodiscard]] static auto get_asset_type(Uri const& uri) -> std::string;
 
   protected:
 	[[nodiscard]] auto read_bytes(Uri const& uri) const -> std::vector<std::byte>;

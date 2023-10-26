@@ -4,6 +4,7 @@
 #include <le/graphics/defer.hpp>
 #include <le/graphics/geometry.hpp>
 #include <le/graphics/resource.hpp>
+#include <optional>
 
 namespace le::graphics {
 class Primitive {
@@ -34,7 +35,7 @@ class Primitive {
 		vk::Buffer vertices{};
 		vk::Buffer indices{};
 		vk::Buffer bones{};
-		vk::DeviceSize index_offset{};
+		std::optional<vk::DeviceSize> index_offset{};
 	};
 
 	auto draw(Buffers const& buffers, std::uint32_t instances, vk::CommandBuffer cmd) const -> void;
@@ -51,7 +52,7 @@ class StaticPrimitive : public Primitive {
 	struct Data {
 		std::unique_ptr<DeviceBuffer> vertices_indices{};
 		std::unique_ptr<DeviceBuffer> bones{};
-		vk::DeviceSize index_offset{};
+		std::optional<vk::DeviceSize> index_offset{};
 	};
 
 	Defer<Data> m_data{};
@@ -70,6 +71,6 @@ class DynamicPrimitive : public Primitive {
 
 	Geometry m_geometry{};
 	Buffered<std::shared_ptr<HostBuffer>> m_vertices_indices{};
-	mutable vk::DeviceSize m_index_offset{};
+	mutable std::optional<vk::DeviceSize> m_index_offset{};
 };
 } // namespace le::graphics

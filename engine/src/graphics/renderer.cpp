@@ -294,7 +294,7 @@ auto Renderer::wait_for_frame(glm::uvec2 const framebuffer_extent) -> std::optio
 }
 
 auto Renderer::render(RenderFrame const& render_frame, std::uint32_t const image_index) -> std::uint32_t {
-	static constexpr auto ui_camera_v{Camera{.type = Camera::Orthographic{}}};
+	static auto const ui_camera_v{Camera{.type = Camera::Orthographic{}}};
 
 	auto const shadow_view_plane = ViewPlane{.near = -0.5f * shadow_frustum.z, .far = 0.5f * shadow_frustum.z};
 	auto shadow_camera = Camera{.type = Camera::Orthographic{.view_plane = shadow_view_plane}, .face = Camera::Face::ePositiveZ};

@@ -7,9 +7,9 @@ namespace {
 auto const g_log{logger::Logger{"Asset"}};
 }
 
-auto Asset::get_asset_type(Uri const& uri) -> std::string_view {
+auto Asset::get_asset_type(Uri const& uri) -> std::string {
 	auto const& json = dj::Json::parse(vfs::read_string(uri));
-	return get_asset_type(json);
+	return std::string{get_asset_type(json)};
 }
 
 // NOLINTNEXTLINE

@@ -1,13 +1,16 @@
-name: no-pch
+name: ci-pr
 on: [pull_request]
 jobs:
-  build-linux-no-pch:
-    runs-on: ubuntu-latest
+  build-gcc-no-pch:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: init
-        run: sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev g++-13
+        run: |
+          sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
       - name: configure gcc
-        run: cmake -S . --preset=default -B build -DLE_PCH=OFF -DLE_BUILD_EXAMPLE=OFF -DLE_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF -DCMAKE_CXX_COMPILER=g++-13
+        run: cmake -S . --preset=default -B build -DLEVK_EDITOR_REUSE_PCH=OFF -DLEVK_USE_FREETYPE=OFF -DCAPO_USE_OPENAL=OFF
       - name: build gcc
         run: cmake --build build --config=Release

@@ -1,47 +1,24 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_DEBUG_POSTFIX "-d")
 
-project(little-engine VERSION 0.2.0)
+set(build_version 0.1.0)
+project(levk VERSION ${build_version})
 
-set(is_root_project OFF)
-
-if("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-  set(is_root_project ON)
-endif()
-
-option(LE_PCH "Use PCH for little" ON)
-option(LE_BUILD_SCENE "Build little-engine scene library" ON)
-option(LE_BUILD_TOOLS "Build little-engine tools" ${is_root_project})
-option(LE_USE_FREETYPE "Use Freetype as the font backend" ON)
-option(LE_BUILD_EXAMPLE "Build little-engine example" ${is_root_project})
-
-add_library(le-compile-options INTERFACE)
-add_library(le::le-compile-options ALIAS le-compile-options)
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-  target_compile_options(le-compile-options INTERFACE
-    -Wall -Wextra -Wpedantic -Wconversion -Wunused -Werror=return-type $<$<NOT:$<CONFIG:Debug>>:-Werror>
-  )
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL MSVC)
-  target_compile_options(le-compile-options INTERFACE
-    $<$<NOT:$<CONFIG:Debug>>:/WX>
-  )
-endif()
+option(LEVK_USE_FREETYPE "Build and link to Freetype (for text rendering)" ON)
+option(LEVK_BUILD_IMPORTER "Build levk importer" ON)
+option(LEVK_BUILD_EDITOR "Build levk editor" ${PROJECT_IS_TOP_LEVEL})
 
 add_subdirectory(ext)
-add_subdirectory(engine)
+add_subdirectory(lib)
 
-if(LE_BUILD_SCENE)
-  add_subdirectory(scene)
-endif()
+if(LEVK_BUILD_EDITOR)
+  if(NOT LEVK_BUILD_IMPORTER)
+    message(FATAL_ERROR "levk: Cannot build editor without importer")
+  endif()
 
-if(LE_BUILD_TOOLS)
-  add_subdirectory(tools)
-endif()
-
-if(LE_BUILD_EXAMPLE)
-  add_subdirectory(example)
+  add_subdirectory(editor)
 endif()

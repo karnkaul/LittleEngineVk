@@ -1,0 +1,68 @@
+#pragma once
+#include <levk/core/is_positive.hpp>
+#include <levk/image_file.hpp>
+#include <levk/render_device.hpp>
+#include <levk/texture.hpp>
+#include <levk/util.hpp>
+
+namespace levk {
+class TextureImpl {
+  public:
+	TextureImpl(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear) : m_device(render_device) {
+		auto ici = ImageCreateInfo{
+			.extent = to_vk_extent(bitmap.extent),
+			.mip_map = mip_map,
+		};
+		if (linear) { ici.format = vk::Format::eR8G8B8A8Unorm; }
+		m_image = render_device->create_image(ici);
+		do_recreate(bitmap);
+	}
+
+	[[nodiscard]] auto do_get_size() const -> glm::ivec2 {
+		if (!m_image) { return {}; }
+		return to_glm_vec2(m_image->get_image_info().extent);
+	}
+
+	[[nodiscard]] auto do_get_descriptor_info(TextureSampler const& sampler, std::uint32_t const binding) const -> DescriptorInfo {
+		if (!m_image) { return {}; }
+
+		return DescriptorInfo{
+			.payload = vk::DescriptorImageInfo{m_device->get_sampler(sampler), m_image->get_image_info().view, m_image->get_image_info().layout},
+			.type = vk::DescriptorType::eCombinedImageSampler,
+			.binding = binding,
+		};
+	}
+
+	void do_recreate(BitmapView const bitmap) {
+		if (!m_image) { return; }
+		m_image->resize(to_vk_extent(bitmap.extent));
+		m_image->overwrite(bitmap);
+	}
+
+  private:
+	NotNull<IRenderDevice*> m_device;
+	std::unique_ptr<IRenderImage> m_image{};
+};
+
+class Texture : public ITexture, private TextureImpl {
+  public:
+	Texture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear)
+		: TextureImpl(render_device, bitmap, mip_map, linear) {}
+
+  private:
+	[[nodiscard]] auto get_size() const -> glm::ivec2 final { return do_get_size(); }
+	[[nodiscard]] auto get_descriptor_info(std::uint32_t binding) const -> DescriptorInfo final { return do_get_descriptor_info(sampler, binding); }
+};
+
+class DynamicTexture : public IDynamicTexture, private TextureImpl {
+  public:
+	DynamicTexture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear)
+		: TextureImpl(render_device, bitmap, mip_map, linear) {}
+
+  private:
+	[[nodiscard]] auto get_size() const -> glm::ivec2 final { return do_get_size(); }
+	[[nodiscard]] auto get_descriptor_info(std::uint32_t binding) const -> DescriptorInfo final { return do_get_descriptor_info(sampler, binding); }
+
+	void recreate(BitmapView bitmap) final { do_recreate(bitmap); }
+};
+} // namespace levk

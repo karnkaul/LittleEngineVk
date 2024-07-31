@@ -1,5 +1,6 @@
 **/.vs/*
 **/.vscode/*
+**/.idea/*
 build/*
 out/*
 screenshots
@@ -10,8 +11,6 @@ CMakeSettings.json
 compile_commands.json
 /CMakeUserPresets.json
 
-wiki
 imgui.ini
-
-little-engine.log*
-little-engine.conf*
+levk.*log
+compile_shader.sh

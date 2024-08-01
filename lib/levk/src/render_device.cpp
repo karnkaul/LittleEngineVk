@@ -493,6 +493,10 @@ class RenderDevice : public IRenderDevice {
 		return std::make_unique<DynamicTexture>(this, bitmap, mip_map, linear);
 	}
 
+	auto create_cubemap(std::span<BitmapView const, 6> layers, bool const linear) -> std::unique_ptr<ICubemap> final {
+		return std::make_unique<Cubemap>(this, layers, linear);
+	}
+
 	auto create_static_primitive(Geometry const& geometry, NotNull<IMaterial const*> material,
 								 RenderShader vertex_shader) -> std::unique_ptr<IStaticPrimitive> final {
 		return std::make_unique<StaticPrimitive>(this, geometry, material, vertex_shader);

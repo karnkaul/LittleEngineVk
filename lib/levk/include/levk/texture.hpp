@@ -37,4 +37,6 @@ class IDynamicTexture : public ITexture {
 };
 
 class IRenderTexture : public ITexture {};
+
+class ICubemap : public ITexture {};
 } // namespace levk

@@ -119,26 +119,54 @@ RenderContext::RenderContext(NotNull<IRenderDevice*> render_device, vk::CommandB
 	: m_device(render_device), m_command_buffer(command_buffer) {}
 
 auto RenderContext::set_shadow_fragment_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
-	auto const* asset = asset_store.load<ShaderAsset>(shader_uri);
-	if (asset == nullptr) {
-		m_log.error("Failed to load shadow fragment shader: '{}'", shader_uri);
-		return false;
-	}
-	return set_shadow_fragment_shader(asset->get_render_shader());
+	return set_shader(m_shadow_fs, asset_store, shader_uri);
 }
 
-auto RenderContext::set_shadow_fragment_shader(RenderShader const fragment_shader) -> bool {
-	if (fragment_shader.empty()) {
-		m_log.error("Invalid shadow fragment shader");
-		return false;
-	}
+auto RenderContext::set_skybox_vertex_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
+	return set_shader(m_skybox.vertex_shader, asset_store, shader_uri);
+}
 
-	m_shadow_fs = fragment_shader;
-	return true;
+auto RenderContext::set_skybox_fragment_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
+	return set_shader(m_skybox.fragment_shader, asset_store, shader_uri);
 }
 
 void RenderContext::add_objects(std::span<RenderObject const> objects) {
-	for (auto const& object : objects) { bake(object); }
+	for (auto const& object : objects) {
+		auto baked = BakedObject{};
+		if (!bake(object, baked)) { continue; }
+		m_objects.push_back(baked);
+	}
+}
+
+void RenderContext::add_skybox(NotNull<ICubemap const*> cubemap) {
+	if (m_skybox.vertex_shader.empty()) {
+		m_log.error("RenderContext::add_skybox(): skybox vertex shader not set");
+		return;
+	}
+	if (m_skybox.fragment_shader.empty()) {
+		m_log.error("RenderContext::add_skybox(): skybox fragment shader not set");
+		return;
+	}
+
+	if (!m_skybox.material) { m_skybox.material = std::make_unique<material::Unlit>(*m_device, m_skybox.fragment_shader); }
+	if (!m_skybox.cube) {
+		auto const geometry = Geometry::from(shape::Cube{.size = glm::vec3{1.0f}});
+		m_skybox.cube = m_device->create_static_primitive(geometry, m_skybox.material.get(), m_skybox.vertex_shader);
+		m_skybox.primitive.emplace(m_skybox.cube.get());
+	}
+
+	m_skybox.material->texture = cubemap;
+
+	auto const object = RenderObject{
+		.primitives = {&*m_skybox.primitive, 1},
+		.instances = {&m_skybox.instance, 1},
+		.disable_depth_test = true,
+		.alpha_blend = false,
+	};
+	auto baked = BakedObject{};
+	if (!bake(object, baked)) { return; }
+
+	m_skybox.baked = baked;
 }
 
 auto RenderContext::set_camera(NotNull<IRenderCamera*> camera) -> RenderContext& {
@@ -149,6 +177,33 @@ auto RenderContext::set_camera(NotNull<IRenderCamera*> camera) -> RenderContext&
 auto RenderContext::set_view(RenderView const& view) -> RenderContext& {
 	m_view = view;
 	return *this;
+}
+
+auto RenderContext::draw_shadows(glm::ivec2 const resolution, glm::vec3 const& projection_viewport) -> RenderStats {
+	if (m_shadow_fs.empty()) {
+		m_log.error("RenderContext::draw_shadows(): shadow fragment shader not set");
+		return {};
+	}
+	if (!is_positive(resolution)) {
+		m_log.error("RenderContext::draw_shadows(): invalid resolution: {}x{}", resolution.x, resolution.y);
+		return {};
+	}
+
+	auto const camera_position = glm::vec3{m_view.camera_transform[3]};
+	auto const target = m_view.main_light.direction * front_v;
+	m_shadow_view = glm::lookAt(camera_position - target, camera_position, up_v);
+	auto const half_size = 0.5f * projection_viewport;
+	m_shadow_proj = glm::ortho(-half_size.x, half_size.x, -half_size.y, half_size.y, -half_size.z, half_size.z);
+
+	auto const rbi = RenderBeginInfo{
+		.camera_view = m_shadow_view,
+		.camera_proj = m_shadow_proj,
+	};
+	auto const ret = draw(resolution, rbi, DrawType::eShadows);
+
+	m_shadow_map = &m_camera->get_render_texture(shadow_sampler_v);
+
+	return ret;
 }
 
 auto RenderContext::draw_renderers(glm::ivec2 const resolution, Degrees const field_of_view, glm::vec2 const z_plane) -> RenderStats {
@@ -166,44 +221,18 @@ auto RenderContext::draw_renderers(glm::ivec2 const resolution, Degrees const fi
 	auto camera_transform = Transform{};
 	camera_transform.from_matrix(m_view.camera_transform);
 	auto const rotation_matrix = glm::toMat4(glm::inverse(camera_transform.get_orientation()));
+	auto const view_matrix = rotation_matrix * glm::translate(identity_mat_v, -camera_transform.get_position());
 	auto const projection_matrix = glm::perspective(Radians{field_of_view}.value, aspect_ratio, z_plane.x, z_plane.y);
-	auto const camera_view_proj = projection_matrix * rotation_matrix * glm::translate(identity_mat_v, -camera_transform.get_position());
 
 	auto const rbi = RenderBeginInfo{
 		.main_light = m_view.main_light,
 		.camera_position = camera_transform.get_position(),
 		.camera_exposure = m_view.camera_exposure,
-		.camera_view_proj = camera_view_proj,
-		.shadow_view_proj = m_shadow_view_proj,
+		.camera_view = view_matrix,
+		.camera_proj = projection_matrix,
+		.shadow_view_proj = m_shadow_proj * m_shadow_view,
 	};
 	return draw(resolution, rbi, DrawType::eRenderers);
-}
-
-auto RenderContext::draw_shadows(glm::ivec2 const resolution, glm::vec3 const& projection_viewport) -> RenderStats {
-	if (m_shadow_fs.empty()) {
-		m_log.error("RenderContext::draw_shadows(): shadow fragment shader not set");
-		return {};
-	}
-	if (!is_positive(resolution)) {
-		m_log.error("RenderContext::draw_shadows(): invalid resolution: {}x{}", resolution.x, resolution.y);
-		return {};
-	}
-
-	auto const camera_position = glm::vec3{m_view.camera_transform[3]};
-	auto const target = m_view.main_light.direction * front_v;
-	auto const view_matrix = glm::lookAt(camera_position - target, camera_position, up_v);
-	auto const half_size = 0.5f * projection_viewport;
-	auto const projection_matrix = glm::ortho(-half_size.x, half_size.x, -half_size.y, half_size.y, -half_size.z, half_size.z);
-	m_shadow_view_proj = projection_matrix * view_matrix;
-
-	auto const rbi = RenderBeginInfo{
-		.camera_view_proj = m_shadow_view_proj,
-	};
-	auto const ret = draw(resolution, rbi, DrawType::eShadows);
-
-	m_shadow_map = &m_camera->get_render_texture(shadow_sampler_v);
-
-	return ret;
 }
 
 void RenderContext::submit() {
@@ -217,31 +246,48 @@ void RenderContext::clear() {
 	m_shadow_map = {};
 	m_shadow_fs = {};
 	m_last_rt = {};
+	m_skybox.baked = {};
 }
 
-void RenderContext::bake(RenderObject const& object) {
-	if (object.instances.empty()) { return; }
+auto RenderContext::set_shader(RenderShader& out, IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
+	auto const* asset = asset_store.load<ShaderAsset>(shader_uri);
+	if (asset == nullptr) {
+		m_log.error("Failed to load shader: '{}'", shader_uri);
+		return false;
+	}
+	if (asset->get_render_shader().empty()) {
+		m_log.error("Invalid shader: '{}'", shader_uri);
+		return false;
+	}
 
-	auto& baked = m_objects.emplace_back();
-	baked.instance_count = static_cast<std::uint32_t>(object.instances.size());
-	baked.primitives = object.primitives;
-	baked.line_width = clamp_line_width(object.line_width, m_device->get_properties().limits.lineWidthRange);
-	baked.polygon_mode = object.polygon_mode;
-	baked.disable_depth_test = object.disable_depth_test;
-	baked.alpha_blend = object.alpha_blend;
+	out = asset->get_render_shader();
+	return true;
+}
+
+auto RenderContext::bake(RenderObject const& object, BakedObject& out) -> bool {
+	if (object.instances.empty()) { return false; }
+
+	out.instance_count = static_cast<std::uint32_t>(object.instances.size());
+	out.primitives = object.primitives;
+	out.line_width = clamp_line_width(object.line_width, m_device->get_properties().limits.lineWidthRange);
+	out.polygon_mode = object.polygon_mode;
+	out.disable_depth_test = object.disable_depth_test;
+	out.alpha_blend = object.alpha_blend;
 
 	m_instances.clear();
 	m_instances.reserve(object.instances.size());
 	for (auto const& instance : object.instances) { m_instances.push_back(instance.bake(object.parent)); }
 	auto& instance_buffer = m_device->allocate_storage_buffer();
 	instance_buffer.set_data(m_instances.data(), std::span{m_instances}.size_bytes());
-	baked.instances = &instance_buffer;
+	out.instances = &instance_buffer;
 
 	if (!object.joint_matrices.empty()) {
 		auto& joint_mats_buffer = m_device->allocate_storage_buffer();
 		joint_mats_buffer.set_data(object.joint_matrices.data(), object.joint_matrices.size_bytes());
-		baked.joint_matrices = &joint_mats_buffer;
+		out.joint_matrices = &joint_mats_buffer;
 	}
+
+	return true;
 }
 
 auto RenderContext::get_pipeline(BakedObject const& object, IPrimitive const& primitive, DrawType type) const -> Ptr<IPipeline> {
@@ -302,18 +348,22 @@ auto RenderContext::draw(glm::ivec2 resolution, RenderBeginInfo const& info, Dra
 	auto const render_start = Clock::now();
 	m_camera->begin_rendering(info, resolution, m_command_buffer);
 
+	auto const draw_primitive = [&](BakedObject const& object, IPrimitive const& primitive) {
+		auto* pipeline = get_pipeline(object, primitive, type);
+		if (pipeline == nullptr) { return; }
+
+		pipelines.insert(pipeline);
+		if (bind(*pipeline)) { ++ret.pipeline_binds; }
+		draw(*pipeline, object, primitive, type);
+
+		++ret.draw_calls;
+		ret.triangles += primitive.get_triangle_count();
+	};
+
+	if (type == DrawType::eRenderers && m_skybox.baked) { draw_primitive(*m_skybox.baked, **m_skybox.primitive); }
+
 	for (auto const& object : m_objects) {
-		for (auto const primitive : object.primitives) {
-			auto* pipeline = get_pipeline(object, *primitive, type);
-			if (pipeline == nullptr) { continue; }
-
-			pipelines.insert(pipeline);
-			if (bind(*pipeline)) { ++ret.pipeline_binds; }
-			draw(*pipeline, object, *primitive, type);
-
-			++ret.draw_calls;
-			ret.triangles += primitive->get_triangle_count();
-		}
+		for (auto const primitive : object.primitives) { draw_primitive(object, *primitive); }
 	}
 
 	m_last_rt = m_camera->end_rendering();

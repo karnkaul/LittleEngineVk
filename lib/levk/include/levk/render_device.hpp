@@ -52,9 +52,9 @@ class IRenderDevice : public Polymorphic {
 	[[nodiscard]] virtual auto create_skin_vertex_buffer(VertexSkin const& skin) -> std::unique_ptr<IStaticVertexBuffer> = 0;
 	[[nodiscard]] virtual auto create_uniform_buffer(vk::DeviceSize size = {}) -> std::unique_ptr<IUniformBuffer> = 0;
 	[[nodiscard]] virtual auto create_storage_buffer(vk::DeviceSize size = {}) -> std::unique_ptr<IStorageBuffer> = 0;
-	[[nodiscard]] virtual auto create_texture(BitmapView bitmap, bool mip_map = true, bool linear = false) -> std::unique_ptr<ITexture> = 0;
-	[[nodiscard]] virtual auto create_dynamic_texture(BitmapView bitmap = {}, bool mip_map = true, bool linear = false) -> std::unique_ptr<IDynamicTexture> = 0;
-	[[nodiscard]] virtual auto create_cubemap(std::span<BitmapView const, 6> layers, bool linear = false) -> std::unique_ptr<ICubemap> = 0;
+	[[nodiscard]] virtual auto create_texture(BitmapView bitmap, TextureFlags flags = {}) -> std::unique_ptr<ITexture> = 0;
+	[[nodiscard]] virtual auto create_dynamic_texture(BitmapView bitmap = {}, TextureFlags flags = {}) -> std::unique_ptr<IDynamicTexture> = 0;
+	[[nodiscard]] virtual auto create_cubemap(CubemapLayers const& layers, TextureFlags flags = {}) -> std::unique_ptr<ICubemap> = 0;
 	[[nodiscard]] virtual auto create_static_primitive(Geometry const& geometry, NotNull<IMaterial const*> material,
 													   RenderShader vertex_shader) -> std::unique_ptr<IStaticPrimitive> = 0;
 	[[nodiscard]] virtual auto create_dynamic_primitive(Geometry geometry, NotNull<IMaterial const*> material,

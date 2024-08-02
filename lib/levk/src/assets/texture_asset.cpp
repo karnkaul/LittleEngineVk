@@ -62,4 +62,42 @@ auto TextureAsset::load(IAssetStore& store, LoadInfo const& info) -> bool {
 
 	return true;
 }
+
+auto CubemapAsset::load(IAssetStore& store, LoadInfo const& info) -> bool {
+	auto const json = store.get_vfs().load_json(info.uri);
+	if (IAssetStore::read_asset_type_name(json) != type_name_v) { return false; }
+
+	auto const& in_layers = json["layers"];
+	if (in_layers.array_view().size() != 6) { return false; }
+
+	auto images = std::array<Ptr<ImageAsset const>, 6>{};
+	auto extent = std::optional<glm::ivec2>{};
+	for (auto [layer, image] : std::ranges::zip_view(in_layers.array_view(), images)) {
+		auto const image_info = LoadInfo{
+			.uri = layer.as_string(),
+			.reload = info.reload,
+		};
+		image = store.load<ImageAsset>(image_info);
+		if (image == nullptr || image->image.is_empty()) { return false; }
+
+		if (!extent) {
+			extent = image->image.get_bitmap_view().extent;
+			continue;
+		}
+
+		// all image layers must have the same extent.
+		if (image->image.get_bitmap_view().extent != *extent) { return false; }
+	}
+
+	auto out_layers = CubemapLayers{};
+	for (auto [image, layer] : std::ranges::zip_view(images, out_layers)) { layer = image->image.get_bitmap_view(); }
+
+	auto const flags = get_flags(json);
+
+	cubemap = store.get_engine().get_render_device().create_cubemap(out_layers, flags);
+	cubemap->sampler = get_sampler(json["sampler"]);
+	cubemap->name = json["name"].as_string();
+
+	return true;
+}
 } // namespace levk

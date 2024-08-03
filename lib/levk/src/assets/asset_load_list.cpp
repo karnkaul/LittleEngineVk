@@ -50,6 +50,17 @@ void AssetLoadList::add_texture(std::string uri) {
 	add_loader<TextureAsset>(load_stage::texture_v, std::move(uri));
 }
 
+void AssetLoadList::add_cubemap(std::string uri) {
+	if (uri.empty() || m_added.contains(uri)) { return; }
+
+	auto const json = m_store->get_vfs().load_json(uri);
+	if (!json) { return; }
+
+	for (auto const& image : json["layers"].array_view()) { add_image(image.as<std::string>()); }
+
+	add_loader<CubemapAsset>(load_stage::cubemap_v, std::move(uri));
+}
+
 void AssetLoadList::add_lit_material(std::string uri) {
 	if (uri.empty() || m_added.contains(uri)) { return; }
 

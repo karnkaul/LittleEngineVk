@@ -41,6 +41,7 @@ auto ImportedSceneAsset::load(IAssetStore& store, LoadInfo const& info) -> bool 
 	imported_scene.root_nodes.clear();
 	for (auto const& node : json["nodes"].array_view()) { imported_scene.nodes.push_back(to_node(node)); }
 	for (auto const& index : json["root_nodes"].array_view()) { imported_scene.root_nodes.push_back(ImportIndex{index.as<std::int64_t>()}); }
+	imported_scene.skybox = json["skybox"].as_string();
 
 	return true;
 }

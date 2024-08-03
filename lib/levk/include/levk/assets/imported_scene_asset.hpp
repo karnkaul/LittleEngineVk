@@ -38,6 +38,7 @@ struct ImportedNode {
 struct ImportedScene {
 	std::vector<ImportedNode> nodes{};
 	std::vector<ImportIndex> root_nodes{};
+	std::string skybox{};
 
 	[[nodiscard]] auto get_node(ImportIndex index) const -> ImportedNode const&;
 };

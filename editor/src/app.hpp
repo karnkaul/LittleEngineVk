@@ -50,6 +50,7 @@ class App : public levk::EventSink {
 	void load_node(levk::ImportedScene const& scene, levk::ImportIndex index, levk::ImportIndex parent);
 	auto load_static_mesh(std::string_view uri) -> bool;
 	auto load_skinned_mesh(std::string_view uri) -> bool;
+	auto load_skybox(std::string_view uri) -> bool;
 	auto attach_static_mesh(levk::Entity& out, std::string_view uri) -> bool;
 	auto attach_skinned_mesh(levk::Entity& out, std::string_view uri) -> bool;
 

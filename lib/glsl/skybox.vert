@@ -24,5 +24,5 @@ void main() {
 	const vec4 frag_pos = instance.model * vec4(a_pos, 1.0);
 	out_uv = normalize(a_pos);
 	gl_Position = proj * mat4(mat3(view)) * frag_pos;
-	// gl_Position = view_proj * frag_pos;
+	gl_Position = gl_Position.xyww;
 }

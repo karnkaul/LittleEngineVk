@@ -58,6 +58,7 @@ class RenderContext {
 		std::optional<vk::PolygonMode> polygon_mode{};
 		float line_width{};
 		bool disable_depth_test{};
+		std::optional<vk::CompareOp> depth_compare{};
 		bool alpha_blend{};
 	};
 

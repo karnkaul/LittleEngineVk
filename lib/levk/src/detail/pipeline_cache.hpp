@@ -169,7 +169,7 @@ class PipelineCache {
 		static auto compute_hash(State const& state) -> std::size_t {
 			return make_combined_hash(state.primitive_state.topology, state.primitive_state.vertex_binding, state.primitive_state.alpha_blend,
 									  state.pass_state.polygon_mode, state.pass_state.colour_format, state.pass_state.depth_format, state.pass_state.samples,
-									  state.pass_state.depth_test);
+									  state.pass_state.depth_compare, state.pass_state.depth_test);
 		}
 
 		[[nodiscard]] auto hash() const -> std::size_t { return cached_hash; }
@@ -428,7 +428,7 @@ class PipelineCache {
 
 		auto pdssci = vk::PipelineDepthStencilStateCreateInfo{};
 		pdssci.depthTestEnable = pdssci.depthWriteEnable = state.pass_state.depth_test ? vk::True : vk::False;
-		pdssci.depthCompareOp = vk::CompareOp::eLess;
+		pdssci.depthCompareOp = state.pass_state.depth_compare;
 		gpci.pDepthStencilState = &pdssci;
 
 		auto const piasci = vk::PipelineInputAssemblyStateCreateInfo{{}, state.primitive_state.topology};

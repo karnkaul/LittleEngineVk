@@ -160,7 +160,7 @@ void RenderContext::add_skybox(NotNull<ICubemap const*> cubemap) {
 	auto const object = RenderObject{
 		.primitives = {&*m_skybox.primitive, 1},
 		.instances = {&m_skybox.instance, 1},
-		.disable_depth_test = true,
+		.depth_compare = vk::CompareOp::eLessOrEqual,
 		.alpha_blend = false,
 	};
 	auto baked = BakedObject{};
@@ -272,6 +272,7 @@ auto RenderContext::bake(RenderObject const& object, BakedObject& out) -> bool {
 	out.line_width = clamp_line_width(object.line_width, m_device->get_properties().limits.lineWidthRange);
 	out.polygon_mode = object.polygon_mode;
 	out.disable_depth_test = object.disable_depth_test;
+	out.depth_compare = object.depth_compare;
 	out.alpha_blend = object.alpha_blend;
 
 	m_instances.clear();
@@ -308,6 +309,7 @@ auto RenderContext::get_pipeline(BakedObject const& object, IPrimitive const& pr
 	auto pass_state = m_camera->get_render_state();
 	if (object.disable_depth_test) { pass_state.depth_test = false; }
 	if (object.polygon_mode) { pass_state.polygon_mode = *object.polygon_mode; }
+	if (object.depth_compare) { pass_state.depth_compare = *object.depth_compare; }
 
 	auto const pipeline_state = PipelineState{
 		.primitive_state = primitive_state,
@@ -360,11 +362,11 @@ auto RenderContext::draw(glm::ivec2 resolution, RenderBeginInfo const& info, Dra
 		ret.triangles += primitive.get_triangle_count();
 	};
 
-	if (type == DrawType::eRenderers && m_skybox.baked) { draw_primitive(*m_skybox.baked, **m_skybox.primitive); }
-
 	for (auto const& object : m_objects) {
 		for (auto const primitive : object.primitives) { draw_primitive(object, *primitive); }
 	}
+
+	if (type == DrawType::eRenderers && m_skybox.baked) { draw_primitive(*m_skybox.baked, **m_skybox.primitive); }
 
 	m_last_rt = m_camera->end_rendering();
 	ret.render_time = Clock::now() - render_start;

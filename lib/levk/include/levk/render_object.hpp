@@ -11,6 +11,7 @@ struct RenderObject {
 	std::optional<vk::PolygonMode> polygon_mode{};
 	float line_width{1.0f};
 	bool disable_depth_test{false};
+	std::optional<vk::CompareOp> depth_compare{};
 	bool alpha_blend{true};
 };
 } // namespace levk

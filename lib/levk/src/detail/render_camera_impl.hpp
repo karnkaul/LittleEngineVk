@@ -240,7 +240,7 @@ class RenderCamera : public IRenderCamera {
 		auto const intensity = main_light.intensity;
 		auto const dir_light = DirLight{
 			.rgb_intensity = {rgba, intensity},
-			.direction = glm::normalize(main_light.direction * front_v),
+			.direction = glm::normalize(main_light.orientation * front_v),
 		};
 		m_main_light->set_data(&dir_light, sizeof(dir_light));
 	}

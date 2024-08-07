@@ -41,6 +41,7 @@ auto SceneInfoAsset::load(IAssetStore& store, LoadInfo const& info) -> bool {
 	for (auto const& node : json["nodes"].array_view()) { scene.nodes.push_back(to_node(node)); }
 	for (auto const& index : json["root_nodes"].array_view()) { scene.root_nodes.push_back(ImportIndex{index.as<std::int64_t>()}); }
 	scene.skybox = json["skybox"].as_string();
+	if (auto const& main_light = json["main_light"]) { from_json(main_light, scene.main_light.emplace()); }
 
 	return true;
 }

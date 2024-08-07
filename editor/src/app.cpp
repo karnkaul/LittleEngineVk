@@ -198,9 +198,9 @@ void App::load_scene(std::string_view const uri) {
 	for (auto const index : asset->scene.root_nodes) { load_node(asset->scene, index, levk::ImportIndex::eNone); }
 
 	if (!asset->scene.skybox.empty()) { load_skybox(asset->scene.skybox); }
+	if (asset->scene.main_light) { m_scene.main_light = *asset->scene.main_light; }
 }
 
-// NOLINTNEXTLINE(misc-no-recursion)
 void App::load_node(levk::ImportedScene const& scene, levk::ImportIndex index, levk::ImportIndex parent) {
 	auto const& node = scene.get_node(index);
 	if (!node.is_valid()) { return; }

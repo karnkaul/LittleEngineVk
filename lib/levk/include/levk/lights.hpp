@@ -13,7 +13,7 @@ struct Light {
 
 /// \brief Directional light.
 struct DirectionalLight : Light {
-	glm::quat direction{get_look_forward()};
+	glm::quat orientation{get_look_forward()};
 
 	void inspect_directional_light();
 };

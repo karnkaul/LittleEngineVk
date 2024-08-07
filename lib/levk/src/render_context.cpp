@@ -190,7 +190,7 @@ auto RenderContext::draw_shadows(glm::ivec2 const resolution, glm::vec3 const& p
 	}
 
 	auto const camera_position = glm::vec3{m_view.camera_transform[3]};
-	auto const target = m_view.main_light.direction * front_v;
+	auto const target = m_view.main_light.orientation * front_v;
 	m_shadow_view = glm::lookAt(camera_position - target, camera_position, up_v);
 	auto const half_size = 0.5f * projection_viewport;
 	m_shadow_proj = glm::ortho(-half_size.x, half_size.x, -half_size.y, half_size.y, -half_size.z, half_size.z);

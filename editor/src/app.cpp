@@ -1,9 +1,9 @@
 #include <app.hpp>
 #include <djson/json.hpp>
 #include <levk/assets/asset_load_list.hpp>
-#include <levk/assets/imported_scene_asset.hpp>
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>
+#include <levk/assets/scene_info_asset.hpp>
 #include <levk/assets/shader_asset.hpp>
 #include <levk/assets/texture_asset.hpp>
 #include <levk/components/free_camera.hpp>
@@ -113,7 +113,7 @@ void App::on_loaded() {
 		load_static_mesh(m_loader.asset_uri);
 	} else if (m_loader.asset_type == levk::SkinnedMeshAsset::type_name_v) {
 		load_skinned_mesh(m_loader.asset_uri);
-	} else if (m_loader.asset_type == levk::ImportedSceneAsset::type_name_v) {
+	} else if (m_loader.asset_type == levk::SceneInfoAsset::type_name_v) {
 		load_scene(m_loader.asset_uri);
 	} else {
 		m_log.warn("unknown asset: '{}'", m_loader.asset_uri);
@@ -192,12 +192,12 @@ auto App::try_load_mesh(std::string_view const uri) -> levk::Ptr<typename AssetT
 }
 
 void App::load_scene(std::string_view const uri) {
-	auto const* asset = m_asset_store->load<levk::ImportedSceneAsset>(uri);
+	auto const* asset = m_asset_store->load<levk::SceneInfoAsset>(uri);
 	if (asset == nullptr) { return; }
 
-	for (auto const index : asset->imported_scene.root_nodes) { load_node(asset->imported_scene, index, levk::ImportIndex::eNone); }
+	for (auto const index : asset->scene.root_nodes) { load_node(asset->scene, index, levk::ImportIndex::eNone); }
 
-	if (!asset->imported_scene.skybox.empty()) { load_skybox(asset->imported_scene.skybox); }
+	if (!asset->scene.skybox.empty()) { load_skybox(asset->scene.skybox); }
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)

@@ -1,10 +1,10 @@
 #include <djson/json.hpp>
 #include <levk/assets/asset_load_list.hpp>
 #include <levk/assets/image_asset.hpp>
-#include <levk/assets/imported_scene_asset.hpp>
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/mesh_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>
+#include <levk/assets/scene_info_asset.hpp>
 #include <levk/assets/shader_asset.hpp>
 #include <levk/assets/skeletal_animation_asset.hpp>
 #include <levk/assets/skeleton_asset.hpp>
@@ -120,7 +120,7 @@ void AssetLoadList::add_imported_scene(std::string uri) {
 
 	for (auto const& node : json["nodes"].array_view()) { add_mesh(node["mesh"].as<std::string>()); }
 
-	add_loader<ImportedSceneAsset>(load_stage::imported_scene_v, std::move(uri));
+	add_loader<SceneInfoAsset>(load_stage::imported_scene_v, std::move(uri));
 }
 
 auto AssetLoadList::add_asset(std::string uri, Ptr<std::string> out_type_name) -> bool {
@@ -140,7 +140,7 @@ auto AssetLoadList::add_asset(std::string uri, Ptr<std::string> out_type_name) -
 		add_lit_material(std::move(uri));
 	} else if (ret = *out_type_name == StaticMeshAsset::type_name_v || *out_type_name == SkinnedMeshAsset::type_name_v; ret) {
 		add_mesh(std::move(uri));
-	} else if (ret = *out_type_name == ImportedSceneAsset::type_name_v; ret) {
+	} else if (ret = *out_type_name == SceneInfoAsset::type_name_v; ret) {
 		add_imported_scene(uri);
 	}
 

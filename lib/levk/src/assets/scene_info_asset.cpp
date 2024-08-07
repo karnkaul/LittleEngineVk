@@ -1,5 +1,5 @@
 #include <levk/asset_store.hpp>
-#include <levk/assets/imported_scene_asset.hpp>
+#include <levk/assets/scene_info_asset.hpp>
 #include <levk/io/json_io.hpp>
 
 namespace levk {
@@ -10,8 +10,7 @@ auto ImportedScene::get_node(ImportIndex const index) const -> ImportedNode cons
 	return blank_v;
 }
 
-auto ImportedSceneAsset::to_node(dj::Json const& json) -> ImportedNode {
-	if (IAssetStore::read_asset_type_name(json) != ImportedNode::type_name_v) { return {}; }
+auto SceneInfoAsset::to_node(dj::Json const& json) -> ImportedNode {
 	auto ret = ImportedNode{
 		.index = static_cast<ImportIndex>(json["import_index"].as<std::int64_t>()),
 		.name = json["name"].as<std::string>(),
@@ -33,15 +32,15 @@ auto ImportedSceneAsset::to_node(dj::Json const& json) -> ImportedNode {
 	return ret;
 }
 
-auto ImportedSceneAsset::load(IAssetStore& store, LoadInfo const& info) -> bool {
+auto SceneInfoAsset::load(IAssetStore& store, LoadInfo const& info) -> bool {
 	auto const json = store.get_vfs().load_json(info.uri);
 	if (IAssetStore::read_asset_type_name(json) != type_name_v) { return false; }
 
-	imported_scene.nodes.clear();
-	imported_scene.root_nodes.clear();
-	for (auto const& node : json["nodes"].array_view()) { imported_scene.nodes.push_back(to_node(node)); }
-	for (auto const& index : json["root_nodes"].array_view()) { imported_scene.root_nodes.push_back(ImportIndex{index.as<std::int64_t>()}); }
-	imported_scene.skybox = json["skybox"].as_string();
+	scene.nodes.clear();
+	scene.root_nodes.clear();
+	for (auto const& node : json["nodes"].array_view()) { scene.nodes.push_back(to_node(node)); }
+	for (auto const& index : json["root_nodes"].array_view()) { scene.root_nodes.push_back(ImportIndex{index.as<std::int64_t>()}); }
+	scene.skybox = json["skybox"].as_string();
 
 	return true;
 }

@@ -16,8 +16,6 @@ struct ImportedCamera {
 };
 
 struct ImportedNode {
-	static constexpr std::string_view type_name_v{"ImportedNode"};
-
 	ImportIndex index{ImportIndex::eNone};
 	std::string name{};
 
@@ -33,11 +31,8 @@ struct ImportedNode {
 };
 
 struct ImportedScene {
-	static constexpr std::string_view type_name_v{"ImportedScene"};
-
 	std::vector<ImportedNode> nodes{};
 	std::vector<ImportIndex> root_nodes{};
-	std::string skybox{};
 
 	[[nodiscard]] auto get_node(ImportIndex index) const -> ImportedNode const&;
 };

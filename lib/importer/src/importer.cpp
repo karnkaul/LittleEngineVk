@@ -133,12 +133,13 @@ class Importer::Impl {
 		if (!ensure_root() || !check_index(m_root->scenes, to_size_t(index))) { return {}; }
 
 		auto const& scene = m_root->scenes.at(to_size_t(index));
-		auto const name = std::format("scene_{}.json", to_size_t(index));
+		auto const name = get_name(scene.name, std::format("scene_{}.json", to_size_t(index)));
 		auto dst_uri = get_uri(name, "scenes");
 		if (!should_import(dst_uri)) { return dst_uri; }
 
 		auto json = dj::Json{};
 		json["type_name"] = get_type_name<SceneInfoAsset>();
+		json["name"] = name;
 		for (auto const index : scene.root_nodes) {
 			add_node_and_children(to_import_index(index), json["nodes"]);
 			json["root_nodes"].push_back(index);
@@ -407,17 +408,9 @@ class Importer::Impl {
 		auto const& skin = m_root->skins.at(index);
 
 		auto inverse_bind_matrices = dj::Json{};
-		if (skin.inverse_bind_matrices) {
-			auto const& accessor = m_root->accessors.at(*skin.inverse_bind_matrices);
-			if (accessor.count < skin.joints.size()) {
-				m_log.error("invalid inverse bind matrices for Skeleton: '{}'", info.dst_uri);
-				return {};
-			}
-			auto const mats = accessor.to_mat4();
-			for (auto const& in_mat : mats) {
-				auto const mat = to_glm_mat4(in_mat);
-				to_json(inverse_bind_matrices.push_back({}), mat);
-			}
+		for (auto const& in_mat : skin.inverse_bind_matrices) {
+			auto const mat = to_glm_mat4(in_mat);
+			to_json(inverse_bind_matrices.push_back({}), mat);
 		}
 
 		auto json = dj::Json{};
@@ -657,13 +650,10 @@ class Importer::Impl {
 		}
 		}
 
-		auto const& input = m_root->accessors.at(sampler.input);
-		auto const timestamps = std::get<gltf2cpp::Accessor::Float>(input.data).span();
-
 		auto transform_sampler = TransformSampler{};
 		auto copy_keyframes = [&](auto& out, auto const& in) {
 			out.reserve(in.size());
-			for (auto const& [timestamp, in_t] : std::ranges::zip_view(timestamps, in)) {
+			for (auto const& [timestamp, in_t] : std::ranges::zip_view(sampler.input, in)) {
 				auto& keyframe = out.emplace_back();
 				std::memcpy(&keyframe.output, in_t.data(), sizeof(keyframe.output));
 				keyframe.timestamp = Seconds{timestamp};
@@ -718,7 +708,6 @@ class Importer::Impl {
 
 	auto export_camera(std::size_t const index) -> dj::Json {
 		if (!ensure_root() || !check_index(m_root->cameras, index)) { return {}; }
-		// check_index
 
 		auto const& camera = m_root->cameras.at(index);
 		auto ret = dj::Json{};
@@ -791,7 +780,7 @@ class Importer::Impl {
 	}
 
 	static auto get_name(std::string_view const in, std::string fallback) -> std::string {
-		if (in.empty() || in == "(Unnamed)") { return fallback; }
+		if (in.empty()) { return fallback; }
 		return std::string{in};
 	}
 

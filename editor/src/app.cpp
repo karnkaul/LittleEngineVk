@@ -1,6 +1,7 @@
 #include <app.hpp>
 #include <djson/json.hpp>
 #include <levk/assets/asset_load_list.hpp>
+#include <levk/assets/imported_scene_asset.hpp>
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>
 #include <levk/assets/shader_asset.hpp>

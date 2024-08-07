@@ -3,6 +3,7 @@
 #include <levk/assets/bin_animation_channels.hpp>
 #include <levk/assets/bin_geometry.hpp>
 #include <levk/assets/bin_transform_sampler.hpp>
+#include <levk/assets/imported_scene_asset.hpp>
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/mesh_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>

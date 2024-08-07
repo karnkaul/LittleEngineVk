@@ -1,6 +1,5 @@
 #pragma once
 #include <djson/json.hpp>
-#include <levk/assets/imported_scene_asset.hpp>
 #include <levk/assets/mesh_asset.hpp>
 #include <levk/logger.hpp>
 #include <levk/node_tree.hpp>

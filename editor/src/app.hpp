@@ -1,6 +1,7 @@
 #pragma once
 #include <asset_tree.hpp>
 #include <levk/engine.hpp>
+#include <levk/imported_scene.hpp>
 #include <levk/importer.hpp>
 #include <levk/logger.hpp>
 #include <levk/materials/unlit.hpp>

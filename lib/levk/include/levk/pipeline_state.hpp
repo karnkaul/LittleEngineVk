@@ -19,6 +19,7 @@ struct RenderPassState {
 	vk::Format colour_format{vk::Format::eR8G8B8A8Srgb};
 	std::optional<vk::Format> depth_format{};
 	vk::SampleCountFlagBits samples{vk::SampleCountFlagBits::e1};
+	vk::CompareOp depth_compare{vk::CompareOp::eLess};
 	bool depth_test{true};
 
 	auto operator==(RenderPassState const&) const -> bool = default;

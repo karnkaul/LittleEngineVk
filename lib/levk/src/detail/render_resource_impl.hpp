@@ -155,50 +155,70 @@ class RenderImage : public IRenderImage {
 		return true;
 	}
 
-	void overwrite(BitmapView const bitmap, glm::ivec2 const offset) final {
-		if (bitmap.bytes.empty() || !is_positive(bitmap.extent)) { return; }
-		auto const total_extent = bitmap.extent + offset;
+	void overwrite(BitmapView const bitmap, glm::ivec2 const offset) final { write_bitmaps({&bitmap, 1}, offset); }
+
+	void write_cube(std::span<BitmapView const, 6> layers) final { write_bitmaps(layers, {}); }
+
+	void write_bitmaps(std::span<BitmapView const> bitmaps, glm::ivec2 const offset) {
+		auto const layer_count = m_info.type == vk::ImageViewType::eCube ? 6u : 1u;
+		if (bitmaps.size() != layer_count) { return; }
+		auto const extent_0 = bitmaps.front().extent;
+		if (!std::ranges::all_of(bitmaps, [extent_0](BitmapView const& b) { return !b.bytes.empty() && b.extent == extent_0; })) { return; }
+
+		auto const total_extent = extent_0 + offset;
 		if (total_extent.x > static_cast<int>(m_info.extent.width) || total_extent.y > static_cast<int>(m_info.extent.height)) { return; }
+		auto const total_bytes =
+			std::accumulate(bitmaps.begin(), bitmaps.end(), std::size_t{}, [](std::size_t const a, BitmapView const& b) { return a + b.bytes.size(); });
 
 		auto const bci = BufferCreateInfo{
 			.usage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc,
-			.size = bitmap.bytes.size(),
+			.size = total_bytes,
 			.map_memory = true,
 		};
 		auto staging = m_device->create_buffer(bci);
 		if (!staging) { return; }
 
-		staging->write_data({bitmap.bytes.data(), bitmap.bytes.size()});
 		auto command_buffer = CommandBuffer{*m_device};
 
-		auto const layer_count = m_info.type == vk::ImageViewType::eCube ? 6u : 1u;
+		auto buffer_datas = FlexArray<BufferData, 6>{};
+		auto buffer_offset = vk::DeviceSize{};
+		for (auto const& [index, bitmap] : std::ranges::enumerate_view(bitmaps)) {
+			auto const layer = static_cast<std::uint32_t>(index);
+			auto const buffer_data = BufferData{.data = bitmap.bytes.data(), .size = bitmap.bytes.size()};
+			buffer_datas.insert(buffer_data);
 
-		auto barrier = vk::ImageMemoryBarrier2{};
-		barrier.image = m_info.image;
-		barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = m_device->get_queue_family();
-		barrier.subresourceRange = vk::ImageSubresourceRange{m_info.aspect, 0, m_info.mip_levels, 0, layer_count};
-		barrier.oldLayout = m_info.layout;
-		barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
-		barrier.srcStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-		barrier.srcAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
-		barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
-		barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead | vk::AccessFlagBits2::eTransferWrite;
-		record_barriers(command_buffer, {&barrier, 1});
+			auto barrier = vk::ImageMemoryBarrier2{};
+			barrier.image = m_info.image;
+			barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = m_device->get_queue_family();
+			barrier.subresourceRange = vk::ImageSubresourceRange{m_info.aspect, 0, m_info.mip_levels, layer, 1};
+			barrier.oldLayout = m_info.layout;
+			barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.srcStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+			barrier.srcAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
+			barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+			barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead | vk::AccessFlagBits2::eTransferWrite;
+			record_barriers(command_buffer, {&barrier, 1});
 
-		auto bic = vk::BufferImageCopy2{};
-		bic.imageOffset = vk::Offset3D{offset.x, offset.y, 0};
-		bic.imageExtent = vk::Extent3D{to_vk_extent(bitmap.extent), 1u};
-		bic.imageSubresource = vk::ImageSubresourceLayers{m_info.aspect, 0, 0, layer_count};
-		auto const cbtii = vk::CopyBufferToImageInfo2{staging->get_buffer_info().buffer, m_info.image, vk::ImageLayout::eTransferDstOptimal, 1, &bic};
-		command_buffer.get().copyBufferToImage2(cbtii);
+			auto bic = vk::BufferImageCopy2{};
+			bic.imageOffset = vk::Offset3D{offset.x, offset.y, 0};
+			bic.imageExtent = vk::Extent3D{to_vk_extent(bitmap.extent), 1u};
+			bic.bufferOffset = buffer_offset;
+			bic.imageSubresource = vk::ImageSubresourceLayers{m_info.aspect, 0, layer, 1};
+			auto const cbtii = vk::CopyBufferToImageInfo2{staging->get_buffer_info().buffer, m_info.image, vk::ImageLayout::eTransferDstOptimal, 1, &bic};
+			command_buffer.get().copyBufferToImage2(cbtii);
 
-		std::swap(barrier.oldLayout, barrier.newLayout);
-		if (barrier.newLayout == vk::ImageLayout::eUndefined) { barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal; }
-		std::swap(barrier.srcStageMask, barrier.dstStageMask);
-		std::swap(barrier.srcAccessMask, barrier.dstAccessMask);
-		record_barriers(command_buffer, {&barrier, 1});
-		m_info.layout = barrier.newLayout;
+			std::swap(barrier.oldLayout, barrier.newLayout);
+			if (barrier.newLayout == vk::ImageLayout::eUndefined) { barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal; }
+			std::swap(barrier.srcStageMask, barrier.dstStageMask);
+			std::swap(barrier.srcAccessMask, barrier.dstAccessMask);
+			record_barriers(command_buffer, {&barrier, 1});
 
+			buffer_offset += buffer_data.size;
+		}
+
+		staging->write_sequential(buffer_datas.span());
+
+		m_info.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 		if (m_info.mip_levels > 1) { MakeMipMaps{*this, command_buffer}(m_device->get_queue_family()); }
 
 		command_buffer.submit(*m_device);

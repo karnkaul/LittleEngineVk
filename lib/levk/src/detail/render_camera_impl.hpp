@@ -215,11 +215,15 @@ class RenderCamera : public IRenderCamera {
 	void write_view_proj(RenderBeginInfo const& info) {
 		struct ViewProj {
 			glm::mat4 view_proj;
+			glm::mat4 view;
+			glm::mat4 proj;
 			glm::vec4 campos_exposure;
 			glm::mat4 shadow_view_proj;
 		};
-		auto const view_proj = ViewProj{
-			.view_proj = info.camera_view_proj,
+		auto view_proj = ViewProj{
+			.view_proj = info.camera_proj * info.camera_view,
+			.view = info.camera_view,
+			.proj = info.camera_proj,
 			.campos_exposure = {info.camera_position, info.camera_exposure},
 			.shadow_view_proj = info.shadow_view_proj,
 		};
@@ -236,7 +240,7 @@ class RenderCamera : public IRenderCamera {
 		auto const intensity = main_light.intensity;
 		auto const dir_light = DirLight{
 			.rgb_intensity = {rgba, intensity},
-			.direction = glm::normalize(main_light.direction * front_v),
+			.direction = glm::normalize(main_light.orientation * front_v),
 		};
 		m_main_light->set_data(&dir_light, sizeof(dir_light));
 	}

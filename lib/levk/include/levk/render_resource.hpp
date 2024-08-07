@@ -4,6 +4,7 @@
 #include <levk/core/c_string.hpp>
 #include <levk/core/polymorphic.hpp>
 #include <vulkan/vulkan.hpp>
+#include <span>
 
 namespace levk {
 struct ImageCreateInfo {
@@ -47,6 +48,7 @@ class IRenderImage : public Polymorphic {
 
 	virtual auto resize(vk::Extent2D extent) -> bool = 0;
 	virtual void overwrite(BitmapView bitmap, glm::ivec2 offset = {}) = 0;
+	virtual void write_cube(std::span<BitmapView const, 6> layers) = 0;
 	virtual void transition_layout(vk::CommandBuffer command_buffer, ImageBarrier const& barrier, vk::ImageLayout layout) = 0;
 };
 

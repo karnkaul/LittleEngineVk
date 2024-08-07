@@ -3,7 +3,9 @@
 #include <levk/assets/asset_load_list.hpp>
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>
+#include <levk/assets/scene_info_asset.hpp>
 #include <levk/assets/shader_asset.hpp>
+#include <levk/assets/texture_asset.hpp>
 #include <levk/components/free_camera.hpp>
 #include <levk/components/mesh_renderer.hpp>
 #include <levk/components/orbit_camera.hpp>
@@ -77,6 +79,8 @@ void App::render(levk::RenderContext& context) const {
 	m_scene.render_to(render_list);
 
 	context.set_shadow_fragment_shader(*m_asset_store, "assets/shaders/noop.frag");
+	context.set_skybox_vertex_shader(*m_asset_store, "assets/shaders/skybox.vert");
+	context.set_skybox_fragment_shader(*m_asset_store, "assets/shaders/skybox.frag");
 
 	context.add_objects(render_list.opaque);
 
@@ -85,6 +89,7 @@ void App::render(levk::RenderContext& context) const {
 	context.draw_shadows({2048, 2048}, glm::vec3{100.0f});
 
 	context.set_camera(m_render_camera.get());
+	if (m_scene.skybox != nullptr) { context.add_skybox(m_scene.skybox); }
 	m_render_stats = context.draw_renderers(m_engine->get_framebuffer_size(), m_fov, m_z_plane);
 
 	context.submit();
@@ -108,7 +113,7 @@ void App::on_loaded() {
 		load_static_mesh(m_loader.asset_uri);
 	} else if (m_loader.asset_type == levk::SkinnedMeshAsset::type_name_v) {
 		load_skinned_mesh(m_loader.asset_uri);
-	} else if (m_loader.asset_type == levk::ImportedSceneAsset::type_name_v) {
+	} else if (m_loader.asset_type == levk::SceneInfoAsset::type_name_v) {
 		load_scene(m_loader.asset_uri);
 	} else {
 		m_log.warn("unknown asset: '{}'", m_loader.asset_uri);
@@ -187,13 +192,15 @@ auto App::try_load_mesh(std::string_view const uri) -> levk::Ptr<typename AssetT
 }
 
 void App::load_scene(std::string_view const uri) {
-	auto const* asset = m_asset_store->load<levk::ImportedSceneAsset>(uri);
+	auto const* asset = m_asset_store->load<levk::SceneInfoAsset>(uri);
 	if (asset == nullptr) { return; }
 
-	for (auto const index : asset->imported_scene.root_nodes) { load_node(asset->imported_scene, index, levk::ImportIndex::eNone); }
+	for (auto const index : asset->scene.root_nodes) { load_node(asset->scene, index, levk::ImportIndex::eNone); }
+
+	if (!asset->scene.skybox.empty()) { load_skybox(asset->scene.skybox); }
+	if (asset->scene.main_light) { m_scene.main_light = *asset->scene.main_light; }
 }
 
-// NOLINTNEXTLINE(misc-no-recursion)
 void App::load_node(levk::ImportedScene const& scene, levk::ImportIndex index, levk::ImportIndex parent) {
 	auto const& node = scene.get_node(index);
 	if (!node.is_valid()) { return; }
@@ -242,6 +249,17 @@ auto App::load_skinned_mesh(std::string_view const uri) -> bool {
 		entity.set_destroyed();
 		return false;
 	}
+	return true;
+}
+
+auto App::load_skybox(std::string_view const uri) -> bool {
+	auto const* cubemap = m_asset_store->load<levk::CubemapAsset>(uri);
+	if (cubemap == nullptr) {
+		m_log.error("failed to load Cubemap: '{}'", uri);
+		return false;
+	}
+
+	m_scene.skybox = cubemap->cubemap.get();
 	return true;
 }
 

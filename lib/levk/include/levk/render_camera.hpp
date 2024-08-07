@@ -17,7 +17,8 @@ struct RenderBeginInfo {
 	DirectionalLight main_light{};
 	glm::vec3 camera_position{};
 	float camera_exposure{1.0f};
-	glm::mat4 camera_view_proj{1.0f};
+	glm::mat4 camera_view{1.0f};
+	glm::mat4 camera_proj{1.0f};
 	glm::mat4 shadow_view_proj{1.0f};
 };
 

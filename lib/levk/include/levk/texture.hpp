@@ -1,5 +1,7 @@
 #pragma once
 #include <levk/bitmap.hpp>
+#include <levk/core/enum_array.hpp>
+#include <levk/core/enum_flags.hpp>
 #include <levk/core/polymorphic.hpp>
 #include <levk/descriptor_info.hpp>
 #include <string>
@@ -17,6 +19,12 @@ struct TextureSampler {
 
 	auto operator==(TextureSampler const&) const -> bool = default;
 };
+
+enum class TextureFlag : int { eLinear, eNoMipMaps, eCOUNT_ };
+using TextureFlags = EnumFlags<TextureFlag>;
+
+enum class CubemapAxis { eXPlus, eXMinus, eYPlus, eYMinus, eZPlus, eZMinus, eCOUNT_ };
+using CubemapLayers = EnumArray<CubemapAxis, BitmapView>;
 
 /// \brief Opaque interface for Textures: images that can be sampled in render passes.
 class ITexture : public Polymorphic {
@@ -37,4 +45,6 @@ class IDynamicTexture : public ITexture {
 };
 
 class IRenderTexture : public ITexture {};
+
+class ICubemap : public ITexture {};
 } // namespace levk

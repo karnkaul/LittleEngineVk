@@ -8,14 +8,28 @@
 namespace levk {
 class TextureImpl {
   public:
-	TextureImpl(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear) : m_device(render_device) {
+	using Flag = TextureFlag;
+	using Flags = TextureFlags;
+
+	TextureImpl(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, Flags const flags) : m_device(render_device) {
 		auto ici = ImageCreateInfo{
 			.extent = to_vk_extent(bitmap.extent),
-			.mip_map = mip_map,
+			.mip_map = !flags.test(Flag::eNoMipMaps),
 		};
-		if (linear) { ici.format = vk::Format::eR8G8B8A8Unorm; }
+		if (flags.test(Flag::eLinear)) { ici.format = vk::Format::eR8G8B8A8Unorm; }
 		m_image = render_device->create_image(ici);
 		do_recreate(bitmap);
+	}
+
+	TextureImpl(NotNull<IRenderDevice*> render_device, CubemapLayers const& layers, Flags const flags) : m_device(render_device) {
+		auto ici = ImageCreateInfo{
+			.extent = to_vk_extent(layers.front().extent),
+			.view_type = vk::ImageViewType::eCube,
+			.mip_map = !flags.test(Flag::eNoMipMaps),
+		};
+		if (flags.test(Flag::eLinear)) { ici.format = vk::Format::eR8G8B8A8Unorm; }
+		m_image = render_device->create_image(ici);
+		m_image->write_cube(layers);
 	}
 
 	[[nodiscard]] auto do_get_size() const -> glm::ivec2 {
@@ -46,8 +60,7 @@ class TextureImpl {
 
 class Texture : public ITexture, private TextureImpl {
   public:
-	Texture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear)
-		: TextureImpl(render_device, bitmap, mip_map, linear) {}
+	Texture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, Flags const flags) : TextureImpl(render_device, bitmap, flags) {}
 
   private:
 	[[nodiscard]] auto get_size() const -> glm::ivec2 final { return do_get_size(); }
@@ -56,13 +69,21 @@ class Texture : public ITexture, private TextureImpl {
 
 class DynamicTexture : public IDynamicTexture, private TextureImpl {
   public:
-	DynamicTexture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, bool const mip_map, bool const linear)
-		: TextureImpl(render_device, bitmap, mip_map, linear) {}
+	DynamicTexture(NotNull<IRenderDevice*> render_device, BitmapView const bitmap, Flags const flags) : TextureImpl(render_device, bitmap, flags) {}
 
   private:
 	[[nodiscard]] auto get_size() const -> glm::ivec2 final { return do_get_size(); }
 	[[nodiscard]] auto get_descriptor_info(std::uint32_t binding) const -> DescriptorInfo final { return do_get_descriptor_info(sampler, binding); }
 
 	void recreate(BitmapView bitmap) final { do_recreate(bitmap); }
+};
+
+class Cubemap : public ICubemap, private TextureImpl {
+  public:
+	Cubemap(NotNull<IRenderDevice*> render_device, CubemapLayers const& layers, Flags const flags) : TextureImpl(render_device, layers, flags) {}
+
+  private:
+	[[nodiscard]] auto get_size() const -> glm::ivec2 final { return do_get_size(); }
+	[[nodiscard]] auto get_descriptor_info(std::uint32_t binding) const -> DescriptorInfo final { return do_get_descriptor_info(sampler, binding); }
 };
 } // namespace levk

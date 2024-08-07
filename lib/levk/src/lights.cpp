@@ -10,6 +10,6 @@ void Light::inspect_light() {
 
 void DirectionalLight::inspect_directional_light() {
 	inspect_light();
-	ImDragFloat{}.euler("direction", direction);
+	ImDragFloat{}.euler("direction", orientation);
 }
 } // namespace levk

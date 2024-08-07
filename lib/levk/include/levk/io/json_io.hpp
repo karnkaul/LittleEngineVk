@@ -1,9 +1,8 @@
 #pragma once
-#include <levk/geometry.hpp>
-// #include <bave/graphics/particle_config.hpp>
-// #include <bave/graphics/rect.hpp>
-// #include <bave/graphics/tile_sheet.hpp>
 #include <djson/json.hpp>
+#include <levk/core/time.hpp>
+#include <levk/geometry.hpp>
+#include <levk/lights.hpp>
 #include <levk/transform.hpp>
 
 namespace levk {
@@ -51,9 +50,12 @@ void from_json(dj::Json const& json, Rect<Type>& out) {
 void to_json(dj::Json& out, shape::NineSlice const& nine_slice);
 void from_json(dj::Json const& json, shape::NineSlice& out);
 
-// void to_json(dj::Json& out, TileSheet const& tile_sheet);
-// void from_json(dj::Json const& json, TileSheet& out);
+inline void to_json(dj::Json& out, Radians const& radians) { out = radians.to_degrees().value; }
+inline void from_json(dj::Json const& json, Radians& out) { out = Degrees{json.as<float>()}; }
 
-// void to_json(dj::Json& out, ParticleConfig const& particle_config);
-// void from_json(dj::Json const& json, ParticleConfig& out);
+void to_json(dj::Json& out, DirectionalLight const& light);
+void from_json(dj::Json const& json, DirectionalLight& out);
+
+inline void to_json(dj::Json& out, Seconds const& seconds) { out = seconds.count(); }
+inline void from_json(dj::Json const& json, Seconds& out) { out = Seconds{json.as<float>()}; }
 } // namespace levk

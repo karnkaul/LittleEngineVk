@@ -1,6 +1,7 @@
 #pragma once
 #include <asset_tree.hpp>
 #include <levk/engine.hpp>
+#include <levk/imported_scene.hpp>
 #include <levk/importer.hpp>
 #include <levk/logger.hpp>
 #include <levk/materials/unlit.hpp>
@@ -50,6 +51,7 @@ class App : public levk::EventSink {
 	void load_node(levk::ImportedScene const& scene, levk::ImportIndex index, levk::ImportIndex parent);
 	auto load_static_mesh(std::string_view uri) -> bool;
 	auto load_skinned_mesh(std::string_view uri) -> bool;
+	auto load_skybox(std::string_view uri) -> bool;
 	auto attach_static_mesh(levk::Entity& out, std::string_view uri) -> bool;
 	auto attach_skinned_mesh(levk::Entity& out, std::string_view uri) -> bool;
 

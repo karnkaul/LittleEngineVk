@@ -140,6 +140,7 @@ class Scene : public BasicNodeTree<Entity> {
 	void im_tree(Id& out_inspect_target);
 
 	DirectionalLight main_light{};
+	Ptr<ICubemap const> skybox{};
 
   protected:
 	Logger m_log{"Scene"};

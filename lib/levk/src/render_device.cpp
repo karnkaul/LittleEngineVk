@@ -485,12 +485,16 @@ class RenderDevice : public IRenderDevice {
 		return std::make_unique<ShaderBuffer<IStorageBuffer>>(this, size);
 	}
 
-	auto create_texture(BitmapView const bitmap, bool const mip_map, bool const linear) -> std::unique_ptr<ITexture> final {
-		return std::make_unique<Texture>(this, bitmap, mip_map, linear);
+	auto create_texture(BitmapView const bitmap, TextureFlags const flags) -> std::unique_ptr<ITexture> final {
+		return std::make_unique<Texture>(this, bitmap, flags);
 	}
 
-	auto create_dynamic_texture(BitmapView bitmap = {}, bool mip_map = true, bool linear = false) -> std::unique_ptr<IDynamicTexture> final {
-		return std::make_unique<DynamicTexture>(this, bitmap, mip_map, linear);
+	auto create_dynamic_texture(BitmapView const bitmap, TextureFlags const flags) -> std::unique_ptr<IDynamicTexture> final {
+		return std::make_unique<DynamicTexture>(this, bitmap, flags);
+	}
+
+	auto create_cubemap(CubemapLayers const& layers, TextureFlags const flags) -> std::unique_ptr<ICubemap> final {
+		return std::make_unique<Cubemap>(this, layers, flags);
 	}
 
 	auto create_static_primitive(Geometry const& geometry, NotNull<IMaterial const*> material,

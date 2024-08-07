@@ -10,6 +10,7 @@ inline constexpr auto image_v = ExecStage::eDefault;
 inline constexpr auto skeletal_animation_v = ExecStage::eDefault;
 inline constexpr auto skeleton_v = dependent_exec_stage(skeletal_animation_v);
 inline constexpr auto texture_v = dependent_exec_stage(image_v);
+inline constexpr auto cubemap_v = dependent_exec_stage(image_v);
 inline constexpr auto material_v = dependent_exec_stage(texture_v);
 inline constexpr auto primitive_v = dependent_exec_stage(material_v);
 inline constexpr auto mesh_v = dependent_exec_stage(primitive_v, skeleton_v);
@@ -26,6 +27,7 @@ class AssetLoadList {
 
 	void add_skeleton(std::string uri);
 	void add_texture(std::string uri);
+	void add_cubemap(std::string uri);
 
 	void add_lit_material(std::string uri);
 

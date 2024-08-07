@@ -6,6 +6,7 @@
 #include <levk/assets/lit_material_asset.hpp>
 #include <levk/assets/mesh_asset.hpp>
 #include <levk/assets/primitive_asset.hpp>
+#include <levk/assets/scene_info_asset.hpp>
 #include <levk/assets/skeletal_animation_asset.hpp>
 #include <levk/assets/skeleton_asset.hpp>
 #include <levk/assets/texture_asset.hpp>
@@ -104,7 +105,6 @@ class Importer::Impl {
 
 		auto const& node = m_root->nodes.at(to_size_t(index));
 		auto ret = dj::Json{};
-		ret["type_name"] = get_type_name<ImportedNode>();
 		ret["import_index"] = node.self;
 		ret["name"] = get_node_name(node);
 
@@ -138,7 +138,7 @@ class Importer::Impl {
 		if (!should_import(dst_uri)) { return dst_uri; }
 
 		auto json = dj::Json{};
-		json["type_name"] = get_type_name<ImportedSceneAsset>();
+		json["type_name"] = get_type_name<SceneInfoAsset>();
 		for (auto const index : scene.root_nodes) {
 			add_node_and_children(to_import_index(index), json["nodes"]);
 			json["root_nodes"].push_back(index);

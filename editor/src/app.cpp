@@ -195,13 +195,19 @@ void App::load_scene(std::string_view const uri) {
 	auto const* asset = m_asset_store->load<levk::SceneInfoAsset>(uri);
 	if (asset == nullptr) { return; }
 
-	for (auto const id : asset->scene.get_root_ids()) { load_node(asset->scene, *asset->scene.get_node(id), levk::ImportIndex::eNone); }
+	levk::tree_visit(asset->scene, [&](levk::ImportedNode const& in_node) {
+		auto const parent = [&in_node, asset] {
+			auto const* parent = asset->scene.get_node(in_node.get_parent_id());
+			return parent != nullptr ? parent->get_import_index() : levk::ImportIndex::eNone;
+		}();
+		load_node(in_node, parent);
+	});
 
 	if (!asset->scene.skybox.empty()) { load_skybox(asset->scene.skybox); }
 	if (asset->scene.main_light) { m_scene.main_light = *asset->scene.main_light; }
 }
 
-void App::load_node(levk::ImportedScene const& scene, levk::ImportedNode const& node, levk::ImportIndex parent) {
+void App::load_node(levk::ImportedNode const& node, levk::ImportIndex const parent) {
 	if (node.camera && node.camera->type == levk::ImportedCamera::Type::ePerspective) {
 		m_z_plane.x = node.camera->z_near;
 		if (node.camera->z_far) { m_z_plane.y = *node.camera->z_far; }
@@ -220,7 +226,7 @@ void App::load_node(levk::ImportedScene const& scene, levk::ImportedNode const& 
 
 	auto& entity = m_scene.spawn_entity(node.name, node.get_import_index());
 	entity.transform = node.transform;
-	if (auto const* parent_entity = m_scene.find_node_by_index(parent)) { entity.set_parent(*parent_entity); }
+	if (auto* parent_entity = m_scene.find_node_by_index(parent)) { m_scene.set_parent(entity, *parent_entity); }
 	if (!node.mesh.empty()) {
 		if (!node.skeleton.empty()) {
 			attach_skinned_mesh(entity, node.mesh);
@@ -228,7 +234,13 @@ void App::load_node(levk::ImportedScene const& scene, levk::ImportedNode const& 
 			attach_static_mesh(entity, node.mesh);
 		}
 	}
-	for (auto const child_index : node.get_children_ids()) { load_node(scene, *scene.get_node(child_index), entity.get_import_index()); }
+}
+
+void App::load_node_and_children(levk::ImportedScene const& scene, levk::ImportedNode const& node, levk::ImportIndex parent) {
+	auto const* parent_node = scene.find_node_by_index(parent);
+	auto const parent_index = parent_node != nullptr ? parent_node->get_import_index() : levk::ImportIndex::eNone;
+	load_node(node, parent_index);
+	for (auto const child_index : node.get_children_ids()) { load_node_and_children(scene, *scene.get_node(child_index), node.get_import_index()); }
 }
 
 auto App::load_static_mesh(std::string_view const uri) -> bool {

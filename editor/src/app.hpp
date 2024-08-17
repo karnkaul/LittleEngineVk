@@ -48,7 +48,8 @@ class App : public levk::EventSink {
 	auto try_load_mesh(std::string_view uri) -> levk::Ptr<typename AssetT::MeshType>;
 
 	void load_scene(std::string_view uri);
-	void load_node(levk::ImportedScene const& scene, levk::ImportedNode const& node, levk::ImportIndex parent);
+	void load_node(levk::ImportedNode const& node, levk::ImportIndex parent);
+	void load_node_and_children(levk::ImportedScene const& scene, levk::ImportedNode const& node, levk::ImportIndex parent);
 	auto load_static_mesh(std::string_view uri) -> bool;
 	auto load_skinned_mesh(std::string_view uri) -> bool;
 	auto load_skybox(std::string_view uri) -> bool;

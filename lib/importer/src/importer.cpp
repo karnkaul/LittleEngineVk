@@ -81,6 +81,20 @@ auto to_glm_mat4(gltf2cpp::Mat4x4 const& in) {
 	if (!do_create_directories(dst.parent_path())) { return false; }
 	return json.to_file(dst.string().c_str());
 }
+
+void to_json(dj::Json& ret, ImportedCamera const& camera) {
+	if (!camera.name.empty()) { ret["name"] = camera.name; }
+
+	switch (camera.type) {
+	case ImportedCamera::Type::eOrthographic: ret["type"] = "orthographic"; break;
+	default: break;
+	case ImportedCamera::Type::ePerspective: ret["type"] = "perspective"; break;
+	}
+
+	if (camera.y_fov) { to_json(ret["y_fov"], *camera.y_fov); }
+	ret["z_near"] = camera.z_near;
+	if (camera.z_far) { ret["z_far"] = *camera.z_far; }
+}
 } // namespace
 
 class Importer::Impl {
@@ -140,10 +154,28 @@ class Importer::Impl {
 		auto json = dj::Json{};
 		json["type_name"] = get_type_name<SceneInfoAsset>();
 		json["name"] = name;
-		for (auto const index : scene.root_nodes) {
-			add_node_and_children(to_import_index(index), json["nodes"]);
-			json["root_nodes"].push_back(index);
-		}
+
+		struct PerNode {
+			Impl& impl; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+
+			void operator()(gltf2cpp::Node const& in_node, ImportedNode& out_node) const {
+				if (in_node.mesh) { out_node.mesh = impl.import_mesh(*in_node.mesh); }
+				if (in_node.skin) { out_node.skeleton = impl.import_skeleton(*in_node.skin); }
+				if (in_node.camera) { out_node.camera = impl.to_imported_camera(*in_node.camera); }
+			}
+
+			void operator()(ImportedNode const& in_node, dj::Json& out_node) const {
+				if (!in_node.mesh.empty()) { out_node["mesh"] = in_node.mesh; }
+				if (!in_node.skeleton.empty()) { out_node["skeleton"] = in_node.skeleton; }
+				if (in_node.camera) { to_json(out_node["camera"], *in_node.camera); }
+			}
+		};
+
+		auto tree = SceneInfo{};
+		auto tree_builder = TreeBuilder<ImportedNode, SceneInfo>{.nodes = m_root->nodes};
+		for (auto const index : scene.root_nodes) { tree_builder.add_node_and_children(index, tree, {}, PerNode{*this}); }
+
+		json["nodes"] = TreeToJson<ImportedNode, SceneInfo>{}.export_tree(tree, PerNode{*this});
 
 		if (!write_json(json, get_path(dst_uri))) {
 			m_log.error("failed to save Scene: '{}'", dst_uri);
@@ -182,27 +214,42 @@ class Importer::Impl {
 		}
 	};
 
-	struct AddNodeAndParents {
+	template <std::derived_from<TreeNode> NodeT, std::derived_from<BasicNodeTree<NodeT>> TreeT>
+	struct TreeBuilder {
 		std::span<gltf2cpp::Node const> nodes;
 
 		std::unordered_map<ImportIndex, TreeNodeId> added{};
 
-		// NOLINTNEXTLINE(misc-no-recursion)
-		auto add_node_and_parents(gltf2cpp::Node const& in_node, NodeTree& out) -> TreeNodeId {
-			if (auto const it = added.find(to_import_index(in_node.self)); it != added.end()) { return it->second; }
-			auto node = TreeNode{};
+		template <typename PerNode>
+		auto add_node(gltf2cpp::Node const& in_node, TreeT& out, PerNode per_node) -> TreeNodeId {
+			auto node = NodeT{};
 			node.name = get_node_name(in_node);
 			node.transform = std::visit(GetTransform{}, in_node.transform);
-			auto const id = out.add_node(std::move(node), to_import_index(in_node.self)).get_id();
-			if (in_node.parent) {
-				auto const parent_id = add_node_and_parents(nodes[*in_node.parent], out);
-				out.set_parent(*out.get_node(id), parent_id);
-			}
-			added.insert_or_assign(to_import_index(in_node.self), id);
-			return id;
+			per_node(in_node, node);
+			return out.add_node(std::move(node), to_import_index(in_node.self)).get_id();
 		}
 
-		void operator()(gltf2cpp::Node const& in_node, NodeTree& out) { add_node_and_parents(in_node, out); }
+		template <typename PerNode>
+		auto add_node_and_children(std::size_t index, TreeT& out, std::optional<TreeNodeId> parent, PerNode per_node) -> TreeNodeId {
+			auto const& in_node = nodes[index];
+			auto const ret = add_node(in_node, out, per_node);
+			if (parent) { out.set_parent(*out.get_node(ret), *parent); }
+			for (auto const child : in_node.children) { add_node_and_children(child, out, ret, per_node); }
+			return ret;
+		}
+
+		template <typename PerNode>
+		auto add_node_and_parents(std::size_t index, TreeT& out, PerNode per_node) -> TreeNodeId {
+			auto const& in_node = nodes[index];
+			if (auto const it = added.find(to_import_index(in_node.self)); it != added.end()) { return it->second; }
+			auto const ret = add_node(in_node, out, per_node);
+			if (in_node.parent) {
+				auto const parent_id = add_node_and_parents(*in_node.parent, out, per_node);
+				out.set_parent(*out.get_node(ret), parent_id);
+			}
+			added.insert_or_assign(to_import_index(in_node.self), ret);
+			return ret;
+		}
 	};
 
 	struct ShaderMapping {
@@ -429,10 +476,10 @@ class Importer::Impl {
 		}
 
 		auto tree = NodeTree{};
-		auto add_node_and_parents = AddNodeAndParents{.nodes = m_root->nodes};
+		auto tree_builder = TreeBuilder<TreeNode, NodeTree>{.nodes = m_root->nodes};
 
 		for (auto const joint_index : skin.joints) {
-			add_node_and_parents(m_root->nodes.at(joint_index), tree);
+			tree_builder.add_node_and_parents(joint_index, tree, [](auto&&...) {});
 			json["joints_import_indices"].push_back(joint_index);
 		}
 		if (inverse_bind_matrices) { json["inverse_bind_matrices"] = std::move(inverse_bind_matrices); }
@@ -726,6 +773,27 @@ class Importer::Impl {
 			},
 		};
 		std::visit(visitor, camera.payload);
+		return ret;
+	}
+
+	[[nodiscard]] auto to_imported_camera(std::size_t const index) const -> ImportedCamera {
+		auto const& in = m_root->cameras.at(index);
+		auto ret = ImportedCamera{};
+		ret.name = get_name(in.name, std::format("camera_{}", index));
+		auto const visitor = Visitor{
+			[&ret](gltf2cpp::Camera::Orthographic const& o) {
+				ret.type = ImportedCamera::Type::eOrthographic;
+				ret.z_near = o.znear;
+				ret.z_far = o.zfar;
+			},
+			[&ret](gltf2cpp::Camera::Perspective const& p) {
+				ret.type = ImportedCamera::Type::ePerspective;
+				ret.y_fov = p.yfov;
+				ret.z_near = p.znear;
+				if (p.zfar) { ret.z_far = *p.zfar; }
+			},
+		};
+		std::visit(visitor, in.payload);
 		return ret;
 	}
 

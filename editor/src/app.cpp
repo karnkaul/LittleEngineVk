@@ -195,16 +195,13 @@ void App::load_scene(std::string_view const uri) {
 	auto const* asset = m_asset_store->load<levk::SceneInfoAsset>(uri);
 	if (asset == nullptr) { return; }
 
-	for (auto const index : asset->scene.root_nodes) { load_node(asset->scene, index, levk::ImportIndex::eNone); }
+	for (auto const id : asset->scene.get_root_ids()) { load_node(asset->scene, *asset->scene.get_node(id), levk::ImportIndex::eNone); }
 
 	if (!asset->scene.skybox.empty()) { load_skybox(asset->scene.skybox); }
 	if (asset->scene.main_light) { m_scene.main_light = *asset->scene.main_light; }
 }
 
-void App::load_node(levk::ImportedScene const& scene, levk::ImportIndex index, levk::ImportIndex parent) {
-	auto const& node = scene.get_node(index);
-	if (!node.is_valid()) { return; }
-
+void App::load_node(levk::ImportedScene const& scene, levk::ImportedNode const& node, levk::ImportIndex parent) {
 	if (node.camera && node.camera->type == levk::ImportedCamera::Type::ePerspective) {
 		m_z_plane.x = node.camera->z_near;
 		if (node.camera->z_far) { m_z_plane.y = *node.camera->z_far; }
@@ -221,7 +218,7 @@ void App::load_node(levk::ImportedScene const& scene, levk::ImportIndex index, l
 		return;
 	}
 
-	auto& entity = m_scene.spawn_entity(node.name, node.index);
+	auto& entity = m_scene.spawn_entity(node.name, node.get_import_index());
 	entity.transform = node.transform;
 	if (auto const* parent_entity = m_scene.find_node_by_index(parent)) { entity.set_parent(*parent_entity); }
 	if (!node.mesh.empty()) {
@@ -231,7 +228,7 @@ void App::load_node(levk::ImportedScene const& scene, levk::ImportIndex index, l
 			attach_static_mesh(entity, node.mesh);
 		}
 	}
-	for (auto const child_index : node.children) { load_node(scene, child_index, entity.get_import_index()); }
+	for (auto const child_index : node.get_children_ids()) { load_node(scene, *scene.get_node(child_index), entity.get_import_index()); }
 }
 
 auto App::load_static_mesh(std::string_view const uri) -> bool {

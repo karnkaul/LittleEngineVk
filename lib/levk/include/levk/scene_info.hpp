@@ -3,7 +3,8 @@
 #include <levk/lights.hpp>
 
 namespace levk {
-struct SceneInfo : ImportedScene {
+class SceneInfo : public ImportedScene {
+  public:
 	std::string skybox{};
 	std::optional<DirectionalLight> main_light{};
 };

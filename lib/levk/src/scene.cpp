@@ -145,6 +145,7 @@ void Scene::im_tree(Id& out_inspect_target) {
 			auto const label = levk::FixedString<>{"[{}] {}", static_cast<int>(entity.get_id()), entity.name};
 			int flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth;
 			if (inspect_target == entity.get_id()) { flags |= ImGuiTreeNodeFlags_Selected; }
+			if (entity.get_children_ids().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
 			auto const ret = ImGui::TreeNodeEx(label.c_str(), flags);
 			if (!ImGui::IsItemToggledOpen() && ImGui::IsItemClicked(ImGuiMouseButton_Left)) { inspect_target = entity.get_id(); }
 			return ret;

@@ -8,8 +8,6 @@ class SceneInfoAsset : public IAsset {
   public:
 	static constexpr std::string_view type_name_v{"SceneInfoAsset"};
 
-	[[nodiscard]] static auto to_node(dj::Json const& json) -> ImportedNode;
-
 	SceneInfo scene{};
 
   private:

@@ -110,10 +110,19 @@ class BasicNodeTree : public Polymorphic {
 		auto* parent_node = get_node(parent_id);
 		if (parent_node == nullptr) { return; }
 
+		set_parent(node, *parent_node);
+	}
+
+	/// \brief Establish a hierarchy between nodes.
+	/// \param node Target Node.
+	/// \param parent Parent node.
+	///
+	/// After parenting, node will no longer be in the list of root nodes.
+	void set_parent(TreeNode& node, TreeNode& parent) {
 		unparent(node);
 
-		parent_node->m_children.push_back(node.m_id);
-		node.m_parent_id = parent_id;
+		parent.m_children.push_back(node.m_id);
+		node.m_parent_id = parent.get_id();
 		std::erase_if(m_root_nodes, [id = node.m_id](Id const i) { return i == id; });
 	}
 

@@ -118,6 +118,7 @@ void AssetLoadList::add_imported_scene(std::string uri) {
 	auto const json = m_store->get_vfs().load_json(uri);
 	if (!json) { return; }
 
+	add_cubemap(json["skybox"].as<std::string>());
 	for (auto const& node : json["nodes"].array_view()) { add_mesh(node["mesh"].as<std::string>()); }
 
 	add_loader<SceneInfoAsset>(load_stage::imported_scene_v, std::move(uri));

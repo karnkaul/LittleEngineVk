@@ -330,6 +330,7 @@ void App::draw_assets_tab(levk::Seconds const dt) {
 		ImGui::Checkbox("force import", &m_force_import);
 		if (ImGui::Button("clear assets and scene")) {
 			m_scene.clear_nodes();
+			m_scene.skybox = {};
 			m_asset_store->clear();
 			m_camera_id = spawn_cameras();
 		}

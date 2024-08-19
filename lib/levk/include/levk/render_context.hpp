@@ -14,22 +14,39 @@
 #include <vector>
 
 namespace levk {
+class ShaderContext {
+  public:
+	template <typename Type>
+	struct Data {
+		struct {
+			Type skybox{};
+		} vertex{};
+
+		struct {
+			Type shadow{};
+			Type skybox{};
+		} fragment{};
+	};
+
+	using Uris = Data<std::string_view>;
+
+	explicit ShaderContext(IAssetStore& asset_store, Uris uris);
+
+	Data<RenderShader> data{};
+};
+
 /// \brief Renderer for RenderObjects.
 class RenderContext {
   public:
 	static constexpr auto fov_v = Degrees{60.0f};
 	static constexpr auto z_plane_v = glm::vec2{0.1f, 100.0f};
 
-	explicit RenderContext(NotNull<IRenderDevice*> render_device, vk::CommandBuffer command_buffer);
+	explicit RenderContext(NotNull<IRenderDevice*> render_device, vk::CommandBuffer command_buffer, ShaderContext shaders);
 
-	[[nodiscard]] static auto create(NotNull<IRenderDevice*> render_device) -> std::optional<RenderContext>;
+	[[nodiscard]] static auto create(NotNull<IRenderDevice*> render_device, ShaderContext shaders) -> std::optional<RenderContext>;
 
 	[[nodiscard]] auto get_command_buffer() const -> vk::CommandBuffer { return m_command_buffer; }
 	[[nodiscard]] auto get_last_render_target() const -> RenderTarget const& { return m_last_rt; }
-
-	auto set_shadow_fragment_shader(IAssetStore& asset_store, std::string_view shader_uri) -> bool;
-	auto set_skybox_vertex_shader(IAssetStore& asset_store, std::string_view shader_uri) -> bool;
-	auto set_skybox_fragment_shader(IAssetStore& asset_store, std::string_view shader_uri) -> bool;
 
 	/// \brief Add objects to the RenderPass.
 	/// Referenced data in all objects must remain alive until after render().
@@ -66,14 +83,10 @@ class RenderContext {
 		std::unique_ptr<material::Unlit> material{};
 		std::unique_ptr<IStaticPrimitive> cube{};
 		Ptr<ICubemap const> cubemap{};
-		RenderShader vertex_shader{};
-		RenderShader fragment_shader{};
 		std::optional<NotNull<IPrimitive const*>> primitive{};
 		RenderInstance instance{};
 		std::optional<BakedObject> baked{};
 	};
-
-	auto set_shader(RenderShader& out, IAssetStore& asset_store, std::string_view shader_uri) -> bool;
 
 	auto bake(RenderObject const& object, BakedObject& out) -> bool;
 	[[nodiscard]] auto get_pipeline(BakedObject const& object, IPrimitive const& primitive, DrawType type) const -> Ptr<IPipeline>;
@@ -85,9 +98,9 @@ class RenderContext {
 
 	NotNull<IRenderDevice*> m_device;
 	vk::CommandBuffer m_command_buffer{};
+	ShaderContext m_shaders;
 
 	Ptr<IRenderCamera> m_camera{};
-	RenderShader m_shadow_fs{};
 	RenderView m_view{};
 	RenderTarget m_last_rt{};
 	Ptr<IRenderTexture const> m_shadow_map{};

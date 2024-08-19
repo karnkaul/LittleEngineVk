@@ -109,26 +109,32 @@ struct DescriptorBinder {
 };
 } // namespace
 
-auto RenderContext::create(NotNull<IRenderDevice*> render_device) -> std::optional<RenderContext> {
+ShaderContext::ShaderContext(IAssetStore& asset_store, Uris const uris) {
+	auto const log = Logger{"ShaderContext"};
+	auto const load = [&](RenderShader& out, std::string_view const uri) {
+		if (uri.empty()) { return; }
+		auto const* asset = asset_store.load<ShaderAsset>(uri);
+		if (asset == nullptr) {
+			log.warn("failed to load RenderShader: '{}'", uri);
+			return;
+		}
+		out = asset->get_render_shader();
+		if (out.empty()) { log.warn("invalid shader: '{}'", uri); }
+	};
+
+	load(data.vertex.skybox, uris.vertex.skybox);
+	load(data.fragment.skybox, uris.fragment.skybox);
+	load(data.fragment.shadow, uris.fragment.shadow);
+}
+
+auto RenderContext::create(NotNull<IRenderDevice*> render_device, ShaderContext shaders) -> std::optional<RenderContext> {
 	auto const command_buffer = render_device->acquire_next_image();
 	if (!command_buffer) { return {}; }
-	return RenderContext{render_device, command_buffer};
+	return RenderContext{render_device, command_buffer, shaders};
 }
 
-RenderContext::RenderContext(NotNull<IRenderDevice*> render_device, vk::CommandBuffer const command_buffer)
-	: m_device(render_device), m_command_buffer(command_buffer) {}
-
-auto RenderContext::set_shadow_fragment_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
-	return set_shader(m_shadow_fs, asset_store, shader_uri);
-}
-
-auto RenderContext::set_skybox_vertex_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
-	return set_shader(m_skybox.vertex_shader, asset_store, shader_uri);
-}
-
-auto RenderContext::set_skybox_fragment_shader(IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
-	return set_shader(m_skybox.fragment_shader, asset_store, shader_uri);
-}
+RenderContext::RenderContext(NotNull<IRenderDevice*> render_device, vk::CommandBuffer const command_buffer, ShaderContext shaders)
+	: m_device(render_device), m_command_buffer(command_buffer), m_shaders(shaders) {}
 
 void RenderContext::add_objects(std::span<RenderObject const> objects) {
 	for (auto const& object : objects) {
@@ -139,19 +145,21 @@ void RenderContext::add_objects(std::span<RenderObject const> objects) {
 }
 
 void RenderContext::add_skybox(NotNull<ICubemap const*> cubemap) {
-	if (m_skybox.vertex_shader.empty()) {
+	auto const shaders = std::array{m_shaders.data.vertex.skybox, m_shaders.data.fragment.skybox};
+
+	if (shaders[0].empty()) {
 		m_log.error("RenderContext::add_skybox(): skybox vertex shader not set");
 		return;
 	}
-	if (m_skybox.fragment_shader.empty()) {
+	if (shaders[1].empty()) {
 		m_log.error("RenderContext::add_skybox(): skybox fragment shader not set");
 		return;
 	}
 
-	if (!m_skybox.material) { m_skybox.material = std::make_unique<material::Unlit>(*m_device, m_skybox.fragment_shader); }
+	if (!m_skybox.material) { m_skybox.material = std::make_unique<material::Unlit>(*m_device, shaders[1]); }
 	if (!m_skybox.cube) {
 		auto const geometry = Geometry::from(shape::Cube{.size = glm::vec3{1.0f}});
-		m_skybox.cube = m_device->create_static_primitive(geometry, m_skybox.material.get(), m_skybox.vertex_shader);
+		m_skybox.cube = m_device->create_static_primitive(geometry, m_skybox.material.get(), shaders[0]);
 		m_skybox.primitive.emplace(m_skybox.cube.get());
 	}
 
@@ -180,7 +188,9 @@ auto RenderContext::set_view(RenderView const& view) -> RenderContext& {
 }
 
 auto RenderContext::draw_shadows(glm::ivec2 const resolution, glm::vec3 const& projection_viewport) -> RenderStats {
-	if (m_shadow_fs.empty()) {
+	auto const shader = m_shaders.data.fragment.shadow;
+
+	if (shader.empty()) {
 		m_log.error("RenderContext::draw_shadows(): shadow fragment shader not set");
 		return {};
 	}
@@ -244,24 +254,8 @@ void RenderContext::clear() {
 	m_objects.clear();
 	m_instances.clear();
 	m_shadow_map = {};
-	m_shadow_fs = {};
 	m_last_rt = {};
 	m_skybox.baked = {};
-}
-
-auto RenderContext::set_shader(RenderShader& out, IAssetStore& asset_store, std::string_view const shader_uri) -> bool {
-	auto const* asset = asset_store.load<ShaderAsset>(shader_uri);
-	if (asset == nullptr) {
-		m_log.error("Failed to load shader: '{}'", shader_uri);
-		return false;
-	}
-	if (asset->get_render_shader().empty()) {
-		m_log.error("Invalid shader: '{}'", shader_uri);
-		return false;
-	}
-
-	out = asset->get_render_shader();
-	return true;
 }
 
 auto RenderContext::bake(RenderObject const& object, BakedObject& out) -> bool {
@@ -296,10 +290,7 @@ auto RenderContext::get_pipeline(BakedObject const& object, IPrimitive const& pr
 
 	auto fragment_shader = primitive.material->fragment_shader;
 	auto vertex_binding = primitive.get_vertex_binding();
-	if (type == DrawType::eShadows) {
-		if (m_shadow_fs.empty()) { return {}; }
-		fragment_shader = m_shadow_fs;
-	}
+	if (type == DrawType::eShadows) { fragment_shader = m_shaders.data.fragment.shadow; }
 
 	auto const primitive_state = RenderPrimitiveState{
 		.topology = primitive.get_topology(),

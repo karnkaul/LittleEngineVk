@@ -63,7 +63,12 @@ void App::tick() {
 }
 
 void App::render() {
-	auto render_context = levk::RenderContext::create(&m_engine->get_render_device());
+	auto const shader_data = levk::ShaderContext::Uris{
+		.vertex = {.skybox = "assets/shaders/skybox.vert"},
+		.fragment = {.shadow = "assets/shaders/noop.frag", .skybox = "assets/shaders/skybox.frag"},
+	};
+	auto const shader_context = levk::ShaderContext{*m_asset_store, shader_data};
+	auto render_context = levk::RenderContext::create(&m_engine->get_render_device(), shader_context);
 	if (!render_context) { return; }
 
 	render(*render_context);
@@ -77,10 +82,6 @@ void App::tick(levk::Seconds const dt) {
 void App::render(levk::RenderContext& context) const {
 	auto render_list = levk::RenderList{};
 	m_scene.render_to(render_list);
-
-	context.set_shadow_fragment_shader(*m_asset_store, "assets/shaders/noop.frag");
-	context.set_skybox_vertex_shader(*m_asset_store, "assets/shaders/skybox.vert");
-	context.set_skybox_fragment_shader(*m_asset_store, "assets/shaders/skybox.frag");
 
 	context.add_objects(render_list.opaque);
 
